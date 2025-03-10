@@ -252,77 +252,121 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(f'Could not create session {session_number}. Skipping bill fetching.'))
                 return
         
-        # Fetch bills from the Alþingi website
-        url = f'https://www.althingi.is/altext/xml/thingmalalisti/?lthing={session_number}'
+        bills_created = 0
+        bills_updated = 0
         
-        try:
-            response = requests.get(url)
-            if response.status_code != 200:
-                self.stdout.write(self.style.ERROR(f'Error fetching bills: HTTP {response.status_code}'))
-                return
-            
-            # Process the raw text response
-            raw_text = response.text
-            
-            # Create some topics
-            topics = []
-            for topic_name in ['Healthcare', 'Education', 'Environment', 'Economy', 'Justice']:
-                topic, _ = Topic.objects.get_or_create(
-                    name=topic_name,
-                    defaults={'slug': slugify(topic_name)}
-                )
-                topics.append(topic)
-            
-            # Parse bill data using regex
-            # This is a simplified approach - the actual parsing would need to be more sophisticated
-            bill_pattern = r'<mál málsnúmer="(\d+)"[^>]*>.*?<málsheiti>(.*?)</málsheiti>'
-            bill_matches = re.findall(bill_pattern, raw_text, re.DOTALL)
-            
-            bills_created = 0
-            bills_updated = 0
-            
-            for match in bill_matches:
-                bill_id = match[0]
-                title = match[1].strip()
+        # Iterate through possible bill numbers (1 to 150 to be safe)
+        for bill_number in range(1, 150):
+            try:
+                # Fetch individual bill data
+                url = f'https://www.althingi.is/altext/xml/thingmalalisti/thingmal/?lthing={session_number}&malnr={bill_number}'
+                response = requests.get(url)
                 
-                if not title:
+                if response.status_code != 200:
                     continue
                 
-                # Create or update the bill
-                with transaction.atomic():
-                    bill, created = Bill.objects.update_or_create(
-                        althingi_id=int(bill_id),
-                        defaults={
-                            'title': title,
-                            'slug': slugify(title),
-                            'description': title,  # Use title as description for now
-                            'status': 'introduced',  # Default status
-                            'introduced_date': session.start_date,
-                            'session': session,
-                            'url': f'https://www.althingi.is/thingstorf/thingmalalistar-eftir-thingum/ferill/?ltg={session_number}&mnr={bill_id}'
-                        }
-                    )
+                # Parse XML
+                try:
+                    root = ET.fromstring(response.content)
                     
-                    # Add random topics
-                    import random
-                    num_topics = min(len(topics), random.randint(1, 2))
-                    bill_topics = random.sample(topics, num_topics)
-                    bill.topics.set(bill_topics)
+                    # Find the main bill element
+                    bill_element = root.find(".//mál")
+                    if bill_element is None:
+                        continue
                     
-                    if created:
-                        bills_created += 1
-                    else:
-                        bills_updated += 1
-            
-            self.stdout.write(self.style.SUCCESS(f'Bills created: {bills_created}, updated: {bills_updated}'))
+                    # Extract basic bill information
+                    title = root.find(".//málsheiti")
+                    bill_type = root.find(".//málstegund")
+                    status = root.find(".//staðamáls")
+                    
+                    # Skip if no title
+                    if title is None or not title.text:
+                        self.stdout.write(self.style.WARNING(f'Skipping bill {bill_number}: No title found'))
+                        continue
+                        
+                    title_text = title.text.strip()
+                    bill_type_text = bill_type.text.strip() if bill_type is not None and bill_type.text else "Unknown"
+                    status_text = status.text.strip() if status is not None and status.text else "Unknown"
+                    
+                    # Create a unique slug
+                    base_slug = slugify(title_text)[:180]  # Leave room for uniqueness suffix
+                    slug = base_slug
+                    counter = 1
+                    while Bill.objects.filter(session=session, slug=slug).exists():
+                        slug = f"{base_slug}-{counter}"
+                        counter += 1
+                    
+                    # Extract topics/categories
+                    topics = []
+                    for topic_element in root.findall(".//efnisflokkur"):
+                        if topic_element.text:
+                            topic_name = topic_element.text.strip()
+                            topic_desc = topic_element.find("lýsing")
+                            topic_description = topic_desc.text.strip() if topic_desc is not None and topic_desc.text else ""
+                            
+                            # Create or get topic
+                            topic, created = Topic.objects.get_or_create(
+                                name=topic_name,
+                                defaults={
+                                    'slug': slugify(topic_name),
+                                    'description': topic_description
+                                }
+                            )
+                            topics.append(topic)
+                    
+                    # Find document info
+                    doc_info = root.find(".//þingskjal")
+                    introduced_date = None
+                    if doc_info is not None:
+                        distribution = doc_info.find("útbýting")
+                        if distribution is not None and distribution.text:
+                            try:
+                                # Parse date in format "2025-03-07 18:55"
+                                date_text = distribution.text.split()[0]
+                                introduced_date = datetime.strptime(date_text, '%Y-%m-%d').date()
+                            except (ValueError, IndexError):
+                                pass
+                    
+                    # Create or update the bill
+                    with transaction.atomic():
+                        bill, created = Bill.objects.update_or_create(
+                            althingi_id=bill_number,
+                            session=session,
+                            defaults={
+                                'title': title_text,
+                                'slug': slug,
+                                'description': f"{bill_type_text} - {status_text}",
+                                'status': self.map_bill_status(status_text),
+                                'introduced_date': introduced_date or session.start_date,
+                                'url': f'https://www.althingi.is/thingstorf/thingmalalistar-eftir-thingum/ferill/?ltg={session_number}&mnr={bill_number}'
+                            }
+                        )
+                        
+                        # Set topics
+                        if topics:
+                            bill.topics.set(topics)
+                        
+                        if created:
+                            bills_created += 1
+                            self.stdout.write(self.style.SUCCESS(f'Created bill {bill_number}: {title_text}'))
+                        else:
+                            bills_updated += 1
+                            self.stdout.write(self.style.SUCCESS(f'Updated bill {bill_number}: {title_text}'))
+                
+                except ET.ParseError as e:
+                    self.stdout.write(self.style.WARNING(f'XML parsing error for bill {bill_number}: {str(e)}'))
+                    continue
+                    
+            except Exception as e:
+                self.stdout.write(self.style.ERROR(f'Error processing bill {bill_number}: {str(e)}'))
+                continue
         
-        except Exception as e:
-            self.stdout.write(self.style.ERROR(f'Error fetching bills: {str(e)}'))
+        self.stdout.write(self.style.SUCCESS(f'Bills created: {bills_created}, updated: {bills_updated}'))
     
     def map_bill_status(self, status_text):
         """Map Alþingi bill status to our model's status choices."""
         status_map = {
-            'Lagt fram': 'introduced',
+            'Bíður fyrri umræðu': 'introduced',
             'Vísað til nefndar': 'in_committee',
             'Í nefnd': 'in_committee',
             'Í umræðu': 'in_debate',

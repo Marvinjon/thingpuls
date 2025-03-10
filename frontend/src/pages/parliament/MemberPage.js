@@ -78,51 +78,9 @@ const MemberPage = () => {
       } catch (err) {
         console.error('Error fetching MPs:', err);
         setError('Failed to load Members of Parliament. Please try again later.');
-        
-        // For development: provide mock data when API is not available
-        setMembers([
-          {
-            id: 1,
-            first_name: 'Katrín',
-            last_name: 'Jakobsdóttir',
-            constituency: 'Reykjavík North',
-            party: { name: 'Left-Green Movement', abbreviation: 'V', color: '#1B5E20' },
-            photo: null,
-            active: true,
-            slug: 'katrin-jakobsdottir'
-          },
-          {
-            id: 2,
-            first_name: 'Bjarni',
-            last_name: 'Benediktsson',
-            constituency: 'Reykjavík South',
-            party: { name: 'Independence Party', abbreviation: 'D', color: '#0D47A1' },
-            photo: null,
-            active: true,
-            slug: 'bjarni-benediktsson'
-          },
-          {
-            id: 3,
-            first_name: 'Þorgerður Katrín',
-            last_name: 'Gunnarsdóttir',
-            constituency: 'Reykjavík South',
-            party: { name: 'Reform', abbreviation: 'C', color: '#7B1FA2' },
-            photo: null,
-            active: true,
-            slug: 'thorgerdur-katrin-gunnarsdottir'
-          }
-        ]);
-        
-        setParties([
-          { id: 1, name: 'Independence Party', abbreviation: 'D', color: '#0D47A1' },
-          { id: 2, name: 'Progressive Party', abbreviation: 'B', color: '#00695C' },
-          { id: 3, name: 'Left-Green Movement', abbreviation: 'V', color: '#1B5E20' },
-          { id: 4, name: 'Social Democratic Alliance', abbreviation: 'S', color: '#D32F2F' },
-          { id: 5, name: 'Reform', abbreviation: 'C', color: '#7B1FA2' },
-          { id: 6, name: 'Pirate Party', abbreviation: 'P', color: '#000000' }
-        ]);
-        
-        setConstituencies(['Reykjavík North', 'Reykjavík South', 'Southwest', 'Northwest', 'Northeast', 'South']);
+        setMembers([]);
+        setParties([]);
+        setConstituencies([]);
       } finally {
         setLoading(false);
       }

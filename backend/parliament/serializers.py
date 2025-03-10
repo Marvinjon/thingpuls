@@ -93,28 +93,9 @@ class SpeechSerializer(serializers.ModelSerializer):
 class BillListSerializer(serializers.ModelSerializer):
     """Serializer for listing bill objects."""
     
-    sponsors_count = serializers.SerializerMethodField()
-    primary_sponsor = serializers.SerializerMethodField()
-    
     class Meta:
         model = Bill
-        fields = ('id', 'title', 'slug', 'status', 'introduced_date', 'sponsors_count', 
-                  'primary_sponsor', 'last_update')
-    
-    def get_sponsors_count(self, obj):
-        """Return the number of sponsors."""
-        return obj.sponsors.count()
-    
-    def get_primary_sponsor(self, obj):
-        """Return the primary sponsor if available."""
-        primary_sponsor = obj.sponsors.first()
-        if primary_sponsor:
-            return {
-                'id': primary_sponsor.id,
-                'name': f"{primary_sponsor.first_name} {primary_sponsor.last_name}",
-                'party': primary_sponsor.party.abbreviation
-            }
-        return None
+        fields = ('id', 'title', 'slug', 'status', 'introduced_date')
 
 
 class BillDetailSerializer(serializers.ModelSerializer):

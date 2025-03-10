@@ -121,38 +121,25 @@ class Bill(models.Model):
         ('amended', 'Amended'),
         ('passed', 'Passed'),
         ('rejected', 'Rejected'),
-        ('withdrawn', 'Withdrawn'),
+        ('withdrawn', 'Withdrawn')
     ]
     
-    title = models.CharField(max_length=255)
-    slug = models.SlugField(unique=True)
-    althingi_id = models.IntegerField(unique=True, help_text="Bill ID from the Alþingi database")
-    description = models.TextField()
-    full_text = models.TextField(blank=True)
-    sponsors = models.ManyToManyField(MP, related_name='sponsored_bills')
+    althingi_id = models.IntegerField()
+    title = models.CharField(max_length=500)
+    slug = models.CharField(max_length=200)  # Increased from 50
+    description = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='introduced')
     introduced_date = models.DateField()
     session = models.ForeignKey(ParliamentSession, on_delete=models.CASCADE, related_name='bills')
-    url = models.URLField(help_text="Link to bill on Alþingi website")
     topics = models.ManyToManyField(Topic, related_name='bills')
-    
-    # For tracking bill progress
-    committee_referral_date = models.DateField(null=True, blank=True)
-    debate_date = models.DateField(null=True, blank=True)
-    vote_date = models.DateField(null=True, blank=True)
-    last_update = models.DateTimeField(auto_now=True)
+    url = models.URLField(max_length=500, blank=True)
     
     class Meta:
+        unique_together = ('session', 'slug')  # Make slug unique per session
         ordering = ['-introduced_date']
     
-    def save(self, *args, **kwargs):
-        """Generate slug if not provided."""
-        if not self.slug:
-            self.slug = slugify(self.title)
-        super().save(*args, **kwargs)
-    
     def __str__(self):
-        return self.title
+        return f"{self.title} ({self.session.session_number}-{self.althingi_id})"
 
 
 class Amendment(models.Model):

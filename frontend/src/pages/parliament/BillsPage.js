@@ -42,13 +42,13 @@ const BillsPage = () => {
   // State for filters
   const [searchTerm, setSearchTerm] = useState('');
   const [status, setStatus] = useState('');
-  const [category, setCategory] = useState('');
+  const [topic, setTopic] = useState('');
   const [year, setYear] = useState('');
   const [sortBy, setSortBy] = useState('latest');
   const [showFilters, setShowFilters] = useState(false);
   
   // State for filter options
-  const [categories, setCategories] = useState([]);
+  const [topics, setTopics] = useState([]);
   const [years, setYears] = useState([]);
   
   // Fetch bills on component mount and when filters or pagination changes
@@ -61,118 +61,52 @@ const BillsPage = () => {
           page: currentPage,
           search: searchTerm,
           status: status || undefined,
-          category: category || undefined,
+          topic: topic || undefined,
           year: year || undefined,
-          sort_by: sortBy
+          ordering: sortBy === 'latest' ? '-introduced_date' : 
+                   sortBy === 'oldest' ? 'introduced_date' :
+                   sortBy === 'title_asc' ? 'title' : '-title'
         };
         
         const response = await parliamentService.getBills(params);
-        setBills(response.data.results);
+        setBills(response.data.results || []);
         setTotalPages(Math.ceil(response.data.count / 10)); // Assuming 10 items per page
+        
+        // Extract unique years from bills if not already set
+        if (years.length === 0 && response.data.results) {
+          const uniqueYears = [...new Set(response.data.results
+            .map(bill => bill.introduced_date?.substring(0, 4))
+            .filter(year => year))]
+            .sort((a, b) => b - a);
+          setYears(uniqueYears);
+        }
+        
         setError(null);
       } catch (err) {
         console.error('Error fetching bills:', err);
         setError('Failed to load bills. Please try again later.');
-        
-        // Mock data for development
-        const mockBills = [
-          {
-            id: 1,
-            title: 'Climate Change Action Plan',
-            description: 'A comprehensive plan to address climate change through renewable energy adoption, carbon emissions reduction, and sustainable practices.',
-            status: 'passed',
-            introduced_date: '2023-03-10',
-            last_modified: '2023-05-15',
-            number: '151/2023',
-            category: 'Environment',
-            year: '2023',
-            primary_sponsor: {
-              id: 1,
-              name: 'Katrín Jakobsdóttir',
-              party: 'V',
-              party_color: '#1B5E20'
-            },
-            sponsors_count: 5,
-            vote_count: {
-              yes: 32,
-              no: 18,
-              abstain: 5,
-              absent: 8
-            }
-          },
-          {
-            id: 2,
-            title: 'Renewable Energy Investment Act',
-            description: 'Bill to increase government investment in renewable energy technologies and create tax incentives for private investments in the sector.',
-            status: 'in_committee',
-            introduced_date: '2023-05-02',
-            last_modified: '2023-05-10',
-            number: '172/2023',
-            category: 'Energy',
-            year: '2023',
-            primary_sponsor: {
-              id: 2,
-              name: 'Bjarni Benediktsson',
-              party: 'D',
-              party_color: '#0D47A1'
-            },
-            sponsors_count: 3,
-            vote_count: null
-          },
-          {
-            id: 3,
-            title: 'Healthcare Reform Act',
-            description: 'Comprehensive healthcare reform to improve access to healthcare services in rural areas and reduce waiting times for specialized care.',
-            status: 'in_debate',
-            introduced_date: '2023-04-15',
-            last_modified: '2023-05-01',
-            number: '165/2023',
-            category: 'Healthcare',
-            year: '2023',
-            primary_sponsor: {
-              id: 3,
-              name: 'Willum Þór Þórsson',
-              party: 'B',
-              party_color: '#33691E'
-            },
-            sponsors_count: 7,
-            vote_count: null
-          }
-        ];
-        
-        setBills(mockBills);
-        setTotalPages(3);
-        
-        // Mock filter options
-        setCategories(['Environment', 'Energy', 'Healthcare', 'Education', 'Economics', 'Foreign Affairs']);
-        setYears(['2023', '2022', '2021', '2020', '2019']);
+        setBills([]);
       } finally {
         setLoading(false);
       }
     };
     
     fetchBills();
-  }, [currentPage, searchTerm, status, category, year, sortBy]);
+  }, [currentPage, searchTerm, status, topic, year, sortBy]);
   
-  // Fetch filter options on component mount
+  // Fetch topics on component mount
   useEffect(() => {
-    const fetchFilterOptions = async () => {
+    const fetchTopics = async () => {
       try {
-        // In a real app, you would fetch these from the API
-        const categoriesResponse = await parliamentService.getBillCategories();
-        setCategories(categoriesResponse.data);
-        
-        const yearsResponse = await parliamentService.getBillYears();
-        setYears(yearsResponse.data);
+        const response = await parliamentService.getTopics();
+        setTopics(response.data || []);
       } catch (err) {
-        console.error('Error fetching filter options:', err);
-        // Mock data for development
-        setCategories(['Environment', 'Energy', 'Healthcare', 'Education', 'Economics', 'Foreign Affairs']);
-        setYears(['2023', '2022', '2021', '2020', '2019']);
+        console.error('Error fetching topics:', err);
+        setTopics([]);
       }
     };
     
-    fetchFilterOptions();
+    fetchTopics();
   }, []);
   
   // Handle pagination change
@@ -193,8 +127,8 @@ const BillsPage = () => {
     
     if (name === 'status') {
       setStatus(value);
-    } else if (name === 'category') {
-      setCategory(value);
+    } else if (name === 'topic') {
+      setTopic(value);
     } else if (name === 'year') {
       setYear(value);
     } else if (name === 'sortBy') {
@@ -208,7 +142,7 @@ const BillsPage = () => {
   const handleResetFilters = () => {
     setSearchTerm('');
     setStatus('');
-    setCategory('');
+    setTopic('');
     setYear('');
     setSortBy('latest');
     setCurrentPage(1);
@@ -314,262 +248,163 @@ const BillsPage = () => {
                   variant="contained" 
                   startIcon={<FilterListIcon />}
                   onClick={handleResetFilters}
-                  disabled={!status && !category && !year && sortBy === 'latest'}
+                  disabled={!status && !topic && !year && sortBy === 'latest'}
                 >
                   Reset
                 </Button>
               </Box>
             </Grid>
           </Grid>
-        </form>
-        
-        {/* Filter Options */}
-        {showFilters && (
-          <Box sx={{ mt: 3 }}>
-            <Divider sx={{ mb: 3 }} />
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
-                <FormControl fullWidth variant="outlined">
-                  <InputLabel id="status-label">Status</InputLabel>
-                  <Select
-                    labelId="status-label"
-                    name="status"
-                    value={status}
-                    onChange={handleFilterChange}
-                    label="Status"
-                  >
-                    <MenuItem value="">All Statuses</MenuItem>
-                    <MenuItem value="introduced">Introduced</MenuItem>
-                    <MenuItem value="in_committee">In Committee</MenuItem>
-                    <MenuItem value="in_debate">In Debate</MenuItem>
-                    <MenuItem value="amended">Amended</MenuItem>
-                    <MenuItem value="passed">Passed</MenuItem>
-                    <MenuItem value="rejected">Rejected</MenuItem>
-                    <MenuItem value="withdrawn">Withdrawn</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              
-              <Grid item xs={12} sm={4}>
-                <FormControl fullWidth variant="outlined">
-                  <InputLabel id="category-label">Category</InputLabel>
-                  <Select
-                    labelId="category-label"
-                    name="category"
-                    value={category}
-                    onChange={handleFilterChange}
-                    label="Category"
-                  >
-                    <MenuItem value="">All Categories</MenuItem>
-                    {categories.map((cat) => (
-                      <MenuItem key={cat} value={cat}>{cat}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              
-              <Grid item xs={12} sm={4}>
-                <FormControl fullWidth variant="outlined">
-                  <InputLabel id="year-label">Parliamentary Year</InputLabel>
-                  <Select
-                    labelId="year-label"
-                    name="year"
-                    value={year}
-                    onChange={handleFilterChange}
-                    label="Parliamentary Year"
-                  >
-                    <MenuItem value="">All Years</MenuItem>
-                    {years.map((y) => (
-                      <MenuItem key={y} value={y}>{y}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-            </Grid>
-            
-            {/* Active Filters Display */}
-            <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {status && (
-                <Chip 
-                  label={`Status: ${formatStatus(status)}`} 
-                  onDelete={() => setStatus('')} 
-                  color="primary" 
-                  variant="outlined"
-                />
-              )}
-              {category && (
-                <Chip 
-                  label={`Category: ${category}`} 
-                  onDelete={() => setCategory('')} 
-                  color="primary" 
-                  variant="outlined"
-                />
-              )}
-              {year && (
-                <Chip 
-                  label={`Year: ${year}`} 
-                  onDelete={() => setYear('')} 
-                  color="primary" 
-                  variant="outlined"
-                />
-              )}
-              {sortBy !== 'latest' && (
-                <Chip 
-                  label={`Sort: ${sortBy.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}`} 
-                  onDelete={() => setSortBy('latest')} 
-                  color="primary" 
-                  variant="outlined"
-                />
-              )}
-            </Box>
-          </Box>
-        )}
-      </Paper>
-      
-      {/* Error Message */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 4 }}>
-          {error}
-        </Alert>
-      )}
-      
-      {/* Loading Indicator */}
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 8 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <>
-          {/* Bills List */}
-          {bills.length > 0 ? (
-            <Grid container spacing={3}>
-              {bills.map((bill) => (
-                <Grid item xs={12} key={bill.id}>
-                  <Card>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                        <Box>
-                          <Typography variant="h6" component="h2" gutterBottom>
-                            {bill.title}
-                          </Typography>
-                          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                            Bill {bill.number} • {new Date(bill.introduced_date).toLocaleDateString()}
-                          </Typography>
-                        </Box>
-                        
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                          <Chip 
-                            label={formatStatus(bill.status)} 
-                            color={getStatusColor(bill.status)} 
-                            size="small" 
-                          />
-                          <Chip 
-                            label={bill.category} 
-                            variant="outlined" 
-                            size="small" 
-                          />
-                        </Box>
-                      </Box>
-                      
-                      <Typography variant="body2" color="text.secondary" paragraph sx={{ mt: 2 }}>
-                        {bill.description}
-                      </Typography>
-                      
-                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                        <Typography variant="body2">
-                          <strong>Primary Sponsor:</strong>
-                        </Typography>
-                        <Chip 
-                          label={bill.primary_sponsor.name} 
-                          size="small"
-                          sx={{ 
-                            ml: 1, 
-                            bgcolor: bill.primary_sponsor.party_color,
-                            color: 'white'
-                          }} 
-                        />
-                        <Typography variant="body2" sx={{ ml: 2 }}>
-                          <strong>Co-sponsors:</strong> {bill.sponsors_count - 1}
-                        </Typography>
-                      </Box>
-                      
-                      {bill.vote_count && (
-                        <Box sx={{ mt: 2 }}>
-                          <Typography variant="body2" gutterBottom>
-                            <strong>Voting Results:</strong>
-                          </Typography>
-                          <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Chip 
-                              label={`Yes: ${bill.vote_count.yes}`} 
-                              size="small" 
-                              color="success" 
-                              variant="outlined" 
-                            />
-                            <Chip 
-                              label={`No: ${bill.vote_count.no}`} 
-                              size="small" 
-                              color="error" 
-                              variant="outlined" 
-                            />
-                            <Chip 
-                              label={`Abstain: ${bill.vote_count.abstain}`} 
-                              size="small" 
-                              color="warning" 
-                              variant="outlined" 
-                            />
-                            <Chip 
-                              label={`Absent: ${bill.vote_count.absent}`} 
-                              size="small" 
-                              variant="outlined" 
-                            />
-                          </Box>
-                        </Box>
-                      )}
-                    </CardContent>
-                    <CardActions>
-                      <Button 
-                        size="small" 
-                        variant="contained"
-                        component={RouterLink}
-                        to={`/parliament/bills/${bill.id}`}
-                      >
-                        View Details
-                      </Button>
-                    </CardActions>
-                  </Card>
+          
+          {/* Filter Options */}
+          {showFilters && (
+            <Box sx={{ mt: 3 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={4}>
+                  <FormControl fullWidth variant="outlined">
+                    <InputLabel id="status-label">Status</InputLabel>
+                    <Select
+                      labelId="status-label"
+                      name="status"
+                      value={status}
+                      onChange={handleFilterChange}
+                      label="Status"
+                    >
+                      <MenuItem value="">All Statuses</MenuItem>
+                      <MenuItem value="introduced">Introduced</MenuItem>
+                      <MenuItem value="in_committee">In Committee</MenuItem>
+                      <MenuItem value="in_debate">In Debate</MenuItem>
+                      <MenuItem value="passed">Passed</MenuItem>
+                      <MenuItem value="rejected">Rejected</MenuItem>
+                      <MenuItem value="withdrawn">Withdrawn</MenuItem>
+                    </Select>
+                  </FormControl>
                 </Grid>
-              ))}
-            </Grid>
-          ) : (
-            <Box sx={{ textAlign: 'center', my: 6 }}>
-              <Typography variant="h6">No bills found matching the criteria</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Try adjusting your search terms or filters
-              </Typography>
-              <Button 
-                variant="outlined" 
-                sx={{ mt: 2 }}
-                onClick={handleResetFilters}
-              >
-                Reset All Filters
-              </Button>
+                
+                <Grid item xs={12} sm={4}>
+                  <FormControl fullWidth variant="outlined">
+                    <InputLabel id="topic-label">Topic</InputLabel>
+                    <Select
+                      labelId="topic-label"
+                      name="topic"
+                      value={topic}
+                      onChange={handleFilterChange}
+                      label="Topic"
+                    >
+                      <MenuItem value="">All Topics</MenuItem>
+                      {topics.map((topic) => (
+                        <MenuItem key={topic.id} value={topic.id}>
+                          {topic.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                <Grid item xs={12} sm={4}>
+                  <FormControl fullWidth variant="outlined">
+                    <InputLabel id="year-label">Year</InputLabel>
+                    <Select
+                      labelId="year-label"
+                      name="year"
+                      value={year}
+                      onChange={handleFilterChange}
+                      label="Year"
+                    >
+                      <MenuItem value="">All Years</MenuItem>
+                      {years.map((year) => (
+                        <MenuItem key={year} value={year}>
+                          {year}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </Grid>
             </Box>
           )}
+        </form>
+      </Paper>
+      
+      {/* Bills List */}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : error ? (
+        <Alert severity="error" sx={{ my: 4 }}>
+          {error}
+        </Alert>
+      ) : bills.length > 0 ? (
+        <>
+          <Grid container spacing={3}>
+            {bills.map((bill) => (
+              <Grid item xs={12} key={bill.id}>
+                <Card>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                      <Typography variant="h6" component="h2">
+                        {bill.title}
+                      </Typography>
+                      <Chip 
+                        label={formatStatus(bill.status)}
+                        color={getStatusColor(bill.status)}
+                        size="small"
+                      />
+                    </Box>
+                    
+                    <Typography variant="body2" color="text.secondary" paragraph>
+                      {bill.description}
+                    </Typography>
+                    
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      {bill.topics?.map((topic) => (
+                        <Chip
+                          key={topic.id}
+                          label={topic.name}
+                          size="small"
+                          variant="outlined"
+                        />
+                      ))}
+                    </Box>
+                  </CardContent>
+                  
+                  <CardActions>
+                    <Button 
+                      component={RouterLink}
+                      to={`/parliament/bills/${bill.id}`}
+                      size="small"
+                      color="primary"
+                    >
+                      View Details
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
           
           {/* Pagination */}
           {totalPages > 1 && (
             <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-              <Pagination 
-                count={totalPages} 
+              <Pagination
+                count={totalPages}
                 page={currentPage}
                 onChange={handlePageChange}
                 color="primary"
-                showFirstButton
-                showLastButton
               />
             </Box>
           )}
         </>
+      ) : (
+        <Box sx={{ textAlign: 'center', my: 4 }}>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            No bills found matching the criteria
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Try adjusting your search terms or filters
+          </Typography>
+        </Box>
       )}
     </Container>
   );
