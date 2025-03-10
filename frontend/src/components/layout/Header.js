@@ -1,0 +1,260 @@
+import React, { useState } from 'react';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import {
+  AppBar,
+  Box,
+  Toolbar,
+  IconButton,
+  Typography,
+  Menu,
+  MenuItem,
+  Container,
+  Avatar,
+  Button,
+  Tooltip,
+  Link,
+  Badge,
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Divider,
+} from '@mui/material';
+import MenuIcon from '@mui/icons-material/Menu';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import PeopleIcon from '@mui/icons-material/People';
+import DescriptionIcon from '@mui/icons-material/Description';
+import HowToVoteIcon from '@mui/icons-material/HowToVote';
+import ForumIcon from '@mui/icons-material/Forum';
+import CampaignIcon from '@mui/icons-material/Campaign';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import LogoutIcon from '@mui/icons-material/Logout';
+import LoginIcon from '@mui/icons-material/Login';
+import { useAuth } from '../../context/AuthContext';
+
+const Header = () => {
+  const navigate = useNavigate();
+  const { currentUser, logout } = useAuth();
+  
+  const [anchorElUser, setAnchorElUser] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  
+  const handleOpenUserMenu = (event) => {
+    setAnchorElUser(event.currentTarget);
+  };
+  
+  const handleCloseUserMenu = () => {
+    setAnchorElUser(null);
+  };
+  
+  const handleDrawerToggle = () => {
+    setDrawerOpen(!drawerOpen);
+  };
+  
+  const handleLogout = () => {
+    logout();
+    handleCloseUserMenu();
+    navigate('/login');
+  };
+  
+  // Navigation items for the sidebar drawer
+  const navItems = [
+    { text: 'Home', icon: <DashboardIcon />, path: '/' },
+    { text: 'Members of Parliament', icon: <PeopleIcon />, path: '/parliament/members' },
+    { text: 'Bills', icon: <DescriptionIcon />, path: '/parliament/bills' },
+    { text: 'Voting Records', icon: <HowToVoteIcon />, path: '/parliament/voting-records' },
+    { text: 'Discussion Forums', icon: <ForumIcon />, path: '/engagement/forums' },
+    { text: 'Whistleblowing', icon: <CampaignIcon />, path: '/engagement/whistleblowing' },
+    { text: 'Analytics', icon: <BarChartIcon />, path: '/analytics/dashboard' },
+  ];
+  
+  const drawer = (
+    <Box sx={{ width: 250 }} role="presentation" onClick={handleDrawerToggle}>
+      <Typography variant="h6" sx={{ my: 2, ml: 2 }}>
+        Politico
+      </Typography>
+      <Divider />
+      <List>
+        {navItems.map((item) => (
+          <ListItem 
+            button 
+            key={item.text} 
+            component={RouterLink} 
+            to={item.path}
+            sx={{
+              '&:hover': {
+                backgroundColor: 'primary.light',
+                color: 'primary.contrastText',
+              }
+            }}
+          >
+            <ListItemIcon>{item.icon}</ListItemIcon>
+            <ListItemText primary={item.text} />
+          </ListItem>
+        ))}
+      </List>
+    </Box>
+  );
+  
+  return (
+    <>
+      <AppBar position="static">
+        <Container maxWidth="xl">
+          <Toolbar disableGutters>
+            {/* Mobile menu icon */}
+            <IconButton
+              size="large"
+              edge="start"
+              color="inherit"
+              aria-label="menu"
+              onClick={handleDrawerToggle}
+              sx={{ mr: 2, display: { md: 'none' } }}
+            >
+              <MenuIcon />
+            </IconButton>
+            
+            {/* Logo/Title */}
+            <Typography
+              variant="h6"
+              noWrap
+              component={RouterLink}
+              to="/"
+              sx={{
+                mr: 2,
+                display: 'flex',
+                fontWeight: 700,
+                color: 'inherit',
+                textDecoration: 'none',
+              }}
+            >
+              POLITICO
+            </Typography>
+            
+            {/* Desktop navigation */}
+            <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
+              <Button
+                component={RouterLink}
+                to="/parliament/members"
+                sx={{ my: 2, color: 'white', display: 'block' }}
+              >
+                MPs
+              </Button>
+              <Button
+                component={RouterLink}
+                to="/parliament/bills"
+                sx={{ my: 2, color: 'white', display: 'block' }}
+              >
+                Bills
+              </Button>
+              <Button
+                component={RouterLink}
+                to="/parliament/voting-records"
+                sx={{ my: 2, color: 'white', display: 'block' }}
+              >
+                Votes
+              </Button>
+              {currentUser && (
+                <>
+                  <Button
+                    component={RouterLink}
+                    to="/engagement/forums"
+                    sx={{ my: 2, color: 'white', display: 'block' }}
+                  >
+                    Forums
+                  </Button>
+                  <Button
+                    component={RouterLink}
+                    to="/analytics/dashboard"
+                    sx={{ my: 2, color: 'white', display: 'block' }}
+                  >
+                    Analytics
+                  </Button>
+                </>
+              )}
+            </Box>
+            
+            {/* User section */}
+            <Box sx={{ flexGrow: 0 }}>
+              {currentUser ? (
+                <>
+                  {/* Notifications */}
+                  <IconButton
+                    size="large"
+                    color="inherit"
+                    sx={{ mx: 1 }}
+                    component={RouterLink}
+                    to="/notifications"
+                  >
+                    <Badge badgeContent={0} color="error">
+                      <NotificationsIcon />
+                    </Badge>
+                  </IconButton>
+                  
+                  {/* User menu */}
+                  <Tooltip title="Open settings">
+                    <IconButton onClick={handleOpenUserMenu} sx={{ p: 0, ml: 1 }}>
+                      {currentUser.profile_image ? (
+                        <Avatar alt={currentUser.email} src={currentUser.profile_image} />
+                      ) : (
+                        <Avatar alt={currentUser.email}>
+                          {currentUser.email.charAt(0).toUpperCase()}
+                        </Avatar>
+                      )}
+                    </IconButton>
+                  </Tooltip>
+                  <Menu
+                    sx={{ mt: '45px' }}
+                    id="menu-appbar"
+                    anchorEl={anchorElUser}
+                    anchorOrigin={{
+                      vertical: 'top',
+                      horizontal: 'right',
+                    }}
+                    keepMounted
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'right',
+                    }}
+                    open={Boolean(anchorElUser)}
+                    onClose={handleCloseUserMenu}
+                  >
+                    <MenuItem component={RouterLink} to="/profile" onClick={handleCloseUserMenu}>
+                      <AccountCircleIcon sx={{ mr: 1 }} /> Profile
+                    </MenuItem>
+                    <MenuItem onClick={handleLogout}>
+                      <LogoutIcon sx={{ mr: 1 }} /> Logout
+                    </MenuItem>
+                  </Menu>
+                </>
+              ) : (
+                <Button
+                  component={RouterLink}
+                  to="/login"
+                  variant="contained"
+                  color="secondary"
+                  startIcon={<LoginIcon />}
+                >
+                  Login
+                </Button>
+              )}
+            </Box>
+          </Toolbar>
+        </Container>
+      </AppBar>
+      
+      {/* Drawer for mobile navigation */}
+      <Drawer
+        anchor="left"
+        open={drawerOpen}
+        onClose={handleDrawerToggle}
+      >
+        {drawer}
+      </Drawer>
+    </>
+  );
+};
+
+export default Header; 
