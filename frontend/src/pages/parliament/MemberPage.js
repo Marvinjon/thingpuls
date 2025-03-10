@@ -272,9 +272,9 @@ const MemberPage = () => {
                       <Box sx={{ mb: 1 }}>
                         <Chip 
                           size="small" 
-                          label={mp.party.name} 
+                          label={mp.party ? mp.party.name : 'Unknown Party'} 
                           sx={{ 
-                            bgcolor: mp.party.color || 'primary.main',
+                            bgcolor: mp.party ? mp.party.color || 'primary.main' : 'grey.500',
                             color: 'white',
                             mr: 1,
                             mb: 1

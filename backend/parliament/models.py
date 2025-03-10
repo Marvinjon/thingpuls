@@ -70,7 +70,7 @@ class MP(models.Model):
     last_name = models.CharField(max_length=100)
     slug = models.SlugField(unique=True)
     althingi_id = models.IntegerField(unique=True, help_text="MP ID from the Alþingi database")
-    party = models.ForeignKey(PoliticalParty, on_delete=models.PROTECT, related_name='members')
+    party = models.ForeignKey(PoliticalParty, on_delete=models.SET_NULL, null=True, blank=True,related_name='members')
     constituency = models.CharField(max_length=100)
     email = models.EmailField(blank=True)
     website = models.URLField(blank=True)

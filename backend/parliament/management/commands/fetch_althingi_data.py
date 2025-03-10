@@ -1,5 +1,6 @@
 import requests
 import re
+import xml.etree.ElementTree as ET
 from django.utils.text import slugify
 from datetime import datetime
 from django.core.management.base import BaseCommand
@@ -155,7 +156,7 @@ class Command(BaseCommand):
     
 
     def fetch_mps(self, session_number):
-        """Fetch MPs from Alþingi."""
+        """Fetch MPs from Alþingi (now with unique slug handling)."""
         self.stdout.write('Fetching MPs...')
 
         # Ensure session exists
@@ -177,39 +178,39 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(f'Error fetching MPs: HTTP {response.status_code}'))
                 return
 
-            raw_text = response.text
+            # **Step 1: Print Raw XML Response Preview**
+            self.stdout.write(self.style.WARNING(f"🔍 Raw Response Preview:\n{response.text[:500]}"))
 
-            # 🔥 **Fixed Regex Pattern** 🔥
-            mp_pattern = r'([\wÁÉÍÓÚÝÞÆÖáéíóúýþæö\s-]+)\s+(\d{4}-\d{2}-\d{2})\s+(\S+)\s+https://www\.althingi\.is/altext/xml/thingmenn/thingmadur/\?nr=(\d+)'
-            mp_matches = re.findall(mp_pattern, raw_text, re.UNICODE)
-
-            if not mp_matches:
-                self.stdout.write(self.style.ERROR("No MPs found in the fetched data."))
-                return
-
-            # Default party if no party is assigned
-            default_party, _ = PoliticalParty.objects.get_or_create(
-                name='Unknown Party',
-                defaults={'abbreviation': 'UP', 'color': '#777777'}
-            )
+            # **Step 2: Parse XML**
+            root = ET.fromstring(response.content)
 
             mps_created = 0
             mps_updated = 0
 
-            for match in mp_matches:
-                name = match[0].strip()
-                birth_date_str = match[1]
-                abbreviation = match[2]
-                althingi_id = match[3]
+            for mp_element in root.findall("þingmaður"):
+                althingi_id = mp_element.get("id")  # Get MP ID
+                name = mp_element.find("nafn").text.strip()
+                birth_date = mp_element.find("fæðingardagur").text.strip()
+                abbreviation = mp_element.find("skammstöfun").text.strip()
 
-                # Splitting the name into first and last name
+                # Split name into first and last name
                 name_parts = name.split()
-                if len(name_parts) >= 2:
-                    first_name = ' '.join(name_parts[:-1])
-                    last_name = name_parts[-1]
-                else:
-                    first_name = name
-                    last_name = ''
+                first_name = " ".join(name_parts[:-1]) if len(name_parts) > 1 else name
+                last_name = name_parts[-1] if len(name_parts) > 1 else ""
+
+                # **Step 3: Ensure Unique Slugs**
+                base_slug = slugify(name)
+                slug = base_slug
+                counter = 1
+                while MP.objects.filter(slug=slug).exists():
+                    slug = f"{base_slug}-{counter}"
+                    counter += 1
+
+                # **Step 4: Print Extracted Data**
+                self.stdout.write(self.style.SUCCESS(f"✔ Extracted MP: {first_name} {last_name}, Born: {birth_date}, ID: {althingi_id}, Abbreviation: {abbreviation}, Slug: {slug}"))
+
+                # **Don't assign a default party, leave it blank (None)**
+                party = None
 
                 # Create or update the MP
                 with transaction.atomic():
@@ -218,10 +219,10 @@ class Command(BaseCommand):
                         defaults={
                             'first_name': first_name,
                             'last_name': last_name,
-                            'slug': slugify(name),
-                            'party': default_party,  # This can be updated later when party info is available
+                            'slug': slug,  # ✅ Now unique
+                            'party': party,  # Leave blank if no party info
                             'constituency': '',  # Can be updated later
-                            'email': f"{slugify(name)}@althingi.is",  # Placeholder email
+                            'email': f"{slug}@althingi.is",  # Placeholder email
                             'active': True
                         }
                     )
@@ -231,11 +232,10 @@ class Command(BaseCommand):
                     else:
                         mps_updated += 1
 
-            self.stdout.write(self.style.SUCCESS(f'MPs created: {mps_created}, updated: {mps_updated}'))
+            self.stdout.write(self.style.SUCCESS(f'🎉 MPs created: {mps_created}, updated: {mps_updated}'))
 
         except Exception as e:
-            self.stdout.write(self.style.ERROR(f'Error fetching MPs: {str(e)}'))
-
+            self.stdout.write(self.style.ERROR(f'❌ Error fetching MPs: {str(e)}'))
 
     
     def fetch_bills(self, session_number):
