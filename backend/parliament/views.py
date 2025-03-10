@@ -96,6 +96,7 @@ class MPViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_fields = ['party', 'active', 'constituency']
     search_fields = ['first_name', 'last_name', 'bio']
     ordering_fields = ['last_name', 'first_name', 'bills_sponsored', 'speech_count']
+    lookup_field = 'slug'
     
     def get_serializer_class(self):
         """Return appropriate serializer class."""
@@ -104,7 +105,7 @@ class MPViewSet(viewsets.ReadOnlyModelViewSet):
         return MPListSerializer
     
     @action(detail=True, methods=['get'])
-    def speeches(self, request, pk=None):
+    def speeches(self, request, slug=None):
         """Return speeches made by this MP."""
         mp = self.get_object()
         speeches = mp.speeches.all()
@@ -116,7 +117,7 @@ class MPViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(serializer.data)
     
     @action(detail=True, methods=['get'])
-    def bills(self, request, pk=None):
+    def bills(self, request, slug=None):
         """Return bills sponsored by this MP."""
         mp = self.get_object()
         bills = mp.sponsored_bills.all()
@@ -128,7 +129,7 @@ class MPViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(serializer.data)
     
     @action(detail=True, methods=['get'])
-    def voting_record(self, request, pk=None):
+    def voting_record(self, request, slug=None):
         """Return voting record for this MP."""
         mp = self.get_object()
         votes = mp.voting_record.all()
