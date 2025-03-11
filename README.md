@@ -74,6 +74,31 @@ The platform collects data from:
 - News websites
 - Political party websites and social media
 
+### Fetching Voting Records
+
+The platform includes a command to fetch voting records from the Althingi website:
+
+```
+# Fetch all voting records for the current session (156)
+./backend/scripts/fetch_voting_records.sh
+
+# Fetch voting records for a specific session
+./backend/scripts/fetch_voting_records.sh --session 155
+
+# Fetch voting records for a specific bill
+./backend/scripts/fetch_voting_records.sh --bill 1
+
+# Force update of existing records
+./backend/scripts/fetch_voting_records.sh --force
+```
+
+This command scrapes the Althingi website for voting records, including:
+- Bills that have been passed or rejected
+- Individual MP votes (yes, no, abstain, absent)
+- Voting dates and results
+
+The data is stored in the database and accessible through the API.
+
 ## Contributing
 
 Please read our [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.

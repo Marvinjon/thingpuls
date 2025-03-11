@@ -42,11 +42,11 @@ class ParliamentSessionSerializer(serializers.ModelSerializer):
 class MPListSerializer(serializers.ModelSerializer):
     """Serializer for listing MP objects."""
     
-    party_name = serializers.CharField(source='party.name', read_only=True)
+    party = PoliticalPartySerializer(read_only=True)
     
     class Meta:
         model = MP
-        fields = ('id', 'first_name', 'last_name', 'slug', 'party', 'party_name', 
+        fields = ('id', 'first_name', 'last_name', 'slug', 'party', 
                   'constituency', 'photo', 'active')
 
 

@@ -240,7 +240,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f'Unexpected error: {str(e)}'))
 
     def fetch_mps(self, session_number):
-        """Fetch MPs from Alþingi (now with unique slug handling)."""
+        """Fetch MPs from Alþingi."""
         self.stdout.write('Fetching MPs...')
 
         # Ensure session exists
@@ -262,59 +262,96 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(f'Error fetching MPs: HTTP {response.status_code}'))
                 return
 
-            # **Step 1: Print Raw XML Response Preview**
+            # Print Raw XML Response Preview
             self.stdout.write(self.style.WARNING(f"🔍 Raw Response Preview:\n{response.text[:500]}"))
 
-            # **Step 2: Parse XML**
+            # Parse XML
             root = ET.fromstring(response.content)
 
             mps_created = 0
             mps_updated = 0
 
-            for mp_element in root.findall("þingmaður"):
-                althingi_id = mp_element.get("id")  # Get MP ID
-                name = mp_element.find("nafn").text.strip()
-                birth_date = mp_element.find("fæðingardagur").text.strip()
-                abbreviation = mp_element.find("skammstöfun").text.strip()
+            for mp_element in root.findall(".//þingmaður"):
+                try:
+                    althingi_id = mp_element.get("id")  # Get MP ID
+                    name = mp_element.find("nafn").text.strip()
+                    birth_date = mp_element.find("fæðingardagur").text.strip()
+                    abbreviation = mp_element.find("skammstöfun").text.strip()
 
-                # Split name into first and last name
-                name_parts = name.split()
-                first_name = " ".join(name_parts[:-1]) if len(name_parts) > 1 else name
-                last_name = name_parts[-1] if len(name_parts) > 1 else ""
+                    # Split name into first and last name
+                    name_parts = name.split()
+                    first_name = " ".join(name_parts[:-1]) if len(name_parts) > 1 else name
+                    last_name = name_parts[-1] if len(name_parts) > 1 else ""
 
-                # **Step 3: Ensure Unique Slugs**
-                base_slug = slugify(name)
-                slug = base_slug
-                counter = 1
-                while MP.objects.filter(slug=slug).exists():
-                    slug = f"{base_slug}-{counter}"
-                    counter += 1
+                    # Fetch MP's parliamentary seat information to get party
+                    mp_thingseta_url = f'https://www.althingi.is/altext/xml/thingmenn/thingmadur/thingseta/?nr={althingi_id}'
+                    mp_thingseta_response = requests.get(mp_thingseta_url)
+                    
+                    party = None
+                    constituency = ''
+                    if mp_thingseta_response.status_code == 200:
+                        thingseta_root = ET.fromstring(mp_thingseta_response.content)
+                        # Find the most recent þingseta (parliamentary seat) entry
+                        thingseta_entries = thingseta_root.findall('.//þingsetur/þingseta')
+                        if thingseta_entries:
+                            # Sort by þing (parliament) number in descending order
+                            latest_thingseta = max(thingseta_entries, key=lambda x: int(x.find('þing').text))
+                            party_elem = latest_thingseta.find('þingflokkur')
+                            if party_elem is not None:
+                                party_id = party_elem.get('id')
+                                if party_id:
+                                    try:
+                                        party = PoliticalParty.objects.get(althingi_id=party_id)
+                                        self.stdout.write(self.style.SUCCESS(f"Found party for MP {name}: {party.name}"))
+                                    except PoliticalParty.DoesNotExist:
+                                        self.stdout.write(self.style.WARNING(f"Party with ID {party_id} not found for MP {name}"))
+                            
+                            # Get constituency
+                            constituency_elem = latest_thingseta.find('kjördæmi')
+                            if constituency_elem is not None:
+                                # Get text content including CDATA
+                                constituency = ''.join(constituency_elem.itertext()).strip()
 
-                # **Step 4: Print Extracted Data**
-                self.stdout.write(self.style.SUCCESS(f"✔ Extracted MP: {first_name} {last_name}, Born: {birth_date}, ID: {althingi_id}, Abbreviation: {abbreviation}, Slug: {slug}"))
+                    # Ensure Unique Slugs
+                    base_slug = slugify(name)
+                    slug = base_slug
+                    counter = 1
+                    while MP.objects.filter(slug=slug).exists():
+                        slug = f"{base_slug}-{counter}"
+                        counter += 1
 
-                # **Don't assign a default party, leave it blank (None)**
-                party = None
+                    # Print Extracted Data
+                    self.stdout.write(self.style.SUCCESS(
+                        f"✔ Extracted MP: {name}, "
+                        f"Born: {birth_date}, ID: {althingi_id}, "
+                        f"Abbreviation: {abbreviation}, Slug: {slug}, "
+                        f"Party: {party.name if party else 'None'}, "
+                        f"Constituency: {constituency}"
+                    ))
 
-                # Create or update the MP
-                with transaction.atomic():
-                    mp, created = MP.objects.update_or_create(
-                        althingi_id=int(althingi_id),
-                        defaults={
-                            'first_name': first_name,
-                            'last_name': last_name,
-                            'slug': slug,  # ✅ Now unique
-                            'party': party,  # Leave blank if no party info
-                            'constituency': '',  # Can be updated later
-                            'email': f"{slug}@althingi.is",  # Placeholder email
-                            'active': True
-                        }
-                    )
+                    # Create or update the MP
+                    with transaction.atomic():
+                        mp, created = MP.objects.update_or_create(
+                            althingi_id=int(althingi_id),
+                            defaults={
+                                'first_name': first_name,
+                                'last_name': last_name,
+                                'slug': slug,
+                                'party': party,  # Now properly set from XML
+                                'constituency': constituency,  # Now set from XML
+                                'email': f"{slug}@althingi.is",  # Placeholder email
+                                'active': True
+                            }
+                        )
 
-                    if created:
-                        mps_created += 1
-                    else:
-                        mps_updated += 1
+                        if created:
+                            mps_created += 1
+                        else:
+                            mps_updated += 1
+
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f'Error processing MP {althingi_id}: {str(e)}'))
+                    continue
 
             self.stdout.write(self.style.SUCCESS(f'🎉 MPs created: {mps_created}, updated: {mps_updated}'))
 

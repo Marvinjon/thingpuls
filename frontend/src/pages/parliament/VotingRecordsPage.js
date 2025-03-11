@@ -49,80 +49,64 @@ const VotingRecordsPage = () => {
     const fetchVotingRecords = async () => {
       try {
         setLoading(true);
-        // This would be replaced with actual API call
-        // const response = await api.get('/voting-records', { params: { ...filters, page, limit: rowsPerPage } });
         
-        // Simulated data for development
-        // In a real application, these would come from the backend with proper filtering
-        const mockData = [
-          {
-            id: 1,
-            billNumber: "45/2023",
-            billTitle: "Bill on Climate Change Mitigation",
-            date: "2023-07-10",
-            stage: "First Reading",
-            result: "Passed",
-            totalVotes: { for: 33, against: 15, abstentions: 12, absent: 3 },
-            memberVotes: [
-              { memberId: 1, memberName: "Anna Jónsdóttir", party: "Left-Green Movement", vote: "For" },
-              { memberId: 2, memberName: "Bjarni Benediktsson", party: "Independence Party", vote: "For" },
-              { memberId: 3, memberName: "Katrín Jakobsdóttir", party: "Left-Green Movement", vote: "For" },
-              { memberId: 4, memberName: "Sigmundur Davíð Gunnlaugsson", party: "Centre Party", vote: "Against" },
-              { memberId: 5, memberName: "Logi Einarsson", party: "Social Democratic Alliance", vote: "For" }
-            ]
-          },
-          {
-            id: 2,
-            billNumber: "67/2023",
-            billTitle: "Bill on Education Reform",
-            date: "2023-06-20",
-            stage: "Second Reading",
-            result: "Passed",
-            totalVotes: { for: 40, against: 10, abstentions: 8, absent: 5 },
-            memberVotes: [
-              { memberId: 1, memberName: "Anna Jónsdóttir", party: "Left-Green Movement", vote: "For" },
-              { memberId: 2, memberName: "Bjarni Benediktsson", party: "Independence Party", vote: "For" },
-              { memberId: 3, memberName: "Katrín Jakobsdóttir", party: "Left-Green Movement", vote: "For" },
-              { memberId: 4, memberName: "Sigmundur Davíð Gunnlaugsson", party: "Centre Party", vote: "For" },
-              { memberId: 5, memberName: "Logi Einarsson", party: "Social Democratic Alliance", vote: "Abstain" }
-            ]
-          },
-          {
-            id: 3,
-            billNumber: "78/2023",
-            billTitle: "Bill on Healthcare Funding",
-            date: "2023-05-15",
-            stage: "Final Vote",
-            result: "Failed",
-            totalVotes: { for: 25, against: 30, abstentions: 5, absent: 3 },
-            memberVotes: [
-              { memberId: 1, memberName: "Anna Jónsdóttir", party: "Left-Green Movement", vote: "For" },
-              { memberId: 2, memberName: "Bjarni Benediktsson", party: "Independence Party", vote: "Against" },
-              { memberId: 3, memberName: "Katrín Jakobsdóttir", party: "Left-Green Movement", vote: "For" },
-              { memberId: 4, memberName: "Sigmundur Davíð Gunnlaugsson", party: "Centre Party", vote: "Against" },
-              { memberId: 5, memberName: "Logi Einarsson", party: "Social Democratic Alliance", vote: "For" }
-            ]
+        // Build query parameters
+        const params = {
+          page,
+          limit: rowsPerPage
+        };
+        
+        if (filters.bill) params.bill = filters.bill;
+        if (filters.member) params.mp = filters.member;
+        if (filters.party) params.party = filters.party;
+        if (filters.vote) params.vote = filters.vote;
+        if (filters.dateFrom) params.date_from = filters.dateFrom;
+        if (filters.dateTo) params.date_to = filters.dateTo;
+        if (filters.searchQuery) params.search = filters.searchQuery;
+        
+        // Sort order
+        if (sortOrder === 'dateAsc') params.ordering = 'vote_date';
+        else if (sortOrder === 'dateDesc') params.ordering = '-vote_date';
+        
+        // Fetch data from API
+        const response = await api.parliamentService.getVotes(params);
+        
+        // Process the data to group votes by bill
+        const groupedVotes = {};
+        
+        response.data.results.forEach(vote => {
+          if (!groupedVotes[vote.bill.id]) {
+            groupedVotes[vote.bill.id] = {
+              id: vote.bill.id,
+              billNumber: `${vote.bill.althingi_id}/${vote.session.session_number}`,
+              billTitle: vote.bill.title,
+              date: vote.vote_date,
+              stage: "Final Vote", // This could be improved with more data
+              result: vote.bill.status === 'passed' ? 'Passed' : 'Failed',
+              totalVotes: { for: 0, against: 0, abstentions: 0, absent: 0 },
+              memberVotes: []
+            };
           }
-        ];
+          
+          // Add this vote to the appropriate counter
+          if (vote.vote === 'yes') groupedVotes[vote.bill.id].totalVotes.for++;
+          else if (vote.vote === 'no') groupedVotes[vote.bill.id].totalVotes.against++;
+          else if (vote.vote === 'abstain') groupedVotes[vote.bill.id].totalVotes.abstentions++;
+          else if (vote.vote === 'absent') groupedVotes[vote.bill.id].totalVotes.absent++;
+          
+          // Add member vote
+          groupedVotes[vote.bill.id].memberVotes.push({
+            memberId: vote.mp.id,
+            memberName: `${vote.mp.first_name} ${vote.mp.last_name}`,
+            party: vote.mp.party ? vote.mp.party.name : 'Independent',
+            vote: vote.vote.charAt(0).toUpperCase() + vote.vote.slice(1) // Capitalize first letter
+          });
+        });
         
-        // Filter by bill if billId is provided
-        let filteredData = mockData;
-        if (billId) {
-          // In a real app, this would filter properly by bill ID
-          // For demo, we'll just use the first record
-          filteredData = [mockData[0]];
-        }
+        // Convert to array
+        const processedData = Object.values(groupedVotes);
         
-        // Filter by member if memberId is provided
-        if (memberId) {
-          // For demo purposes
-          const memberIdNum = parseInt(memberId);
-          filteredData = filteredData.filter(record => 
-            record.memberVotes.some(vote => vote.memberId === memberIdNum)
-          );
-        }
-        
-        setVotingRecords(filteredData);
+        setVotingRecords(processedData);
         setLoading(false);
       } catch (err) {
         setError("Failed to load voting records. Please try again later.");
@@ -173,9 +157,9 @@ const VotingRecordsPage = () => {
   // This would get the vote color
   const getVoteColor = (vote) => {
     switch(vote.toLowerCase()) {
-      case 'for':
+      case 'yes':
         return 'success';
-      case 'against':
+      case 'no':
         return 'error';
       case 'abstain':
         return 'warning';
@@ -342,10 +326,10 @@ const VotingRecordsPage = () => {
                   size="small"
                 >
                   <MenuItem value="">All Votes</MenuItem>
-                  <MenuItem value="For">For</MenuItem>
-                  <MenuItem value="Against">Against</MenuItem>
-                  <MenuItem value="Abstain">Abstain</MenuItem>
-                  <MenuItem value="Absent">Absent</MenuItem>
+                  <MenuItem value="yes">Yes</MenuItem>
+                  <MenuItem value="no">No</MenuItem>
+                  <MenuItem value="abstain">Abstain</MenuItem>
+                  <MenuItem value="absent">Absent</MenuItem>
                 </TextField>
               </Grid>
               
