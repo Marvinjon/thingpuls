@@ -505,6 +505,8 @@ const MemberDetailPage = () => {
                                 '& span': { display: 'block', mb: 1 }
                               }}>
                                 {section.content
+                                  // Remove HTML tags and replace with newlines
+                                  .replace(/<br\s*\/?>/gi, '\n')
                                   // First, protect periods in dates, abbreviations, and initials
                                   .replace(/(\d+)\.(\d+|[a-zA-ZáéíóúýþæöÁÉÍÓÚÝÞÆÖ]+)/g, '$1•$2')
                                   .replace(/([A-ZÁÉÍÓÚÝÞÆÖ])\.(\s*[A-ZÁÉÍÓÚÝÞÆÖ])/g, '$1•$2')
