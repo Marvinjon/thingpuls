@@ -2,18 +2,17 @@
 builder = "nixpacks"
 buildCommand = """
 python -m venv /opt/venv
-. /opt/venv/bin/activate
-pip install -r requirements.txt
-cd backend
-python manage.py collectstatic --noinput
+/opt/venv/bin/pip install -r requirements.txt
+/opt/venv/bin/python backend/manage.py collectstatic --noinput
 """
 
 [deploy]
-startCommand = ". /opt/venv/bin/activate && cd backend && gunicorn parliament.wsgi:application --log-file -"
+startCommand = "/opt/venv/bin/gunicorn --chdir backend parliament.wsgi:application --log-file -"
 healthcheckPath = "/admin/"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
 
 [env]
 PYTHON_VERSION = "3.11.0"
-PORT = "8000" 
+PORT = "8000"
+PYTHONPATH = "backend" 
