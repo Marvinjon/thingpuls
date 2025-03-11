@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link as RouterLink } from 'react-router-dom';
 import { 
   Container, Typography, Box, Paper, Chip, Button, 
   Accordion, AccordionSummary, AccordionDetails, Grid,
-  Divider, CircularProgress, Alert
+  Divider, CircularProgress, Alert, List, ListItem, ListItemText,
+  Link
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PersonIcon from '@mui/icons-material/Person';
 import DescriptionIcon from '@mui/icons-material/Description';
@@ -17,6 +19,7 @@ const BillDetailPage = () => {
   const [bill, setBill] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showVoteDetails, setShowVoteDetails] = useState(false);
 
   useEffect(() => {
     const fetchBill = async () => {
@@ -95,7 +98,7 @@ const BillDetailPage = () => {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box mb={4}>
-        <Button component={Link} to="/parliament/bills" startIcon={<ExpandMoreIcon sx={{ transform: 'rotate(90deg)' }} />}>
+        <Button component={RouterLink} to="/parliament/bills" startIcon={<ExpandMoreIcon sx={{ transform: 'rotate(90deg)' }} />}>
           Back to Bills
         </Button>
       </Box>
@@ -206,23 +209,74 @@ const BillDetailPage = () => {
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
-                <Box display="flex" gap={2} flexWrap="wrap">
-                  <Chip label={`Yes: ${bill.votes.yes}`} color="success" />
-                  <Chip label={`No: ${bill.votes.no}`} color="error" />
-                  <Chip label={`Abstain: ${bill.votes.abstain}`} />
-                  <Chip label={`Absent: ${bill.votes.absent}`} variant="outlined" />
-                  <Chip label={`Total: ${bill.votes.total}`} variant="outlined" />
-                </Box>
-                <Box mt={2}>
-                  <Button 
-                    component={Link} 
-                    to={`/parliament/voting-records?bill=${bill.id}`} 
-                    variant="outlined" 
-                    size="small"
-                    startIcon={<HowToVoteIcon />}
-                  >
-                    View Detailed Voting Records
-                  </Button>
+                <Box>
+                  <Box display="flex" gap={2} flexWrap="wrap" mb={3}>
+                    <Chip label={`For: ${bill.votes.yes}`} color="success" />
+                    <Chip label={`Against: ${bill.votes.no}`} color="error" />
+                    <Chip label={`Abstain: ${bill.votes.abstain}`} />
+                    <Chip label={`Absent: ${bill.votes.absent}`} variant="outlined" />
+                    <Chip label={`Total: ${bill.votes.total}`} variant="outlined" />
+                  </Box>
+                  
+                  <Box display="flex" gap={2} mb={3}>
+                    <Button 
+                      variant="outlined" 
+                      size="small"
+                      onClick={() => setShowVoteDetails(prev => !prev)}
+                      startIcon={showVoteDetails ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                    >
+                      {showVoteDetails ? 'Hide Vote Details' : 'Show Vote Details'}
+                    </Button>
+                    <Button 
+                      component={RouterLink} 
+                      to={`/parliament/voting-records?bill=${bill.id}`} 
+                      variant="outlined" 
+                      size="small"
+                      startIcon={<HowToVoteIcon />}
+                    >
+                      View All Voting Records
+                    </Button>
+                  </Box>
+
+                  {showVoteDetails && (
+                    <Box>
+                      <Typography variant="subtitle1" gutterBottom>Individual Votes</Typography>
+                      <Grid container spacing={2}>
+                        {['yes', 'no', 'abstain', 'absent'].map((voteType) => (
+                          <Grid item xs={12} md={6} key={voteType}>
+                            <Accordion>
+                              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <Typography>
+                                  {voteType.charAt(0).toUpperCase() + voteType.slice(1)} ({bill.votes[voteType]})
+                                </Typography>
+                              </AccordionSummary>
+                              <AccordionDetails>
+                                <List dense>
+                                  {bill.votes[`${voteType}_votes`]?.map((vote) => (
+                                    <ListItem key={vote.mp.id}>
+                                      <ListItemText
+                                        primary={
+                                          <Link 
+                                            component={RouterLink} 
+                                            to={`/parliament/members/${vote.mp.id}`}
+                                            color="primary"
+                                            underline="hover"
+                                          >
+                                            {vote.mp.first_name} {vote.mp.last_name}
+                                          </Link>
+                                        }
+                                        secondary={vote.mp.party?.name || 'Independent'}
+                                      />
+                                    </ListItem>
+                                  ))}
+                                </List>
+                              </AccordionDetails>
+                            </Accordion>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  )}
                 </Box>
               </AccordionDetails>
             </Accordion>

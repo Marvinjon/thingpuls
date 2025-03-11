@@ -70,10 +70,22 @@ class AmendmentSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class BillListSerializer(serializers.ModelSerializer):
+    """Serializer for listing bill objects."""
+    
+    topics = TopicSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = Bill
+        fields = ('id', 'title', 'slug', 'status', 'introduced_date', 'topics', 'url', 'description', 'althingi_id')
+
+
 class VoteSerializer(serializers.ModelSerializer):
     """Serializer for vote objects."""
     
     mp = MPListSerializer(read_only=True)
+    bill = BillListSerializer(read_only=True)
+    session = ParliamentSessionSerializer(read_only=True)
     
     class Meta:
         model = Vote
@@ -90,16 +102,6 @@ class SpeechSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class BillListSerializer(serializers.ModelSerializer):
-    """Serializer for listing bill objects."""
-    
-    topics = TopicSerializer(many=True, read_only=True)
-    
-    class Meta:
-        model = Bill
-        fields = ('id', 'title', 'slug', 'status', 'introduced_date', 'topics', 'url', 'description')
-
-
 class BillDetailSerializer(serializers.ModelSerializer):
     """Serializer for detailed bill objects."""
     
@@ -113,13 +115,27 @@ class BillDetailSerializer(serializers.ModelSerializer):
         fields = '__all__'
     
     def get_votes(self, obj):
-        """Return vote statistics."""
+        """Return vote statistics and individual votes."""
         votes = obj.votes.all()
+        
+        # Get vote counts
+        yes_votes = votes.filter(vote='yes')
+        no_votes = votes.filter(vote='no')
+        abstain_votes = votes.filter(vote='abstain')
+        absent_votes = votes.filter(vote='absent')
+        
+        # Create serializer for individual votes
+        vote_serializer = VoteSerializer(many=True)
+        
         stats = {
-            'yes': votes.filter(vote='yes').count(),
-            'no': votes.filter(vote='no').count(),
-            'abstain': votes.filter(vote='abstain').count(),
-            'absent': votes.filter(vote='absent').count(),
-            'total': votes.count()
+            'yes': yes_votes.count(),
+            'no': no_votes.count(),
+            'abstain': abstain_votes.count(),
+            'absent': absent_votes.count(),
+            'total': votes.count(),
+            'yes_votes': vote_serializer.to_representation(yes_votes),
+            'no_votes': vote_serializer.to_representation(no_votes),
+            'abstain_votes': vote_serializer.to_representation(abstain_votes),
+            'absent_votes': vote_serializer.to_representation(absent_votes)
         }
         return stats 

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, Link as RouterLink } from 'react-router-dom';
 import { 
   Container, Typography, Box, Paper, Table, TableBody, 
   TableCell, TableContainer, TableHead, TableRow, Chip,
   Card, CardContent, Grid, TextField, MenuItem, 
   InputAdornment, CircularProgress, Divider, Alert,
-  Pagination, Button, IconButton
+  Pagination, Button, IconButton, Link
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -71,21 +71,30 @@ const VotingRecordsPage = () => {
         // Fetch data from API
         const response = await api.parliamentService.getVotes(params);
         
+        console.log('API Response:', response.data);  // Debug log
+        
         // Process the data to group votes by bill
         const groupedVotes = {};
         
         response.data.results.forEach(vote => {
+          console.log('Processing vote:', vote);  // Debug log
+          
           if (!groupedVotes[vote.bill.id]) {
-            groupedVotes[vote.bill.id] = {
+            const billData = {
               id: vote.bill.id,
-              billNumber: `${vote.bill.althingi_id}/${vote.session.session_number}`,
-              billTitle: vote.bill.title,
+              billNumber: vote.bill.althingi_id || vote.bill.id,
+              sessionNumber: vote.session.session_number,
+              billTitle: vote.bill.title || 'Untitled Bill',
               date: vote.vote_date,
-              stage: "Final Vote", // This could be improved with more data
-              result: vote.bill.status === 'passed' ? 'Passed' : 'Failed',
+              stage: "Final Vote",
+              result: vote.bill.status?.toLowerCase() === 'passed' ? 'Passed' : 
+                     vote.bill.status?.toLowerCase() === 'rejected' ? 'Failed' : 
+                     vote.bill.status ? vote.bill.status.charAt(0).toUpperCase() + vote.bill.status.slice(1) : '',
               totalVotes: { for: 0, against: 0, abstentions: 0, absent: 0 },
               memberVotes: []
             };
+            console.log('Created bill data:', billData);  // Debug log
+            groupedVotes[vote.bill.id] = billData;
           }
           
           // Add this vote to the appropriate counter
@@ -105,6 +114,7 @@ const VotingRecordsPage = () => {
         
         // Convert to array
         const processedData = Object.values(groupedVotes);
+        console.log('Processed data:', processedData);  // Debug log
         
         setVotingRecords(processedData);
         setLoading(false);
@@ -204,13 +214,13 @@ const VotingRecordsPage = () => {
         Parliamentary Voting Records
       </Typography>
       
-      {billId && (
+      {billId && votingRecords[0] && (
         <Box mb={3}>
           <Alert severity="info" icon={<DescriptionIcon />}>
-            Viewing votes related to Bill #{votingRecords[0]?.billNumber}: {votingRecords[0]?.billTitle}
+            Viewing votes related to Bill #{votingRecords[0].billNumber}/{votingRecords[0].sessionNumber}: {votingRecords[0].billTitle}
             <Button 
-              component={Link} 
-              to={`/parliament/bills/${billId}`} 
+              component={RouterLink} 
+              to={`/parliament/bills/${votingRecords[0].id}`} 
               size="small" 
               sx={{ ml: 2 }}
             >
@@ -225,7 +235,7 @@ const VotingRecordsPage = () => {
           <Alert severity="info" icon={<PersonIcon />}>
             Viewing votes by {votingRecords[0]?.memberVotes.find(m => m.memberId === parseInt(memberId))?.memberName || 'MP'}
             <Button 
-              component={Link} 
+              component={RouterLink} 
               to={`/parliament/members/${memberId}`} 
               size="small" 
               sx={{ ml: 2 }}
@@ -382,151 +392,67 @@ const VotingRecordsPage = () => {
         </Alert>
       ) : (
         <>
-          {votingRecords.map((record) => (
-            <Card key={record.id} elevation={2} sx={{ mb: 3 }}>
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Box>
-                    <Typography variant="h6" component={Link} to={`/parliament/bills/${record.id}`} sx={{ 
-                      textDecoration: 'none', 
-                      color: 'primary.main',
-                      '&:hover': { textDecoration: 'underline' } 
-                    }}>
-                      {record.billTitle}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Bill #{record.billNumber} • {record.stage}
-                    </Typography>
-                  </Box>
-                  <Box display="flex" alignItems="center" gap={2}>
-                    <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
-                      <CalendarTodayIcon fontSize="small" sx={{ mr: 0.5 }} /> 
-                      {record.date}
-                    </Typography>
-                    <Chip 
-                      label={record.result} 
-                      color={getResultColor(record.result)} 
-                      size="small"
-                    />
-                  </Box>
-                </Box>
-                
-                <Divider sx={{ mb: 2 }} />
-                
-                <Grid container spacing={2} mb={2}>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Box sx={{ 
-                      p: 1, 
-                      borderRadius: 1, 
-                      bgcolor: 'success.light', 
-                      color: 'success.contrastText',
-                      textAlign: 'center'
-                    }}>
-                      <Typography variant="subtitle2">For</Typography>
-                      <Typography variant="h6">{record.totalVotes.for}</Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Box sx={{ 
-                      p: 1, 
-                      borderRadius: 1, 
-                      bgcolor: 'error.light', 
-                      color: 'error.contrastText',
-                      textAlign: 'center'
-                    }}>
-                      <Typography variant="subtitle2">Against</Typography>
-                      <Typography variant="h6">{record.totalVotes.against}</Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Box sx={{ 
-                      p: 1, 
-                      borderRadius: 1, 
-                      bgcolor: 'warning.light', 
-                      color: 'warning.contrastText',
-                      textAlign: 'center'
-                    }}>
-                      <Typography variant="subtitle2">Abstentions</Typography>
-                      <Typography variant="h6">{record.totalVotes.abstentions}</Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Box sx={{ 
-                      p: 1, 
-                      borderRadius: 1, 
-                      bgcolor: 'grey.200', 
-                      textAlign: 'center'
-                    }}>
-                      <Typography variant="subtitle2">Absent</Typography>
-                      <Typography variant="h6">{record.totalVotes.absent}</Typography>
-                    </Box>
-                  </Grid>
-                </Grid>
-                
-                <Typography variant="subtitle1" gutterBottom>
-                  Member Votes
-                </Typography>
-                
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Member Name</TableCell>
-                        <TableCell>Party</TableCell>
-                        <TableCell align="center">Vote</TableCell>
-                        <TableCell align="right">Details</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {record.memberVotes.map((memberVote) => (
-                        <TableRow key={memberVote.memberId}>
-                          <TableCell>
-                            <Link 
-                              to={`/parliament/members/${memberVote.memberId}`}
-                              style={{ textDecoration: 'none', color: 'inherit' }}
-                            >
-                              {memberVote.memberName}
-                            </Link>
-                          </TableCell>
-                          <TableCell>{memberVote.party}</TableCell>
-                          <TableCell align="center">
-                            <Chip
-                              label={memberVote.vote}
-                              color={getVoteColor(memberVote.vote)}
-                              size="small"
-                            />
-                          </TableCell>
-                          <TableCell align="right">
-                            <IconButton 
-                              size="small" 
-                              component={Link}
-                              to={`/parliament/voting-records?member=${memberVote.memberId}`}
-                            >
-                              <HowToVoteIcon fontSize="small" />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-                
-                {record.memberVotes.length > 5 && (
-                  <Box mt={1} textAlign="center">
-                    <Button
-                      size="small"
-                      variant="text"
-                      component={Link}
-                      to={`/parliament/bills/${record.id}`}
-                      endIcon={<InfoIcon />}
-                    >
-                      View All Votes
-                    </Button>
-                  </Box>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+          {!loading && !error && (
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Bill</TableCell>
+                    <TableCell>Date</TableCell>
+                    <TableCell>Result</TableCell>
+                    <TableCell>For</TableCell>
+                    <TableCell>Against</TableCell>
+                    <TableCell>Abstentions</TableCell>
+                    <TableCell>Absent</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {votingRecords.map((record) => (
+                    <TableRow key={record.id}>
+                      <TableCell>
+                        <Link 
+                          component={RouterLink} 
+                          to={`/parliament/bills/${record.id}`}
+                          color="primary"
+                          underline="hover"
+                        >
+                          Bill #{record.billNumber}/{record.sessionNumber} • {record.stage}
+                        </Link>
+                        <Typography variant="body2" color="textSecondary">
+                          {record.billTitle}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={record.result ? record.result.charAt(0).toUpperCase() + record.result.slice(1) : ''}
+                          color={record.result?.toLowerCase() === 'passed' ? 'success' : 
+                                record.result?.toLowerCase() === 'failed' ? 'error' : 
+                                'default'}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>{record.totalVotes.for}</TableCell>
+                      <TableCell>{record.totalVotes.against}</TableCell>
+                      <TableCell>{record.totalVotes.abstentions}</TableCell>
+                      <TableCell>{record.totalVotes.absent}</TableCell>
+                      <TableCell>
+                        <Button
+                          component={RouterLink}
+                          to={`/parliament/bills/${record.id}`}
+                          size="small"
+                          startIcon={<HowToVoteIcon />}
+                        >
+                          View Details
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
           
           <Box display="flex" justifyContent="center" mt={4}>
             <Pagination 
