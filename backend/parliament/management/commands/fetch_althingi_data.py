@@ -41,7 +41,7 @@ class Command(BaseCommand):
         
         # Get current session if not specified
         if not session_number:
-            session_number = 153  # Default to 153 if not specified
+            session_number = 156  # Default to 153 if not specified
             self.stdout.write(f'Using session: {session_number}')
         
         # Create the session in our database

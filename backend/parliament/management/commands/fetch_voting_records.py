@@ -70,6 +70,7 @@ class Command(BaseCommand):
             
             self.stdout.write(self.style.SUCCESS(f'Found {len(bills)} bills'))
             
+            bills_processed = 0
             for bill in bills:
                 bill_id_elem = bill.find('málsnúmer')
                 if bill_id_elem is None:
@@ -78,10 +79,19 @@ class Command(BaseCommand):
                 bill_id = bill_id_elem.text
                 status_element = bill.find('staða')
                 
-                # Only process bills that have been passed or rejected
-                if status_element is not None and status_element.text in ['Samþykkt sem ályktun Alþingis.', 'Fellt.']:
-                    self.stdout.write(f'Processing bill {bill_id} with status: {status_element.text}')
-                    self.fetch_bill_voting_records(session, bill_id, force)
+                # Log the bill we're processing
+                status_text = status_element.text if status_element is not None else "Unknown status"
+                self.stdout.write(f'Processing bill {bill_id} with status: {status_text}')
+                
+                # Process all bills, not just passed or rejected ones
+                self.fetch_bill_voting_records(session, bill_id, force)
+                bills_processed += 1
+                
+                # Log progress every 10 bills
+                if bills_processed % 10 == 0:
+                    self.stdout.write(self.style.SUCCESS(f'Processed {bills_processed} bills so far...'))
+                
+            self.stdout.write(self.style.SUCCESS(f'Completed processing {bills_processed} bills'))
                 
         except requests.RequestException as e:
             self.stdout.write(self.style.ERROR(f'Error fetching bill list: {str(e)}'))
@@ -105,30 +115,45 @@ class Command(BaseCommand):
             
             root = ET.fromstring(response.content)
             
+            # Debug: Print the XML structure
+            self.stdout.write("XML structure for voting sessions:")
+            for elem in root.iter():
+                if 'atkvæðagreiðsla' in elem.tag.lower():
+                    self.stdout.write(f"Found element: {elem.tag}")
+                    for child in elem:
+                        self.stdout.write(f"  Child: {child.tag} = {child.text}")
+            
             # Find all atkvæðagreiðslur (voting sessions)
-            # Based on the XML structure, we need to look for elements with 'atkvæðagreiðsla' in the tag
             voting_sessions = []
-            for elem in root.findall('.//*'):
-                if 'atkvæðagreiðsla' in elem.tag:
-                    voting_sessions.append(elem)
+            
+            # Try different approaches to find voting sessions
+            for approach in ['direct', 'attribute', 'time_based']:
+                self.stdout.write(f"Trying {approach} approach to find voting sessions...")
+                
+                if approach == 'direct':
+                    # Look for elements with 'atkvæðagreiðsla' in the tag
+                    for elem in root.findall('.//*'):
+                        if 'atkvæðagreiðsla' in elem.tag.lower():
+                            voting_sessions.append(elem)
+                            self.stdout.write(f"Found voting session via direct tag match: {elem.tag}")
+                
+                elif approach == 'attribute':
+                    # Try to find elements with specific attributes
+                    for elem in root.findall('.//*'):
+                        if any('atkvæðagreiðsla' in attr.lower() for attr in elem.attrib.keys()):
+                            voting_sessions.append(elem)
+                            self.stdout.write(f"Found voting session via attribute: {elem.tag}")
+                
+                elif approach == 'time_based':
+                    # Look for elements with time information that might be voting sessions
+                    for elem in root.findall('.//tími'):
+                        parent = elem.getparent()
+                        if parent is not None and parent not in voting_sessions:
+                            voting_sessions.append(parent)
+                            self.stdout.write(f"Found voting session via time element: {parent.tag}")
             
             if not voting_sessions:
-                # Try to find elements with specific attributes
-                for elem in root.findall('.//*'):
-                    if elem.tag == 'atkvæðagreiðsla' or 'atkvæðagreiðsla' in elem.attrib:
-                        voting_sessions.append(elem)
-            
-            # If still no voting sessions, try to find elements with specific text content
-            if not voting_sessions:
-                # Look for elements that might contain voting information
-                for elem in root.findall('.//tími'):
-                    # If we find a time element, its parent might be a voting session
-                    parent = elem.getparent()
-                    if parent is not None:
-                        voting_sessions.append(parent)
-            
-            if not voting_sessions:
-                self.stdout.write(self.style.WARNING(f'No voting sessions found for bill {bill_number}'))
+                self.stdout.write(self.style.WARNING(f'No voting sessions found for bill {bill_number} using any method'))
                 return
             
             self.stdout.write(self.style.SUCCESS(f'Found {len(voting_sessions)} voting sessions'))
