@@ -1,0 +1,1 @@
+web: cd backend && gunicorn parliament.wsgi:application --log-file - 
