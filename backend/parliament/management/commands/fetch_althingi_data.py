@@ -319,10 +319,21 @@ class Command(BaseCommand):
                         if twitter_match:
                             twitter_url = twitter_match.group(0)
                         
-                        # Get bio if available
-                        bio_elem = detail_root.find('.//æviágrip')
-                        if bio_elem is not None and bio_elem.text:
-                            bio = bio_elem.text.strip()
+                        # Fetch biography from lifshlaup URL
+                        lifshlaup_url = f'https://www.althingi.is/altext/xml/thingmenn/thingmadur/lifshlaup/?nr={althingi_id}'
+                        try:
+                            lifshlaup_response = requests.get(lifshlaup_url)
+                            if lifshlaup_response.status_code == 200:
+                                lifshlaup_root = ET.fromstring(lifshlaup_response.content)
+                                # Get all text content from the XML
+                                bio_text = ' '.join(lifshlaup_root.itertext()).strip()
+                                # Remove URLs and clean up the text
+                                bio_text = re.sub(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', '', bio_text)
+                                bio_text = re.sub(r'\s+', ' ', bio_text)  # Replace multiple spaces with single space
+                                bio_text = bio_text.replace('&ndash;', '–')  # Replace HTML entities
+                                bio = bio_text.strip()
+                        except Exception as e:
+                            self.stdout.write(self.style.WARNING(f'Error fetching biography for MP {althingi_id}: {str(e)}'))
 
                     # Split name into first and last name
                     name_parts = name.split()

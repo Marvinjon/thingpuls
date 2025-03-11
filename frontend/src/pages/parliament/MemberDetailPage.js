@@ -379,9 +379,159 @@ const MemberDetailPage = () => {
                   <Typography variant="h6" gutterBottom>
                     Biography
                   </Typography>
-                  <Typography paragraph>
-                    {mp.bio || 'No biography available.'}
-                  </Typography>
+                  {mp.bio ? (
+                    <Box>
+                      {(() => {
+                        const sections = {};
+                        const bio = mp.bio;
+                        
+                        // Helper function to find the best split point
+                        const findSplitPoint = (text, markers) => {
+                          const positions = markers
+                            .map(marker => ({ pos: text.indexOf(marker), marker }))
+                            .filter(x => x.pos !== -1);
+                          return positions.length > 0 ? 
+                            Math.min(...positions.map(x => x.pos)) : -1;
+                        };
+
+                        // Extract personal information (always present)
+                        sections.personal = {
+                          title: "Personal Information",
+                          content: ""
+                        };
+
+                        // Find education markers
+                        const educationMarkers = [
+                          'Grunnskólapróf', 
+                          'Stúdentspróf',
+                          'BSc.',
+                          'Cand.',
+                          'PhD',
+                          'Próf',
+                          'Nám'
+                        ];
+                        
+                        const careerMarkers = [
+                          'Kennari',
+                          'Starfsmaður',
+                          'Framkvæmdastjóri',
+                          'Forstjóri',
+                          'Ráðgjafi',
+                          'Sérfræðingur',
+                          'Starfaði',
+                          'Vann',
+                          'Yfirmaður',
+                          'Stjórnandi'
+                        ];
+
+                        const publicServiceMarkers = [
+                          'Alþingismaður',
+                          'Í stjórn',
+                          'Formaður',
+                          'Nefndarmaður',
+                          'Bæjarfulltrúi',
+                          'Í nefnd',
+                          'Í ráði',
+                          'Sveitarstjórn'
+                        ];
+
+                        // Find split points
+                        const educationStart = findSplitPoint(bio, educationMarkers);
+                        const careerStart = findSplitPoint(bio, careerMarkers);
+                        const publicServiceStart = findSplitPoint(bio, publicServiceMarkers);
+
+                        // Set section contents based on found split points
+                        if (educationStart !== -1) {
+                          sections.personal.content = bio.substring(0, educationStart).trim();
+                          
+                          const nextStart = Math.min(
+                            ...[careerStart, publicServiceStart]
+                              .filter(x => x !== -1)
+                          );
+                          
+                          if (nextStart !== Infinity) {
+                            sections.education = {
+                              title: "Education",
+                              content: bio.substring(educationStart, nextStart).trim()
+                            };
+                          } else {
+                            sections.education = {
+                              title: "Education",
+                              content: bio.substring(educationStart).trim()
+                            };
+                          }
+                        } else {
+                          // If no education section found, personal info goes up to career or public service
+                          const firstSplit = Math.min(
+                            ...[careerStart, publicServiceStart]
+                              .filter(x => x !== -1)
+                          );
+                          sections.personal.content = bio.substring(0, firstSplit !== Infinity ? firstSplit : undefined).trim();
+                        }
+
+                        // Add career section if found
+                        if (careerStart !== -1) {
+                          sections.career = {
+                            title: "Professional Career",
+                            content: bio.substring(
+                              careerStart,
+                              publicServiceStart !== -1 ? publicServiceStart : undefined
+                            ).trim()
+                          };
+                        }
+
+                        // Add public service section if found
+                        if (publicServiceStart !== -1) {
+                          sections.publicService = {
+                            title: "Public Service",
+                            content: bio.substring(publicServiceStart).trim()
+                          };
+                        }
+
+                        // If no sections were identified, put everything in personal
+                        if (Object.keys(sections).length === 1 && !sections.personal.content) {
+                          sections.personal.content = bio;
+                        }
+
+                        return Object.entries(sections)
+                          .filter(([_, section]) => section.content) // Only show sections with content
+                          .map(([key, section], index, array) => (
+                            <Box key={key} sx={{ mb: 3 }}>
+                              <Typography variant="h6" color="primary" gutterBottom sx={{ fontSize: '1.1rem' }}>
+                                {section.title}
+                              </Typography>
+                              <Typography paragraph sx={{ 
+                                whiteSpace: 'pre-wrap',
+                                '& span': { display: 'block', mb: 1 }
+                              }}>
+                                {section.content
+                                  // First, protect periods in dates, abbreviations, and initials
+                                  .replace(/(\d+)\.(\d+|[a-zA-ZáéíóúýþæöÁÉÍÓÚÝÞÆÖ]+)/g, '$1•$2')
+                                  .replace(/([A-ZÁÉÍÓÚÝÞÆÖ])\.(\s*[A-ZÁÉÍÓÚÝÞÆÖ])/g, '$1•$2')
+                                  // Split only on actual sentence endings (period followed by space and capital letter)
+                                  // but not when the previous word is a single letter (initial)
+                                  .split(/(?<!^[A-ZÁÉÍÓÚÝÞÆÖ])(?<=\.)(?=\s+[A-ZÁÉÍÓÚÝÞÆÖ])/)
+                                  .map((sentence, i) => (
+                                    <span key={i}>
+                                      {sentence
+                                        // Restore the protected periods
+                                        .replace(/•/g, '.')
+                                        .trim() + (sentence.trim().endsWith('.') ? '' : '.')}
+                                    </span>
+                                  ))}
+                              </Typography>
+                              {index < array.length - 1 && (
+                                <Divider sx={{ my: 2 }} />
+                              )}
+                            </Box>
+                        ));
+                      })()}
+                    </Box>
+                  ) : (
+                    <Typography paragraph>
+                      No biography available.
+                    </Typography>
+                  )}
                   
                   <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
                     Service Information
