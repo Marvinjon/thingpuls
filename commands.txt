@@ -1,3 +1,13 @@
+to start the backend:
+    cd backend
+    python3 manage.py runserver    
+
+to start frontend:
+    cd frontend
+    npm install
+    npm start
+
+
 til að setja inn allar meðlimi alþingis fyrir þing nr 156 þá runnaru þetta:
 cd backend og svo python3 manage.py fetch_althingi_data --data-type=mps --session=156
 

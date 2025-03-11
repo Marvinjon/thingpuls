@@ -8,3 +8,6 @@
 *.pyz
 *.pywz
 *.pyzw
+*__pycache__
+/backend/data_collection/__pycache__
+*.pyc
