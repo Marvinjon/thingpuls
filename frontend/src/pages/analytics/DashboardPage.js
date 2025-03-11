@@ -20,26 +20,48 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { analyticsService } from '../../services/api';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  PieChart, Pie, Cell, ResponsiveContainer,
+  LineChart, Line,
+  AreaChart, Area
+} from 'recharts';
 
 const DashboardPage = () => {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [currentTab, setCurrentTab] = useState(0);
-  const [anchorEl, setAnchorEl] = useState(null);
   const [timeframe, setTimeframe] = useState('past-month');
   const [dashboardData, setDashboardData] = useState(null);
-  
+  const [votingPatterns, setVotingPatterns] = useState(null);
+  const [mpActivity, setMpActivity] = useState(null);
+  const [topicTrends, setTopicTrends] = useState(null);
+
+  // Color scheme for charts
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
+        
+        // Fetch dashboard data
         const response = await analyticsService.getDashboardConfig();
-        setDashboardData(response.data);
+        const data = response.data;
+        
+        // Set all the data from the response
+        setDashboardData({
+          parliamentaryActivity: data.parliamentaryActivity,
+          recentActivity: data.recentActivity
+        });
+        setVotingPatterns(data.votingPatterns);
+        setMpActivity(data.mpActivity);
+        setTopicTrends(data.topicTrends);
+        
         setError(null);
       } catch (err) {
         setError("Failed to load dashboard data. Please try again later.");
-        console.error(err);
+        console.error('Error fetching dashboard data:', err);
       } finally {
         setLoading(false);
       }
@@ -48,54 +70,8 @@ const DashboardPage = () => {
     fetchDashboardData();
   }, [timeframe]);
 
-  const handleTabChange = (event, newValue) => {
-    setCurrentTab(newValue);
-  };
-
-  const handleMenuClick = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
   const handleTimeframeChange = (event) => {
     setTimeframe(event.target.value);
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
-
-  const formatTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-GB', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const getEventTypeColor = (type) => {
-    switch (type) {
-      case 'committee':
-        return 'primary';
-      case 'session':
-        return 'secondary';
-      case 'hearing':
-        return 'info';
-      case 'vote':
-        return 'success';
-      case 'recess':
-        return 'warning';
-      default:
-        return 'default';
-    }
   };
 
   if (loading) {
@@ -114,19 +90,12 @@ const DashboardPage = () => {
     );
   }
 
-  if (!dashboardData) {
-    return (
-      <Container sx={{ mt: 4 }}>
-        <Alert severity="info">No dashboard data available.</Alert>
-      </Container>
-    );
-  }
-
   return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
         <Typography variant="h4" component="h1">
-          Analytics Dashboard
+          Parliamentary Analytics Dashboard
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <FormControl variant="outlined" size="small">
@@ -146,149 +115,211 @@ const DashboardPage = () => {
       </Box>
 
       <Grid container spacing={3}>
-        {/* Display actual data from dashboardData */}
-        {dashboardData && (
+        {/* Activity Overview Cards */}
+        {dashboardData?.parliamentaryActivity && (
           <>
-            {/* Parliamentary Activity */}
-            <Grid item xs={12}>
-              <Paper>
-                <Box sx={{ p: 3 }}>
-                  <Typography variant="h6" gutterBottom>
-                    Parliamentary Activity
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent>
+                  <Typography color="textSecondary" gutterBottom>
+                    Total Bills
                   </Typography>
-                  <Grid container spacing={3}>
-                    {dashboardData.parliamentaryActivity && (
-                      <>
-                        <Grid item xs={12} sm={6} md={3}>
-                          <Card>
-                            <CardContent>
-                              <Typography variant="h5">
-                                {dashboardData.parliamentaryActivity.totalSessionDays}
-                              </Typography>
-                              <Typography color="text.secondary">
-                                Session Days
-                              </Typography>
-                            </CardContent>
-                          </Card>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                          <Card>
-                            <CardContent>
-                              <Typography variant="h5">
-                                {dashboardData.parliamentaryActivity.totalBills}
-                              </Typography>
-                              <Typography color="text.secondary">
-                                Total Bills
-                              </Typography>
-                            </CardContent>
-                          </Card>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                          <Card>
-                            <CardContent>
-                              <Typography variant="h5">
-                                {dashboardData.parliamentaryActivity.passedBills}
-                              </Typography>
-                              <Typography color="text.secondary">
-                                Passed Bills
-                              </Typography>
-                            </CardContent>
-                          </Card>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                          <Card>
-                            <CardContent>
-                              <Typography variant="h5">
-                                {dashboardData.parliamentaryActivity.totalVotes}
-                              </Typography>
-                              <Typography color="text.secondary">
-                                Total Votes
-                              </Typography>
-                            </CardContent>
-                          </Card>
-                        </Grid>
-                      </>
-                    )}
-                  </Grid>
-                </Box>
-              </Paper>
+                  <Typography variant="h3">
+                    {dashboardData.parliamentaryActivity.totalBills}
+                  </Typography>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={(dashboardData.parliamentaryActivity.passedBills / dashboardData.parliamentaryActivity.totalBills) * 100}
+                    sx={{ mt: 2 }}
+                  />
+                </CardContent>
+              </Card>
             </Grid>
 
-            {/* MP Performance */}
-            <Grid item xs={12} md={6}>
-              <Paper>
-                <Box sx={{ p: 3 }}>
-                  <Typography variant="h6" gutterBottom>
-                    MP Performance
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent>
+                  <Typography color="textSecondary" gutterBottom>
+                    Passed Bills
                   </Typography>
-                  {dashboardData.mpPerformance && (
-                    <List>
-                      {dashboardData.mpPerformance.topAttendance?.map((mp) => (
-                        <ListItem key={mp.id}>
-                          <ListItemText
-                            primary={mp.name}
-                            secondary={`Attendance: ${mp.attendance}%`}
-                          />
-                        </ListItem>
-                      ))}
-                    </List>
-                  )}
-                </Box>
-              </Paper>
+                  <Typography variant="h3">
+                    {dashboardData.parliamentaryActivity.passedBills}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                    {Math.round((dashboardData.parliamentaryActivity.passedBills / dashboardData.parliamentaryActivity.totalBills) * 100)}% success rate
+                  </Typography>
+                </CardContent>
+              </Card>
             </Grid>
 
-            {/* Voting Analysis */}
-            <Grid item xs={12} md={6}>
-              <Paper>
-                <Box sx={{ p: 3 }}>
-                  <Typography variant="h6" gutterBottom>
-                    Voting Analysis
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent>
+                  <Typography color="textSecondary" gutterBottom>
+                    Active MPs
                   </Typography>
-                  {dashboardData.votingAnalysis && (
-                    <List>
-                      {dashboardData.votingAnalysis.partyUnity?.map((party) => (
-                        <ListItem key={party.party}>
-                          <ListItemText
-                            primary={party.party}
-                            secondary={`Party Unity: ${party.unity}%`}
-                          />
-                        </ListItem>
-                      ))}
-                    </List>
-                  )}
-                </Box>
-              </Paper>
+                  <Typography variant="h3">
+                    {dashboardData.parliamentaryActivity.activeMembers}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                    Across {dashboardData.parliamentaryActivity.totalParties} parties
+                  </Typography>
+                </CardContent>
+              </Card>
             </Grid>
 
-            {/* Upcoming Events */}
-            <Grid item xs={12}>
-              <Paper>
-                <Box sx={{ p: 3 }}>
-                  <Typography variant="h6" gutterBottom>
-                    Upcoming Events
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent>
+                  <Typography color="textSecondary" gutterBottom>
+                    Total Votes Cast
                   </Typography>
-                  {dashboardData.upcomingEvents && (
-                    <List>
-                      {dashboardData.upcomingEvents.map((event) => (
-                        <ListItem key={event.id}>
-                          <ListItemText
-                            primary={event.title}
-                            secondary={`${formatDate(event.date)} at ${formatTime(event.date)}`}
-                          />
-                          <Chip
-                            label={event.type}
-                            color={getEventTypeColor(event.type)}
-                            size="small"
-                          />
-                        </ListItem>
-                      ))}
-                    </List>
-                  )}
-                </Box>
-              </Paper>
+                  <Typography variant="h3">
+                    {dashboardData.parliamentaryActivity.totalVotes}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                    In current session
+                  </Typography>
+                </CardContent>
+              </Card>
             </Grid>
           </>
         )}
+
+        {/* Voting Patterns Chart */}
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Voting Patterns by Party
+            </Typography>
+            {votingPatterns && (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart 
+                  data={Object.entries(votingPatterns).map(([party, votes]) => ({
+                    party,
+                    yes: votes.yes,
+                    no: votes.no,
+                    abstain: votes.abstain
+                  }))}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="party" 
+                    angle={-45} 
+                    textAnchor="end" 
+                    height={80} 
+                    interval={0}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="yes" fill="#4caf50" stackId="a" />
+                  <Bar dataKey="no" fill="#f44336" stackId="a" />
+                  <Bar dataKey="abstain" fill="#ff9800" stackId="a" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </Paper>
+        </Grid>
+
+        {/* MP Activity Chart */}
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Top MP Activity
+            </Typography>
+            {mpActivity && (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={mpActivity.labels.map((name, index) => ({
+                  name,
+                  votes: mpActivity.vote_counts[index],
+                  bills: mpActivity.bill_counts[index]
+                }))}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="votes" fill="#8884d8" name="Votes Cast" />
+                  <Bar dataKey="bills" fill="#82ca9d" name="Bills Sponsored" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </Paper>
+        </Grid>
+
+        {/* Topic Distribution */}
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Bill Topics Distribution
+            </Typography>
+            {topicTrends && (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={topicTrends.labels.map((label, index) => ({
+                      name: label,
+                      value: topicTrends.bill_counts[index]
+                    }))}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {topicTrends.labels.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </Paper>
+        </Grid>
+
+        {/* Recent Activity Timeline */}
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Recent Parliamentary Activity
+            </Typography>
+            {dashboardData?.recentActivity && (
+              <List>
+                {dashboardData.recentActivity.map((activity, index) => (
+                  <ListItem key={index} divider={index < dashboardData.recentActivity.length - 1}>
+                    <ListItemText
+                      primary={activity.title}
+                      secondary={
+                        <>
+                          <Typography component="span" variant="body2" color="textSecondary">
+                            {new Date(activity.date).toLocaleDateString()}
+                          </Typography>
+                          <br />
+                          <Chip 
+                            size="small" 
+                            label={activity.type}
+                            color={
+                              activity.type === 'bill' ? 'primary' :
+                              activity.type === 'vote' ? 'secondary' :
+                              'default'
+                            }
+                            sx={{ mt: 1 }}
+                          />
+                        </>
+                      }
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </Paper>
+        </Grid>
       </Grid>
     </Container>
   );

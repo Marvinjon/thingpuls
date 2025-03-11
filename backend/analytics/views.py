@@ -35,15 +35,114 @@ class DashboardConfigurationViewSet(viewsets.ModelViewSet):
     """ViewSet for dashboard configurations."""
     
     serializer_class = DashboardConfigurationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = []  # Allow public access
     
     def get_queryset(self):
-        """Return the dashboard configuration for the current user."""
-        return DashboardConfiguration.objects.filter(user=self.request.user)
+        """Return all dashboard configurations."""
+        return DashboardConfiguration.objects.all()
     
-    def perform_create(self, serializer):
-        """Set the user field to the current user."""
-        serializer.save(user=self.request.user)
+    def list(self, request):
+        """Return dashboard data including parliamentary activity and analytics."""
+        try:
+            # Get parliamentary activity data
+            total_bills = Bill.objects.count()
+            passed_bills = Bill.objects.filter(status='passed').count()
+            active_members = MP.objects.filter(active=True).count()
+            total_parties = PoliticalParty.objects.count()
+            total_votes = Vote.objects.count()
+
+            # Get recent activity
+            recent_bills = Bill.objects.order_by('-introduced_date')[:5]
+            recent_votes = Vote.objects.order_by('-vote_date')[:5]
+
+            # Combine and sort recent activity
+            recent_activity = []
+            
+            for bill in recent_bills:
+                recent_activity.append({
+                    'title': bill.title,
+                    'date': bill.introduced_date.isoformat() if bill.introduced_date else None,
+                    'type': 'bill'
+                })
+            
+            for vote in recent_votes:
+                if vote.bill:  # Only add if there's an associated bill
+                    recent_activity.append({
+                        'title': f"Vote on {vote.bill.title}",
+                        'date': vote.vote_date.isoformat() if vote.vote_date else None,
+                        'type': 'vote'
+                    })
+            
+            # Sort combined activity by date
+            recent_activity = [a for a in recent_activity if a['date']]  # Filter out items with no date
+            recent_activity.sort(key=lambda x: x['date'], reverse=True)
+            recent_activity = recent_activity[:5]  # Keep only 5 most recent
+
+            # Get voting patterns
+            party_votes = Vote.objects.values(
+                'mp__party__name', 
+                'vote'
+            ).filter(
+                mp__party__isnull=False  # Only include votes where MP has a party
+            ).annotate(
+                count=Count('id')
+            ).order_by('mp__party__name', 'vote')
+
+            voting_patterns = {}
+            for vote in party_votes:
+                party = vote['mp__party__name']
+                if party:  # Only process if party name exists
+                    if party not in voting_patterns:
+                        voting_patterns[party] = {'yes': 0, 'no': 0, 'abstain': 0, 'absent': 0}
+                    vote_type = vote['vote']
+                    if vote_type in voting_patterns[party]:
+                        voting_patterns[party][vote_type] = vote['count']
+
+            # Get MP activity
+            top_mps = MP.objects.filter(active=True).annotate(
+                vote_count=Count('voting_record'),
+                sponsored_count=Count('bills_sponsored')  # Changed from bills to bills_sponsored
+            ).order_by('-vote_count')[:10]
+
+            mp_activity = {
+                'labels': [f"{mp.first_name} {mp.last_name}" for mp in top_mps],
+                'vote_counts': [mp.vote_count for mp in top_mps],
+                'bill_counts': [mp.sponsored_count for mp in top_mps]
+            }
+
+            # Get topic trends
+            top_topics = Topic.objects.annotate(
+                bill_count=Count('bills')
+            ).order_by('-bill_count')[:10]
+
+            topic_trends = {
+                'labels': [topic.name for topic in top_topics],
+                'bill_counts': [topic.bill_count for topic in top_topics]
+            }
+
+            # Combine all data
+            response_data = {
+                'parliamentaryActivity': {
+                    'totalBills': total_bills,
+                    'passedBills': passed_bills,
+                    'activeMembers': active_members,
+                    'totalParties': total_parties,
+                    'totalVotes': total_votes
+                },
+                'recentActivity': recent_activity,
+                'votingPatterns': voting_patterns,
+                'mpActivity': mp_activity,
+                'topicTrends': topic_trends
+            }
+
+            return Response(response_data)
+
+        except Exception as e:
+            print(f"Error in dashboard data: {str(e)}")  # Add debug print
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class SavedSearchViewSet(viewsets.ModelViewSet):

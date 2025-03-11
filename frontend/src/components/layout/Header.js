@@ -66,9 +66,11 @@ const Header = () => {
     { text: 'Members of Parliament', icon: <PeopleIcon />, path: '/parliament/members' },
     { text: 'Bills', icon: <DescriptionIcon />, path: '/parliament/bills' },
     { text: 'Voting Records', icon: <HowToVoteIcon />, path: '/parliament/voting-records' },
-    { text: 'Discussion Forums', icon: <ForumIcon />, path: '/engagement/forums' },
-    { text: 'Whistleblowing', icon: <CampaignIcon />, path: '/engagement/whistleblowing' },
     { text: 'Analytics', icon: <BarChartIcon />, path: '/analytics/dashboard' },
+    ...(currentUser ? [
+      { text: 'Discussion Forums', icon: <ForumIcon />, path: '/engagement/forums' },
+      { text: 'Whistleblowing', icon: <CampaignIcon />, path: '/engagement/whistleblowing' },
+    ] : [])
   ];
   
   const drawer = (
@@ -156,6 +158,13 @@ const Header = () => {
               >
                 Votes
               </Button>
+              <Button
+                component={RouterLink}
+                to="/analytics/dashboard"
+                sx={{ my: 2, color: 'white', display: 'block' }}
+              >
+                Analytics
+              </Button>
               {currentUser && (
                 <>
                   <Button
@@ -164,13 +173,6 @@ const Header = () => {
                     sx={{ my: 2, color: 'white', display: 'block' }}
                   >
                     Forums
-                  </Button>
-                  <Button
-                    component={RouterLink}
-                    to="/analytics/dashboard"
-                    sx={{ my: 2, color: 'white', display: 'block' }}
-                  >
-                    Analytics
                   </Button>
                 </>
               )}

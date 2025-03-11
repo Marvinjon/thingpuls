@@ -32,6 +32,8 @@ function App() {
         <Route path="/parliament/bills" element={<BillsPage />} />
         <Route path="/parliament/bills/:id" element={<BillDetailPage />} />
         <Route path="/parliament/voting-records" element={<VotingRecordsPage />} />
+        <Route path="/analytics/dashboard" element={<DashboardPage />} />
+        <Route path="/analytics/reports" element={<AnalyticsPage />} />
         
         {/* Protected routes */}
         <Route 
@@ -55,22 +57,6 @@ function App() {
           element={
             <ProtectedRoute>
               <WhistleblowingPage />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/analytics/dashboard" 
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/analytics/reports" 
-          element={
-            <ProtectedRoute>
-              <AnalyticsPage />
             </ProtectedRoute>
           } 
         />
