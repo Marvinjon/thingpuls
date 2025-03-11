@@ -272,11 +272,11 @@ const MemberDetailPage = () => {
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
                 <Avatar
                   src={mp.photo}
-                  alt={mp.full_name}
+                  alt={`${mp.first_name} ${mp.last_name}`}
                   sx={{ width: 120, height: 120, mb: 2 }}
                 />
                 <Typography variant="h5" gutterBottom>
-                  {mp.full_name}
+                  {`${mp.first_name} ${mp.last_name}`}
                 </Typography>
                 <Chip
                   label={mp.party ? mp.party.name : "Unknown Party"}
