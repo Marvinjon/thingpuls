@@ -309,27 +309,20 @@ const MemberDetailPage = () => {
                     </Link>
                   </ListItem>
                 )}
-                {mp.social_media_links && (
-                  <ListItem>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      {mp.social_media_links.twitter && (
-                        <Link href={mp.social_media_links.twitter} target="_blank" rel="noopener">
-                          <TwitterIcon />
-                        </Link>
-                      )}
-                      {mp.social_media_links.facebook && (
-                        <Link href={mp.social_media_links.facebook} target="_blank" rel="noopener">
-                          <FacebookIcon />
-                        </Link>
-                      )}
-                      {mp.social_media_links.instagram && (
-                        <Link href={mp.social_media_links.instagram} target="_blank" rel="noopener">
-                          <InstagramIcon />
-                        </Link>
-                      )}
-                    </Box>
-                  </ListItem>
-                )}
+                <ListItem>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    {mp.twitter_url && (
+                      <Link href={mp.twitter_url} target="_blank" rel="noopener">
+                        <TwitterIcon />
+                      </Link>
+                    )}
+                    {mp.facebook_url && (
+                      <Link href={mp.facebook_url} target="_blank" rel="noopener">
+                        <FacebookIcon />
+                      </Link>
+                    )}
+                  </Box>
+                </ListItem>
               </List>
               
               <Divider sx={{ my: 2 }} />

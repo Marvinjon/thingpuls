@@ -262,9 +262,6 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(f'Error fetching MPs: HTTP {response.status_code}'))
                 return
 
-            # Print Raw XML Response Preview
-            self.stdout.write(self.style.WARNING(f"🔍 Raw Response Preview:\n{response.text[:500]}"))
-
             # Parse XML
             root = ET.fromstring(response.content)
 
@@ -275,20 +272,72 @@ class Command(BaseCommand):
                 try:
                     althingi_id = mp_element.get("id")  # Get MP ID
                     name = mp_element.find("nafn").text.strip()
-                    birth_date = mp_element.find("fæðingardagur").text.strip()
                     abbreviation = mp_element.find("skammstöfun").text.strip()
+
+                    # Fetch detailed MP info
+                    mp_detail_url = f'https://www.althingi.is/altext/xml/thingmenn/thingmadur/?nr={althingi_id}'
+                    mp_detail_response = requests.get(mp_detail_url)
+                    
+                    birth_date = None
+                    email = None
+                    gender = ''
+                    website = ''
+                    bio = ''
+                    facebook_url = ''
+                    twitter_url = ''
+                    
+                    if mp_detail_response.status_code == 200:
+                        detail_root = ET.fromstring(mp_detail_response.content)
+                        
+                        # Get birth date
+                        birth_date_elem = detail_root.find('.//fæðingardagur')
+                        if birth_date_elem is not None and birth_date_elem.text:
+                            birth_date = self.parse_date(birth_date_elem.text)
+                        
+                        # Get email (from text content)
+                        text_content = ' '.join(detail_root.itertext())
+                        # Look for pattern: something followed by althingi.is
+                        email_pattern = r'([\w\.]+)\s+althingi\.is'
+                        email_match = re.search(email_pattern, text_content)
+                        if email_match:
+                            email = f"{email_match.group(1)}@althingi.is"
+                        
+                        # Get website if available
+                        website_elem = detail_root.find('.//vefsíða')
+                        if website_elem is not None and website_elem.text:
+                            website = website_elem.text.strip()
+                        
+                        # Get social media URLs from text content
+                        facebook_pattern = r'https?://(?:www\.)?facebook\.com/[^"\s]+'
+                        twitter_pattern = r'https?://(?:www\.)?twitter\.com/[^"\s]+'
+                        
+                        facebook_match = re.search(facebook_pattern, text_content)
+                        if facebook_match:
+                            facebook_url = facebook_match.group(0)
+                        
+                        twitter_match = re.search(twitter_pattern, text_content)
+                        if twitter_match:
+                            twitter_url = twitter_match.group(0)
+                        
+                        # Get bio if available
+                        bio_elem = detail_root.find('.//æviágrip')
+                        if bio_elem is not None and bio_elem.text:
+                            bio = bio_elem.text.strip()
 
                     # Split name into first and last name
                     name_parts = name.split()
                     first_name = " ".join(name_parts[:-1]) if len(name_parts) > 1 else name
                     last_name = name_parts[-1] if len(name_parts) > 1 else ""
 
-                    # Fetch MP's parliamentary seat information to get party
+                    # Fetch MP's parliamentary seat information to get party and constituency
                     mp_thingseta_url = f'https://www.althingi.is/altext/xml/thingmenn/thingmadur/thingseta/?nr={althingi_id}'
                     mp_thingseta_response = requests.get(mp_thingseta_url)
                     
                     party = None
                     constituency = ''
+                    first_elected = None
+                    current_position_started = None
+                    
                     if mp_thingseta_response.status_code == 200:
                         thingseta_root = ET.fromstring(mp_thingseta_response.content)
                         # Find the most recent þingseta (parliamentary seat) entry
@@ -302,15 +351,25 @@ class Command(BaseCommand):
                                 if party_id:
                                     try:
                                         party = PoliticalParty.objects.get(althingi_id=party_id)
-                                        self.stdout.write(self.style.SUCCESS(f"Found party for MP {name}: {party.name}"))
                                     except PoliticalParty.DoesNotExist:
                                         self.stdout.write(self.style.WARNING(f"Party with ID {party_id} not found for MP {name}"))
                             
                             # Get constituency
                             constituency_elem = latest_thingseta.find('kjördæmi')
                             if constituency_elem is not None:
-                                # Get text content including CDATA
                                 constituency = ''.join(constituency_elem.itertext()).strip()
+                            
+                            # Get first elected date
+                            if thingseta_entries:
+                                first_thingseta = min(thingseta_entries, key=lambda x: int(x.find('þing').text))
+                                first_date_elem = first_thingseta.find('tímabil/inn')
+                                if first_date_elem is not None and first_date_elem.text:
+                                    first_elected = self.parse_date(first_date_elem.text.split()[0])
+                            
+                            # Get current position start date
+                            current_date_elem = latest_thingseta.find('tímabil/inn')
+                            if current_date_elem is not None and current_date_elem.text:
+                                current_position_started = self.parse_date(current_date_elem.text.split()[0])
 
                     # Ensure Unique Slugs
                     base_slug = slugify(name)
@@ -320,15 +379,6 @@ class Command(BaseCommand):
                         slug = f"{base_slug}-{counter}"
                         counter += 1
 
-                    # Print Extracted Data
-                    self.stdout.write(self.style.SUCCESS(
-                        f"✔ Extracted MP: {name}, "
-                        f"Born: {birth_date}, ID: {althingi_id}, "
-                        f"Abbreviation: {abbreviation}, Slug: {slug}, "
-                        f"Party: {party.name if party else 'None'}, "
-                        f"Constituency: {constituency}"
-                    ))
-
                     # Create or update the MP
                     with transaction.atomic():
                         mp, created = MP.objects.update_or_create(
@@ -337,28 +387,45 @@ class Command(BaseCommand):
                                 'first_name': first_name,
                                 'last_name': last_name,
                                 'slug': slug,
-                                'party': party,  # Now properly set from XML
-                                'constituency': constituency,  # Now set from XML
-                                'email': f"{slug}@althingi.is",  # Placeholder email
-                                'active': True
+                                'party': party,
+                                'constituency': constituency,
+                                'email': email,
+                                'website': website,
+                                'facebook_url': facebook_url,
+                                'twitter_url': twitter_url,
+                                'bio': bio,
+                                'birthdate': birth_date,
+                                'active': True,
+                                'first_elected': first_elected,
+                                'current_position_started': current_position_started,
+                                'speech_count': 0,  # These will be updated separately
+                                'bills_sponsored': 0,
+                                'bills_cosponsored': 0
                             }
                         )
 
                         if created:
                             mps_created += 1
+                            self.stdout.write(self.style.SUCCESS(
+                                f'Created MP: {name} ({email or "no email"}) '
+                                f'Born: {birth_date or "unknown"}'
+                            ))
                         else:
                             mps_updated += 1
+                            self.stdout.write(
+                                f'Updated MP: {name} ({email or "no email"}) '
+                                f'Born: {birth_date or "unknown"}'
+                            )
 
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f'Error processing MP {althingi_id}: {str(e)}'))
                     continue
 
-            self.stdout.write(self.style.SUCCESS(f'🎉 MPs created: {mps_created}, updated: {mps_updated}'))
+            self.stdout.write(self.style.SUCCESS(f'MPs created: {mps_created}, updated: {mps_updated}'))
 
         except Exception as e:
-            self.stdout.write(self.style.ERROR(f'❌ Error fetching MPs: {str(e)}'))
+            self.stdout.write(self.style.ERROR(f'Error fetching MPs: {str(e)}'))
 
-    
     def fetch_bills(self, session_number):
         """Fetch bills from Alþingi."""
         self.stdout.write('Fetching bills...')

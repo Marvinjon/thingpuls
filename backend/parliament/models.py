@@ -5,6 +5,7 @@ Models for parliamentary data.
 from django.db import models
 from django.conf import settings
 from django.utils.text import slugify
+from django.utils import timezone
 
 
 class PoliticalParty(models.Model):
@@ -70,12 +71,14 @@ class MP(models.Model):
     
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
-    slug = models.SlugField(unique=True)
+    slug = models.SlugField(max_length=255, unique=True)
     althingi_id = models.IntegerField(unique=True, help_text="MP ID from the Alþingi database")
-    party = models.ForeignKey(PoliticalParty, on_delete=models.SET_NULL, null=True, blank=True,related_name='members')
+    party = models.ForeignKey(PoliticalParty, on_delete=models.SET_NULL, null=True, related_name='mps')
     constituency = models.CharField(max_length=100)
-    email = models.EmailField(blank=True)
+    email = models.EmailField(null=True, blank=True)
     website = models.URLField(blank=True)
+    facebook_url = models.URLField(blank=True)
+    twitter_url = models.URLField(blank=True)
     bio = models.TextField(blank=True)
     photo = models.ImageField(upload_to='mp_photos/', null=True, blank=True)
     birthdate = models.DateField(null=True, blank=True)
