@@ -69,6 +69,8 @@ const BillsPage = () => {
         };
         
         const response = await parliamentService.getBills(params);
+        console.log('Bills response:', response.data);
+        console.log('First bill topics:', response.data.results[0]?.topics);
         setBills(response.data.results || []);
         setTotalPages(Math.ceil(response.data.count / 10)); // Assuming 10 items per page
         
@@ -99,6 +101,7 @@ const BillsPage = () => {
     const fetchTopics = async () => {
       try {
         const response = await parliamentService.getTopics();
+        console.log('Topics response:', response.data);
         setTopics(response.data || []);
       } catch (err) {
         console.error('Error fetching topics:', err);
@@ -376,8 +379,19 @@ const BillsPage = () => {
                       size="small"
                       color="primary"
                     >
-                      View Details
+                      Nánari upplýsingar
                     </Button>
+                    {bill.url && (
+                      <Button
+                        href={bill.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        size="small"
+                        color="secondary"
+                      >
+                        Skoða á Alþingi.is
+                      </Button>
+                    )}
                   </CardActions>
                 </Card>
               </Grid>

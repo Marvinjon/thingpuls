@@ -1,3 +1,7 @@
 til að setja inn allar meðlimi alþingis fyrir þing nr 156 þá runnaru þetta:
 cd backend og svo python3 manage.py fetch_althingi_data --data-type=mps --session=156
 
+til að ná í öll frumvörp þá vera í backend og runna þetta: python3 manage.py fetch_althingi_data --data-type bills
+
+
+til að ná í alla flokka vera í backend og runna: python3 manage.py fetch_althingi_data --data-type parties

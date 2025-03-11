@@ -12,6 +12,7 @@ class PoliticalParty(models.Model):
     
     name = models.CharField(max_length=100)
     abbreviation = models.CharField(max_length=20)
+    althingi_id = models.CharField(max_length=20, unique=True, null=True, blank=True, help_text="Party ID from the Alþingi database")
     logo = models.ImageField(upload_to='party_logos/', null=True, blank=True)
     website = models.URLField(blank=True)
     description = models.TextField(blank=True)
@@ -31,6 +32,7 @@ class Topic(models.Model):
     name = models.CharField(max_length=100)
     slug = models.SlugField(unique=True)
     description = models.TextField(blank=True)
+    keywords = models.JSONField(default=list, blank=True, help_text="List of keywords used to identify this topic")
     
     def save(self, *args, **kwargs):
         """Generate slug if not provided."""

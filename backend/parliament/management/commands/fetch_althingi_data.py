@@ -47,6 +47,9 @@ class Command(BaseCommand):
         # Create the session in our database
         self.create_session(session_number)
         
+        # Create default topics first
+        self.create_default_topics()
+        
         # Fetch data based on type
         if data_type in ['parties', 'all']:
             self.fetch_parties(session_number)
@@ -81,79 +84,160 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f'Error creating session: {str(e)}'))
             return None
     
+    def create_default_topics(self):
+        """Create default topics if they don't exist."""
+        self.stdout.write('Creating default topics...')
+        
+        default_topics = [
+            {
+                'name': 'Heilbrigðismál',
+                'description': 'Heilbrigðisþjónusta, læknisþjónusta og lýðheilsa',
+                'keywords': ['heilbrigðis', 'sjúkra', 'heilsu', 'lækn', 'sjúkrahús', 'heilbrigðisþjónust',
+                           'lyfja', 'meðferð', 'hjúkrun', 'bráðamóttök']
+            },
+            {
+                'name': 'Menntamál',
+                'description': 'Menntun, skólar og fræðsla',
+                'keywords': ['mennta', 'skóla', 'kennslu', 'náms', 'háskóla', 'framhaldsskól',
+                           'grunnskól', 'fræðslu', 'nemend', 'kennara']
+            },
+            {
+                'name': 'Umhverfismál',
+                'description': 'Umhverfismál, loftslagsmál og náttúruvernd',
+                'keywords': ['umhverfis', 'loftslags', 'náttúru', 'mengunar', 'orkumál', 'sjálfbær',
+                           'endurvinnslu', 'græn', 'vistkerfi', 'landgræðslu', 'skógrækt']
+            },
+            {
+                'name': 'Efnahagsmál',
+                'description': 'Efnahagsmál, fjármál og viðskipti',
+                'keywords': ['fjármála', 'efnahags', 'skatta', 'viðskipta', 'banka', 'fjárlög',
+                           'verðbréf', 'gjald', 'tekju', 'kostnað', 'greiðslu']
+            },
+            {
+                'name': 'Dómsmál',
+                'description': 'Dómsmál, lög og réttarkerfi',
+                'keywords': ['dóm', 'rétt', 'laga', 'saka', 'réttindi', 'dómstól', 'löggjöf',
+                           'refsing', 'fangelsi', 'lögregl']
+            }
+        ]
+        
+        for topic_data in default_topics:
+            topic, created = Topic.objects.get_or_create(
+                name=topic_data['name'],
+                defaults={
+                    'description': topic_data['description'],
+                    'keywords': topic_data['keywords']
+                }
+            )
+            if created:
+                self.stdout.write(self.style.SUCCESS(f'Created topic: {topic.name}'))
+            else:
+                self.stdout.write(f'Topic already exists: {topic.name}')
+
+    def assign_topics_to_bill(self, bill, title, description):
+        """Assign topics to a bill based on its title and description."""
+        topics = Topic.objects.all()
+        
+        for topic in topics:
+            # Get keywords for the topic
+            keywords = topic.keywords if hasattr(topic, 'keywords') else []
+            
+            # Check if any keyword matches the title or description
+            if any(keyword.lower() in title.lower() or 
+                  (description and keyword.lower() in description.lower()) 
+                  for keyword in keywords):
+                bill.topics.add(topic)
+                self.stdout.write(f'Added topic {topic.name} to bill: {title}')
+
     def fetch_parties(self, session_number):
         """Fetch political parties from Alþingi."""
         self.stdout.write('Fetching political parties...')
         
-        # Create default parties based on known Icelandic parties
-        default_parties = [
-            {
-                'name': 'Sjálfstæðisflokkur',
-                'abbreviation': 'D',
-                'color': '#0000FF',  # Blue
-            },
-            {
-                'name': 'Framsóknarflokkur',
-                'abbreviation': 'B',
-                'color': '#00FF00',  # Green
-            },
-            {
-                'name': 'Samfylkingin',
-                'abbreviation': 'S',
-                'color': '#FF0000',  # Red
-            },
-            {
-                'name': 'Vinstrihreyfingin - grænt framboð',
-                'abbreviation': 'V',
-                'color': '#006400',  # Dark Green
-            },
-            {
-                'name': 'Píratar',
-                'abbreviation': 'P',
-                'color': '#800080',  # Purple
-            },
-            {
-                'name': 'Viðreisn',
-                'abbreviation': 'C',
-                'color': '#FFA500',  # Orange
-            },
-            {
-                'name': 'Miðflokkurinn',
-                'abbreviation': 'M',
-                'color': '#008080',  # Teal
-            },
-            {
-                'name': 'Flokkur fólksins',
-                'abbreviation': 'F',
-                'color': '#FF00FF',  # Magenta
-            },
-            {
-                'name': 'Unknown Party',
-                'abbreviation': 'UP',
-                'color': '#777777',  # Gray
-            }
-        ]
-        
-        parties_created = 0
-        parties_updated = 0
-        
-        for party_data in default_parties:
-            party, created = PoliticalParty.objects.get_or_create(
-                name=party_data['name'],
-                defaults={
-                    'abbreviation': party_data['abbreviation'],
-                    'description': f'Political party in Iceland: {party_data["name"]}',
-                    'color': party_data['color']
-                }
-            )
+        url = 'https://www.althingi.is/altext/xml/thingflokkar/'
+        try:
+            response = requests.get(url)
+            if response.status_code != 200:
+                self.stdout.write(self.style.ERROR(f'Error fetching parties: HTTP {response.status_code}'))
+                return
             
-            if created:
-                parties_created += 1
-            else:
-                parties_updated += 1
-        
-        self.stdout.write(self.style.SUCCESS(f'Parties created: {parties_created}, updated: {parties_updated}'))
-    
+            root = ET.fromstring(response.content)
+            
+            parties_created = 0
+            parties_updated = 0
+            
+            # Process each party
+            for party in root.findall('þingflokkur'):
+                try:
+                    # Get party details
+                    party_id = party.get('id')
+                    name_elem = party.find('heiti')
+                    name = name_elem.text.strip() if name_elem is not None and name_elem.text else ''
+                    
+                    abbr_elem = party.find('.//stuttskammstöfun')
+                    short_abbr = abbr_elem.text.strip() if abbr_elem is not None and abbr_elem.text else ''
+                    
+                    long_abbr_elem = party.find('.//löngskammstöfun')
+                    long_abbr = long_abbr_elem.text.strip() if long_abbr_elem is not None and long_abbr_elem.text else ''
+                    
+                    # Skip empty or placeholder parties
+                    if not name or name == ' ' or short_abbr == '-':
+                        continue
+                    
+                    # Get time period
+                    first_session = party.find('.//fyrstaþing')
+                    last_session = party.find('.//síðastaþing')
+                    
+                    # Create description
+                    active_status = "Active" if last_session is None else "Inactive"
+                    time_period = f"First session: {first_session.text if first_session is not None and first_session.text else 'Unknown'}"
+                    if last_session is not None and last_session.text:
+                        time_period += f", Last session: {last_session.text}"
+                    
+                    description = f"{active_status} political party. {time_period}"
+                    
+                    # Assign a color based on the party's ID (for visualization)
+                    color_map = {
+                        '35': '#0000FF',  # Sjálfstæðisflokkur - Blue
+                        '2': '#00FF00',   # Framsóknarflokkur - Green
+                        '38': '#FF0000',  # Samfylkingin - Red
+                        '23': '#006400',  # Vinstrihreyfingin - grænt framboð - Dark Green
+                        '43': '#800080',  # Píratar - Purple
+                        '45': '#FFA500',  # Viðreisn - Orange
+                        '47': '#008080',  # Miðflokkurinn - Teal
+                        '46': '#FF00FF',  # Flokkur fólksins - Magenta
+                    }
+                    color = color_map.get(party_id, '#777777')  # Default to gray if no specific color
+                    
+                    # Create or update the party
+                    party_obj, created = PoliticalParty.objects.update_or_create(
+                        althingi_id=party_id,
+                        defaults={
+                            'name': name,
+                            'abbreviation': short_abbr,
+                            'description': description,
+                            'color': color
+                        }
+                    )
+                    
+                    if created:
+                        parties_created += 1
+                        self.stdout.write(self.style.SUCCESS(f'Created party: {name} ({short_abbr})'))
+                    else:
+                        parties_updated += 1
+                        self.stdout.write(f'Updated party: {name} ({short_abbr})')
+                        
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f'Error processing party {party_id}: {str(e)}'))
+                    continue
+            
+            self.stdout.write(self.style.SUCCESS(f'Parties created: {parties_created}, updated: {parties_updated}'))
+            
+        except requests.RequestException as e:
+            self.stdout.write(self.style.ERROR(f'Error fetching parties: {str(e)}'))
+        except ET.ParseError as e:
+            self.stdout.write(self.style.ERROR(f'Error parsing XML: {str(e)}'))
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f'Unexpected error: {str(e)}'))
 
     def fetch_mps(self, session_number):
         """Fetch MPs from Alþingi (now with unique slug handling)."""
@@ -296,24 +380,6 @@ class Command(BaseCommand):
                         slug = f"{base_slug}-{counter}"
                         counter += 1
                     
-                    # Extract topics/categories
-                    topics = []
-                    for topic_element in root.findall(".//efnisflokkur"):
-                        if topic_element.text:
-                            topic_name = topic_element.text.strip()
-                            topic_desc = topic_element.find("lýsing")
-                            topic_description = topic_desc.text.strip() if topic_desc is not None and topic_desc.text else ""
-                            
-                            # Create or get topic
-                            topic, created = Topic.objects.get_or_create(
-                                name=topic_name,
-                                defaults={
-                                    'slug': slugify(topic_name),
-                                    'description': topic_description
-                                }
-                            )
-                            topics.append(topic)
-                    
                     # Find document info
                     doc_info = root.find(".//þingskjal")
                     introduced_date = None
@@ -321,7 +387,6 @@ class Command(BaseCommand):
                         distribution = doc_info.find("útbýting")
                         if distribution is not None and distribution.text:
                             try:
-                                # Parse date in format "2025-03-07 18:55"
                                 date_text = distribution.text.split()[0]
                                 introduced_date = datetime.strptime(date_text, '%Y-%m-%d').date()
                             except (ValueError, IndexError):
@@ -342,9 +407,8 @@ class Command(BaseCommand):
                             }
                         )
                         
-                        # Set topics
-                        if topics:
-                            bill.topics.set(topics)
+                        # Assign topics based on title and description
+                        self.assign_topics_to_bill(bill, title_text, f"{bill_type_text} - {status_text}")
                         
                         if created:
                             bills_created += 1

@@ -93,9 +93,11 @@ class SpeechSerializer(serializers.ModelSerializer):
 class BillListSerializer(serializers.ModelSerializer):
     """Serializer for listing bill objects."""
     
+    topics = TopicSerializer(many=True, read_only=True)
+    
     class Meta:
         model = Bill
-        fields = ('id', 'title', 'slug', 'status', 'introduced_date')
+        fields = ('id', 'title', 'slug', 'status', 'introduced_date', 'topics', 'url', 'description')
 
 
 class BillDetailSerializer(serializers.ModelSerializer):
