@@ -72,91 +72,58 @@ class Command(BaseCommand):
             
             bills_processed = 0
             for bill in bills:
-                bill_id_elem = bill.find('málsnúmer')
-                if bill_id_elem is None:
-                    continue
+                try:
+                    # Get the bill number from the URL
+                    html_elem = bill.find('html')
+                    if html_elem is None or not html_elem.text:
+                        continue
+                        
+                    # Extract bill number from URL
+                    import re
+                    url_match = re.search(r'mnr=(\d+)', html_elem.text)
+                    if not url_match:
+                        continue
+                        
+                    bill_id = url_match.group(1)
+                    self.stdout.write(f'\nProcessing bill {bill_id}...')
                     
-                bill_id = bill_id_elem.text
-                status_element = bill.find('staða')
-                
-                # Log the bill we're processing
-                status_text = status_element.text if status_element is not None else "Unknown status"
-                self.stdout.write(f'Processing bill {bill_id} with status: {status_text}')
-                
-                # Process all bills, not just passed or rejected ones
-                self.fetch_bill_voting_records(session, bill_id, force)
-                bills_processed += 1
-                
-                # Log progress every 10 bills
-                if bills_processed % 10 == 0:
-                    self.stdout.write(self.style.SUCCESS(f'Processed {bills_processed} bills so far...'))
-                
+                    # Get the bill title for logging
+                    title_elem = bill.find('málsheiti')
+                    title = title_elem.text if title_elem is not None else "Unknown title"
+                    self.stdout.write(f'Title: {title}')
+                    
+                    # Process the bill
+                    self.fetch_bill_voting_records(session, bill_id, force)
+                    bills_processed += 1
+                    
+                    # Log progress every 10 bills
+                    if bills_processed % 10 == 0:
+                        self.stdout.write(self.style.SUCCESS(f'Processed {bills_processed} bills so far...'))
+                    
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f'Error processing bill: {str(e)}'))
+                    continue
+            
             self.stdout.write(self.style.SUCCESS(f'Completed processing {bills_processed} bills'))
                 
         except requests.RequestException as e:
             self.stdout.write(self.style.ERROR(f'Error fetching bill list: {str(e)}'))
+        except ET.ParseError as e:
+            self.stdout.write(self.style.ERROR(f'Error parsing XML: {str(e)}'))
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f'Unexpected error: {str(e)}'))
     
     def fetch_bill_voting_records(self, session, bill_number, force):
         """Fetch voting records for a specific bill."""
         self.stdout.write(f'Fetching voting records for bill {bill_number}...')
         
-        # Special case for bill 1 in session 156
-        if session.session_number == 156 and bill_number == 1:
-            self.stdout.write("Using known voting ID 67596 for bill 1 in session 156")
-            self.fetch_voting_details_direct(session, bill_number, "67596")
-            return
-        
-        # First, get the bill details to find voting sessions
-        url = f'https://www.althingi.is/altext/xml/thingmalalisti/thingmal/?lthing={session.session_number}&malnr={bill_number}'
-        
         try:
-            response = requests.get(url)
-            response.raise_for_status()
+            # Get the bill details to find voting IDs and create/update the bill record
+            bill_details_url = f'https://www.althingi.is/altext/xml/thingmalalisti/thingmal/?lthing={session.session_number}&malnr={bill_number}'
+            bill_response = requests.get(bill_details_url)
+            bill_response.raise_for_status()
             
-            root = ET.fromstring(response.content)
-            
-            # Debug: Print the XML structure
-            self.stdout.write("XML structure for voting sessions:")
-            for elem in root.iter():
-                if 'atkvæðagreiðsla' in elem.tag.lower():
-                    self.stdout.write(f"Found element: {elem.tag}")
-                    for child in elem:
-                        self.stdout.write(f"  Child: {child.tag} = {child.text}")
-            
-            # Find all atkvæðagreiðslur (voting sessions)
-            voting_sessions = []
-            
-            # Try different approaches to find voting sessions
-            for approach in ['direct', 'attribute', 'time_based']:
-                self.stdout.write(f"Trying {approach} approach to find voting sessions...")
-                
-                if approach == 'direct':
-                    # Look for elements with 'atkvæðagreiðsla' in the tag
-                    for elem in root.findall('.//*'):
-                        if 'atkvæðagreiðsla' in elem.tag.lower():
-                            voting_sessions.append(elem)
-                            self.stdout.write(f"Found voting session via direct tag match: {elem.tag}")
-                
-                elif approach == 'attribute':
-                    # Try to find elements with specific attributes
-                    for elem in root.findall('.//*'):
-                        if any('atkvæðagreiðsla' in attr.lower() for attr in elem.attrib.keys()):
-                            voting_sessions.append(elem)
-                            self.stdout.write(f"Found voting session via attribute: {elem.tag}")
-                
-                elif approach == 'time_based':
-                    # Look for elements with time information that might be voting sessions
-                    for elem in root.findall('.//tími'):
-                        parent = elem.getparent()
-                        if parent is not None and parent not in voting_sessions:
-                            voting_sessions.append(parent)
-                            self.stdout.write(f"Found voting session via time element: {parent.tag}")
-            
-            if not voting_sessions:
-                self.stdout.write(self.style.WARNING(f'No voting sessions found for bill {bill_number} using any method'))
-                return
-            
-            self.stdout.write(self.style.SUCCESS(f'Found {len(voting_sessions)} voting sessions'))
+            root = ET.fromstring(bill_response.content)
             
             # Get or create the bill in our database
             bill_title_elem = root.find('.//málsheiti')
@@ -171,157 +138,115 @@ class Command(BaseCommand):
                 defaults={
                     'title': bill_title,
                     'slug': f'{session.session_number}-{bill_number}',
-                    'introduced_date': datetime.now().date(),  # This should be improved to get the actual date
+                    'introduced_date': datetime.now().date(),
                 }
             )
             
             if created:
                 self.stdout.write(f'Created new bill: {bill_obj}')
             
-            # Process each voting session
-            for voting_session in voting_sessions:
-                # Print the voting session structure for debugging
-                self.stdout.write(f"Voting session structure:")
-                for elem in voting_session:
-                    self.stdout.write(f"Element: {elem.tag} = {elem.text}")
-                
-                # Get the voting session ID from the XML structure
-                # Based on the debugging output, we need to extract the ID from the URL or other attributes
-                
-                # First, try to find an element with 'atkvæðagreiðslunúmer' or similar
-                voting_id = None
-                
-                # Look for an element with 'slóð' (URL) that might contain the voting ID
-                slod_elem = voting_session.find('.//slóð')
-                if slod_elem is not None and slod_elem.text:
-                    # Try to extract the voting ID from the URL
-                    url_text = slod_elem.text
-                    if 'atkvaedagreidsla' in url_text or 'atkvæðagreidsla' in url_text:
-                        # Extract the ID from the URL
-                        import re
-                        match = re.search(r'numer=(\d+)', url_text)
-                        if match:
-                            voting_id = match.group(1)
-                
-                # If we still don't have a voting ID, try to use the time as a unique identifier
+            # Find all voting records for this bill
+            voting_records = root.findall('.//atkvæðagreiðsla')
+            if not voting_records:
+                self.stdout.write(f'No voting records found for bill {bill_number}')
+                return
+            
+            for voting_record in voting_records:
+                voting_id = voting_record.get('atkvæðagreiðslunúmer')
                 if not voting_id:
-                    time_elem = voting_session.find('tími')
-                    if time_elem is not None and time_elem.text:
-                        # Use the timestamp as a unique identifier
-                        voting_id = time_elem.text.replace(':', '').replace('-', '').replace('T', '')
-                
-                if not voting_id:
-                    self.stdout.write(self.style.WARNING("Could not determine voting ID"))
                     continue
                 
-                self.stdout.write(f"Using voting ID: {voting_id}")
-                
-                # Check if we already have this voting session and skip if not forced
-                if not force and Vote.objects.filter(bill=bill_obj, vote_date=datetime.now().date()).exists():
-                    self.stdout.write(f'Voting records for bill {bill_number} already exist. Use --force to update.')
-                    continue
-                
-                # For this bill, we need to fetch the voting details from a different endpoint
-                # The URL format is based on the voting ID
+                # Now fetch the actual voting details using the voting ID
                 voting_details_url = f'https://www.althingi.is/altext/xml/atkvaedagreidslur/atkvaedagreidsla/?numer={voting_id}'
                 self.stdout.write(f"Fetching voting details from: {voting_details_url}")
                 
-                try:
-                    voting_response = requests.get(voting_details_url)
-                    voting_response.raise_for_status()
+                voting_details_response = requests.get(voting_details_url)
+                voting_details_response.raise_for_status()
+                
+                voting_root = ET.fromstring(voting_details_response.content)
+                
+                # Get voting date
+                date_elem = voting_root.find('.//tími')
+                if date_elem is None or not date_elem.text:
+                    self.stdout.write(self.style.WARNING(f'Could not find date for voting session {voting_id}'))
+                    continue
                     
-                    voting_root = ET.fromstring(voting_response.content)
-                    
-                    # Extract the date from the voting details
-                    time_elem = voting_root.find('.//tími')
-                    if time_elem is not None and time_elem.text:
-                        vote_date = datetime.strptime(time_elem.text.split('T')[0], '%Y-%m-%d').date()
-                        self.stdout.write(f"Vote date: {vote_date}")
-                    else:
-                        # Fallback to the date from the voting session
-                        time_elem = voting_session.find('tími')
-                        if time_elem is not None and time_elem.text:
-                            vote_date = datetime.strptime(time_elem.text.split('T')[0], '%Y-%m-%d').date()
-                        else:
-                            vote_date = datetime.now().date()
-                    
-                    # Extract the result from the voting details
-                    result = 'unknown'
-                    result_elem = voting_root.find('.//niðurstaða/niðurstaða')
-                    if result_elem is not None and result_elem.text:
-                        if 'samþykkt' in result_elem.text.lower():
-                            result = 'passed'
-                        elif 'fellt' in result_elem.text.lower():
-                            result = 'rejected'
-                    
-                    # Update bill status based on result
-                    if result == 'passed':
+                vote_date = datetime.strptime(date_elem.text.split('T')[0], '%Y-%m-%d').date()
+                
+                # Check if we already have this voting session and skip if not forced
+                if not force and Vote.objects.filter(bill=bill_obj, vote_date=vote_date).exists():
+                    self.stdout.write(f'Voting records for bill {bill_number} on {vote_date} already exist. Use --force to update.')
+                    continue
+                
+                # Extract the result
+                result = 'unknown'
+                result_elem = voting_root.find('.//niðurstaða')
+                if result_elem is not None and result_elem.text:
+                    if 'samþykkt' in result_elem.text.lower():
+                        result = 'passed'
                         bill_obj.status = 'passed'
-                    elif result == 'rejected':
+                    elif 'fellt' in result_elem.text.lower():
+                        result = 'rejected'
                         bill_obj.status = 'rejected'
                     bill_obj.save()
-                    
-                    # Process individual votes
-                    with transaction.atomic():
-                        # Delete existing votes for this bill if we're updating
-                        Vote.objects.filter(bill=bill_obj).delete()
-                        
-                        # Find all MP votes in the XML
-                        mp_votes = voting_root.findall('.//atkvæðaskrá/þingmaður')
-                        self.stdout.write(f"Found {len(mp_votes)} MP votes in the XML")
-                        
-                        votes_created = 0
-                        for mp_elem in mp_votes:
-                            mp_id = mp_elem.attrib.get('id')
-                            mp_name = mp_elem.text
-                            
-                            # Find the vote value for this MP
-                            vote_elem = mp_elem.find('atkvæði')
-                            if vote_elem is None:
-                                self.stdout.write(self.style.WARNING(f"No vote element found for MP {mp_name}"))
-                                continue
-                                
-                            vote_value = vote_elem.text
-                            
-                            if not mp_id or not vote_value:
-                                self.stdout.write(self.style.WARNING(f"Missing MP ID or vote value for MP {mp_name}"))
-                                continue
-                            
-                            self.stdout.write(f"Processing vote for MP {mp_name} (ID: {mp_id}): {vote_value}")
-                            
-                            # Map Althingi vote values to our model's values
-                            vote_mapping = {
-                                'já': 'yes',
-                                'nei': 'no',
-                                'greiðir ekki atkvæði': 'abstain',
-                                'fjarverandi': 'absent',
-                                'boðaði fjarvist': 'absent'
-                            }
-                            
-                            vote_value = vote_mapping.get(vote_value.lower(), 'abstain')
-                            
-                            try:
-                                mp = MP.objects.get(althingi_id=mp_id)
-                                
-                                Vote.objects.create(
-                                    bill=bill_obj,
-                                    mp=mp,
-                                    vote=vote_value,
-                                    vote_date=vote_date,
-                                    session=session
-                                )
-                                votes_created += 1
-                                
-                            except MP.DoesNotExist:
-                                self.stdout.write(self.style.WARNING(f"MP with ID {mp_id} ({mp_name}) not found in database"))
-                        
-                        self.stdout.write(self.style.SUCCESS(f"Created {votes_created} votes out of {len(mp_votes)} possible votes"))
-                    
-                except requests.RequestException as e:
-                    self.stdout.write(self.style.ERROR(f"Error fetching voting details: {str(e)}"))
                 
+                # Process individual votes
+                with transaction.atomic():
+                    # Delete existing votes for this bill and date if we're updating
+                    Vote.objects.filter(bill=bill_obj, vote_date=vote_date).delete()
+                    
+                    # Find all MP votes
+                    mp_votes = voting_root.findall('.//þingmaður')
+                    self.stdout.write(f"Found {len(mp_votes)} MP votes")
+                    
+                    votes_created = 0
+                    for mp_elem in mp_votes:
+                        mp_id = mp_elem.get('id')
+                        vote_elem = mp_elem.find('atkvæði')
+                        
+                        if not mp_id or vote_elem is None:
+                            continue
+                        
+                        vote_value = vote_elem.text
+                        if not vote_value:
+                            continue
+                            
+                        # Map Althingi vote values to our model's values
+                        vote_mapping = {
+                            'já': 'yes',
+                            'nei': 'no',
+                            'greiðir ekki atkvæði': 'abstain',
+                            'fjarverandi': 'absent',
+                            'boðaði fjarvist': 'absent'
+                        }
+                        
+                        vote_value = vote_mapping.get(vote_value.lower(), 'abstain')
+                        
+                        try:
+                            mp = MP.objects.get(althingi_id=mp_id)
+                            
+                            Vote.objects.create(
+                                bill=bill_obj,
+                                mp=mp,
+                                vote=vote_value,
+                                vote_date=vote_date,
+                                session=session
+                            )
+                            votes_created += 1
+                            
+                        except MP.DoesNotExist:
+                            name_elem = mp_elem.find('nafn')
+                            name = name_elem.text if name_elem is not None else "Unknown"
+                            self.stdout.write(self.style.WARNING(f"MP with ID {mp_id} ({name}) not found in database"))
+                    
+                    self.stdout.write(self.style.SUCCESS(f"Created {votes_created} votes"))
+            
         except requests.RequestException as e:
-            self.stdout.write(self.style.ERROR(f'Error fetching bill details: {str(e)}'))
+            self.stdout.write(self.style.ERROR(f'Error fetching data: {str(e)}'))
+        except ET.ParseError as e:
+            self.stdout.write(self.style.ERROR(f'Error parsing XML: {str(e)}'))
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f'Unexpected error: {str(e)}'))
     
     def fetch_voting_details_direct(self, session, bill_number, voting_id):
         """Fetch voting details directly using a known voting ID."""
@@ -392,24 +317,21 @@ class Command(BaseCommand):
                 Vote.objects.filter(bill=bill_obj).delete()
                 
                 # Find all MP votes in the XML
-                mp_votes = root.findall('.//atkvæðaskrá/þingmaður')
+                mp_votes = root.findall('.//þingmaður')
                 self.stdout.write(f"Found {len(mp_votes)} MP votes in the XML")
                 
                 votes_created = 0
                 for mp_elem in mp_votes:
                     mp_id = mp_elem.get('id')
-                    name_elem = mp_elem.find('nafn')
                     vote_elem = mp_elem.find('atkvæði')
                     
-                    if name_elem is None or vote_elem is None:
-                        self.stdout.write(self.style.WARNING(f"Missing name or vote element for MP with ID {mp_id}"))
+                    if not mp_id or vote_elem is None:
                         continue
                     
-                    mp_name = name_elem.text
                     vote_value = vote_elem.text
-                    
-                    self.stdout.write(f"Processing vote for MP {mp_name} (ID: {mp_id}): {vote_value}")
-                    
+                    if not vote_value:
+                        continue
+                        
                     # Map Althingi vote values to our model's values
                     vote_mapping = {
                         'já': 'yes',
@@ -419,7 +341,7 @@ class Command(BaseCommand):
                         'boðaði fjarvist': 'absent'
                     }
                     
-                    model_vote_value = vote_mapping.get(vote_value, 'abstain')
+                    vote_value = vote_mapping.get(vote_value.lower(), 'abstain')
                     
                     try:
                         mp = MP.objects.get(althingi_id=mp_id)
@@ -427,14 +349,16 @@ class Command(BaseCommand):
                         Vote.objects.create(
                             bill=bill_obj,
                             mp=mp,
-                            vote=model_vote_value,
+                            vote=vote_value,
                             vote_date=vote_date,
                             session=session
                         )
                         votes_created += 1
                         
                     except MP.DoesNotExist:
-                        self.stdout.write(self.style.WARNING(f"MP with ID {mp_id} ({mp_name}) not found in database"))
+                        name_elem = mp_elem.find('nafn')
+                        name = name_elem.text if name_elem is not None else "Unknown"
+                        self.stdout.write(self.style.WARNING(f"MP with ID {mp_id} ({name}) not found in database"))
                 
                 self.stdout.write(self.style.SUCCESS(f"Created {votes_created} votes out of {len(mp_votes)} possible votes"))
             
