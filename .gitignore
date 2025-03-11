@@ -11,3 +11,4 @@
 *__pycache__
 /backend/data_collection/__pycache__
 *.pyc
+*.pyc
