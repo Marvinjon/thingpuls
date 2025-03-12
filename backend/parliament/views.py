@@ -91,7 +91,7 @@ class MPViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for viewing MPs."""
     
     queryset = MP.objects.all()
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['party', 'active', 'constituency']
     search_fields = ['first_name', 'last_name', 'bio']
