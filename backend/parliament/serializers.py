@@ -47,7 +47,7 @@ class MPListSerializer(serializers.ModelSerializer):
     class Meta:
         model = MP
         fields = ('id', 'first_name', 'last_name', 'slug', 'party', 
-                  'constituency', 'photo', 'active')
+                  'constituency', 'photo', 'active', 'image_url')
 
 
 class MPDetailSerializer(serializers.ModelSerializer):

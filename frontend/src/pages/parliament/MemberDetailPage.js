@@ -271,9 +271,23 @@ const MemberDetailPage = () => {
             <CardContent>
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
                 <Avatar
-                  src={mp.photo}
+                  src={mp.image_url}
                   alt={`${mp.first_name} ${mp.last_name}`}
-                  sx={{ width: 120, height: 120, mb: 2 }}
+                  sx={{ 
+                    width: 200, 
+                    height: 200, 
+                    mb: 2,
+                    bgcolor: 'grey.200'
+                  }}
+                  imgProps={{
+                    onError: (e) => {
+                      e.target.onerror = null; // Prevent infinite loop
+                      e.target.style.display = 'none';
+                      const icon = document.createElement('div');
+                      icon.innerHTML = '<svg style="width: 100px; height: 100px; color: #bdbdbd;" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
+                      e.target.parentElement.appendChild(icon);
+                    }
+                  }}
                 />
                 <Typography variant="h5" gutterBottom>
                   {`${mp.first_name} ${mp.last_name}`}

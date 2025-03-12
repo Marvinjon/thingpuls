@@ -15,6 +15,7 @@ from parliament.models import (
     Vote, 
     Speech
 )
+import os
 
 class Command(BaseCommand):
     help = 'Fetches data from the Alþingi website'
@@ -274,6 +275,9 @@ class Command(BaseCommand):
                     name = mp_element.find("nafn").text.strip()
                     abbreviation = mp_element.find("skammstöfun").text.strip()
 
+                    # Generate image URL
+                    image_url = f'https://www.althingi.is/myndir/mynd/thingmenn/{althingi_id}/org/mynd.jpg'
+
                     # Fetch detailed MP info
                     mp_detail_url = f'https://www.althingi.is/altext/xml/thingmenn/thingmadur/?nr={althingi_id}'
                     mp_detail_response = requests.get(mp_detail_url)
@@ -409,9 +413,10 @@ class Command(BaseCommand):
                                 'active': True,
                                 'first_elected': first_elected,
                                 'current_position_started': current_position_started,
-                                'speech_count': 0,  # These will be updated separately
+                                'speech_count': 0,
                                 'bills_sponsored': 0,
-                                'bills_cosponsored': 0
+                                'bills_cosponsored': 0,
+                                'image_url': image_url
                             }
                         )
 

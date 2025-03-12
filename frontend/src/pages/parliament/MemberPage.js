@@ -203,12 +203,20 @@ const MemberPage = () => {
                     to={`/parliament/members/${mp.slug}`}
                     sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}
                   >
-                    {mp.photo ? (
+                    {mp.image_url ? (
                       <CardMedia
                         component="img"
                         height="240"
-                        image={mp.photo}
+                        image={mp.image_url}
                         alt={`${mp.first_name} ${mp.last_name}`}
+                        sx={{ objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.target.onerror = null; // Prevent infinite loop
+                          e.target.style.display = 'none';
+                          const icon = document.createElement('div');
+                          icon.innerHTML = '<svg style="width: 100px; height: 100px; color: #bdbdbd;" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4-4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
+                          e.target.parentElement.appendChild(icon);
+                        }}
                       />
                     ) : (
                       <Box 

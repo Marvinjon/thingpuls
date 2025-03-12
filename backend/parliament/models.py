@@ -71,11 +71,11 @@ class MP(models.Model):
     
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
-    slug = models.SlugField(max_length=255, unique=True)
+    slug = models.SlugField(max_length=200, unique=True)
     althingi_id = models.IntegerField(unique=True, help_text="MP ID from the Alþingi database")
     party = models.ForeignKey(PoliticalParty, on_delete=models.SET_NULL, null=True, related_name='mps')
-    constituency = models.CharField(max_length=100)
-    email = models.EmailField(null=True, blank=True)
+    constituency = models.CharField(max_length=100, blank=True)
+    email = models.EmailField(blank=True, null=True)
     website = models.URLField(blank=True)
     facebook_url = models.URLField(blank=True)
     twitter_url = models.URLField(blank=True)
@@ -95,6 +95,8 @@ class MP(models.Model):
     speech_count = models.IntegerField(default=0)
     bills_sponsored = models.IntegerField(default=0)
     bills_cosponsored = models.IntegerField(default=0)
+    
+    image_url = models.URLField(blank=True, help_text="URL to MP's image on Althingi website")
     
     class Meta:
         ordering = ['last_name', 'first_name']
