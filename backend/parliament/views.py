@@ -35,7 +35,7 @@ class PoliticalPartyViewSet(viewsets.ReadOnlyModelViewSet):
     
     queryset = PoliticalParty.objects.all()
     serializer_class = PoliticalPartySerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'abbreviation']
     ordering_fields = ['name']
