@@ -13,4 +13,5 @@ pandas==2.1.1
 numpy==1.26.0
 pyjwt==2.8.0
 gunicorn==21.2.0
-whitenoise==6.5.0 
+whitenoise==6.5.0
+Pillow==10.2.0 
