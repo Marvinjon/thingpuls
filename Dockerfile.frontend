@@ -3,19 +3,28 @@ FROM node:18 as build
 
 WORKDIR /app
 
+# Copy package files
 COPY frontend/package*.json ./
+
+# Install dependencies
 RUN npm install
 
+# Copy the rest of the frontend code
 COPY frontend/ ./
+
+# Build the React app
 RUN npm run build
 
 # Production stage
 FROM nginx:stable-alpine
 
-# Copy build files from the build stage
+# Remove default nginx static assets
+RUN rm -rf /usr/share/nginx/html/*
+
+# Copy static assets from builder stage
 COPY --from=build /app/build /usr/share/nginx/html
 
-# Add custom nginx configuration
+# Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
