@@ -42,6 +42,9 @@ const VotingRecordsPage = () => {
   });
   const [page, setPage] = useState(1);
   const [rowsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [allVotes, setAllVotes] = useState({});  // Store all votes across pages
   const [showStats, setShowStats] = useState(false);
   const [sortOrder, setSortOrder] = useState('dateDesc');
   
@@ -52,8 +55,7 @@ const VotingRecordsPage = () => {
         
         // Build query parameters
         const params = {
-          page,
-          limit: rowsPerPage
+          limit: 100,  // Fetch more records at once
         };
         
         if (filters.bill) params.bill = filters.bill;
@@ -68,17 +70,23 @@ const VotingRecordsPage = () => {
         if (sortOrder === 'dateAsc') params.ordering = 'vote_date';
         else if (sortOrder === 'dateDesc') params.ordering = '-vote_date';
         
-        // Fetch data from API
-        const response = await api.parliamentService.getVotes(params);
-        
-        console.log('API Response:', response.data);  // Debug log
-        
-        // Process the data to group votes by bill
+        // Fetch all pages of data
+        let allResults = [];
+        let nextUrl = null;
+        let firstResponse = await api.parliamentService.getVotes(params);
+        allResults = [...firstResponse.data.results];
+        nextUrl = firstResponse.data.next;
+
+        while (nextUrl) {
+          const response = await api.parliamentService.getVotes({ ...params, page: nextUrl.split('page=')[1].split('&')[0] });
+          allResults = [...allResults, ...response.data.results];
+          nextUrl = response.data.next;
+        }
+
+        // Process all votes
         const groupedVotes = {};
         
-        response.data.results.forEach(vote => {
-          console.log('Processing vote:', vote);  // Debug log
-          
+        allResults.forEach(vote => {
           if (!groupedVotes[vote.bill.id]) {
             const billData = {
               id: vote.bill.id,
@@ -87,13 +95,12 @@ const VotingRecordsPage = () => {
               billTitle: vote.bill.title || 'Untitled Bill',
               date: vote.vote_date,
               stage: "Final Vote",
-              result: vote.bill.status?.toLowerCase() === 'passed' ? 'Passed' : 
-                     vote.bill.status?.toLowerCase() === 'rejected' ? 'Failed' : 
-                     vote.bill.status ? vote.bill.status.charAt(0).toUpperCase() + vote.bill.status.slice(1) : '',
+              result: vote.bill.status ? 
+                     vote.bill.status.charAt(0).toUpperCase() + vote.bill.status.slice(1) : 
+                     'In Progress',
               totalVotes: { for: 0, against: 0, abstentions: 0, absent: 0 },
               memberVotes: []
             };
-            console.log('Created bill data:', billData);  // Debug log
             groupedVotes[vote.bill.id] = billData;
           }
           
@@ -108,15 +115,28 @@ const VotingRecordsPage = () => {
             memberId: vote.mp.id,
             memberName: `${vote.mp.first_name} ${vote.mp.last_name}`,
             party: vote.mp.party ? vote.mp.party.name : 'Independent',
-            vote: vote.vote.charAt(0).toUpperCase() + vote.vote.slice(1) // Capitalize first letter
+            vote: vote.vote.charAt(0).toUpperCase() + vote.vote.slice(1)
           });
         });
         
-        // Convert to array
-        const processedData = Object.values(groupedVotes);
-        console.log('Processed data:', processedData);  // Debug log
+        // Convert to array and sort by date
+        const processedData = Object.values(groupedVotes).sort((a, b) => {
+          if (sortOrder === 'dateDesc') {
+            return new Date(b.date) - new Date(a.date);
+          }
+          return new Date(a.date) - new Date(b.date);
+        });
         
-        setVotingRecords(processedData);
+        // Calculate total pages based on processed data
+        const totalItems = processedData.length;
+        setTotalRecords(totalItems);
+        setTotalPages(Math.ceil(totalItems / rowsPerPage));
+        
+        // Slice the data for current page
+        const startIndex = (page - 1) * rowsPerPage;
+        const endIndex = startIndex + rowsPerPage;
+        setVotingRecords(processedData.slice(startIndex, endIndex));
+        
         setLoading(false);
       } catch (err) {
         setError("Failed to load voting records. Please try again later.");
@@ -126,7 +146,7 @@ const VotingRecordsPage = () => {
     };
 
     fetchVotingRecords();
-  }, [billId, memberId, filters, page, rowsPerPage, sortOrder]);
+  }, [filters, sortOrder, page, rowsPerPage]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -426,9 +446,10 @@ const VotingRecordsPage = () => {
                       <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <Chip 
-                          label={record.result ? record.result.charAt(0).toUpperCase() + record.result.slice(1) : ''}
+                          label={record.result}
                           color={record.result?.toLowerCase() === 'passed' ? 'success' : 
                                 record.result?.toLowerCase() === 'failed' ? 'error' : 
+                                record.result?.toLowerCase() === 'in progress' ? 'info' :
                                 'default'}
                           size="small"
                         />
@@ -456,12 +477,17 @@ const VotingRecordsPage = () => {
           
           <Box display="flex" justifyContent="center" mt={4}>
             <Pagination 
-              count={3} // In a real app, this would be calculated from total records
+              count={totalPages}
               page={page}
               onChange={handlePageChange}
               color="primary"
             />
           </Box>
+          {totalRecords > 0 && (
+            <Typography variant="body2" color="textSecondary" align="center" mt={1}>
+              Total records: {totalRecords}
+            </Typography>
+          )}
         </>
       )}
     </Container>
