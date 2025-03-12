@@ -16,6 +16,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import DescriptionIcon from '@mui/icons-material/Description';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import InfoIcon from '@mui/icons-material/Info';
+import LaunchIcon from '@mui/icons-material/Launch';
 import api from '../../services/api';
 
 // Helper function to get URL parameters
@@ -441,6 +442,17 @@ const VotingRecordsPage = () => {
                         </Link>
                         <Typography variant="body2" color="textSecondary">
                           {record.billTitle}
+                          {record.billNumber && !isNaN(record.billNumber) && (
+                            <Link
+                              href={`https://www.althingi.is/thingstorf/thingmalalistar-eftir-thingum/ferill/${record.sessionNumber}/${record.billNumber}/?ltg=${record.sessionNumber}&mnr=${record.billNumber}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              sx={{ ml: 1, display: 'inline-flex', alignItems: 'center', fontSize: 'inherit' }}
+                            >
+                              <LaunchIcon sx={{ fontSize: '1rem', ml: 0.5 }} />
+                              Althingi
+                            </Link>
+                          )}
                         </Typography>
                       </TableCell>
                       <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
