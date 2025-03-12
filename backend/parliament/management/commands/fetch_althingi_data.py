@@ -453,25 +453,59 @@ class Command(BaseCommand):
         
         bills_created = 0
         bills_updated = 0
+        empty_bill_count = 0
+        bill_number = 1
         
-        # Iterate through possible bill numbers (1 to 150 to be safe)
-        for bill_number in range(1, 150):
+        # Continue fetching until we find 8 consecutive empty bills
+        while empty_bill_count < 8:
             try:
+                self.stdout.write(f'Processing bill {bill_number}...')
+                
                 # Fetch individual bill data
                 url = f'https://www.althingi.is/altext/xml/thingmalalisti/thingmal/?lthing={session_number}&malnr={bill_number}'
                 response = requests.get(url)
                 
                 if response.status_code != 200:
+                    self.stdout.write(f'Bill {bill_number} not found (HTTP {response.status_code})')
+                    empty_bill_count += 1
+                    bill_number += 1
                     continue
                 
                 # Parse XML
                 try:
                     root = ET.fromstring(response.content)
                     
-                    # Find the main bill element
+                    # Check if this is an empty bill
                     bill_element = root.find(".//mál")
                     if bill_element is None:
+                        self.stdout.write(f'Bill {bill_number} has no content')
+                        empty_bill_count += 1
+                        bill_number += 1
                         continue
+
+                    # Check for the specific empty bill structure
+                    is_empty = True
+                    required_empty_elements = [
+                        ".//þingskjöl",
+                        ".//atkvæðagreiðslur",
+                        ".//umsagnabeiðnir[@frestur='']",
+                        ".//erindaskrá",
+                        ".//ræður"
+                    ]
+
+                    for elem_path in required_empty_elements:
+                        elem = root.find(elem_path)
+                        if elem is not None and len(elem) > 0:
+                            is_empty = False
+                            break
+
+                    if is_empty:
+                        self.stdout.write(f'Found empty bill {bill_number}')
+                        empty_bill_count += 1
+                        bill_number += 1
+                        continue
+                    else:
+                        empty_bill_count = 0  # Reset counter when we find a valid bill
                     
                     # Extract basic bill information
                     title = root.find(".//málsheiti")
@@ -481,6 +515,7 @@ class Command(BaseCommand):
                     # Skip if no title
                     if title is None or not title.text:
                         self.stdout.write(self.style.WARNING(f'Skipping bill {bill_number}: No title found'))
+                        bill_number += 1
                         continue
                         
                     title_text = title.text.strip()
@@ -531,13 +566,17 @@ class Command(BaseCommand):
                         else:
                             bills_updated += 1
                             self.stdout.write(self.style.SUCCESS(f'Updated bill {bill_number}: {title_text}'))
+                    
+                    bill_number += 1
                 
                 except ET.ParseError as e:
                     self.stdout.write(self.style.WARNING(f'XML parsing error for bill {bill_number}: {str(e)}'))
+                    bill_number += 1
                     continue
                     
             except Exception as e:
                 self.stdout.write(self.style.ERROR(f'Error processing bill {bill_number}: {str(e)}'))
+                bill_number += 1
                 continue
         
         self.stdout.write(self.style.SUCCESS(f'Bills created: {bills_created}, updated: {bills_updated}'))
