@@ -12,3 +12,8 @@
 /backend/data_collection/__pycache__
 *.pyc
 *.pyc
+/backend/analytics/__pycache__
+*.pyc
+/venv
+/venv
+/venv

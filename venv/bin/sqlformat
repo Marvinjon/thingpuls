@@ -1,5 +1,5 @@
 #!/bin/sh
-'''exec' "/Users/marvin/Desktop/Allskonar programing/politico/venv/bin/python3.12" "$0" "$@"
+'''exec' "/Users/marvin/Desktop/Allskonar programing/politico_web/venv/bin/python3.12" "$0" "$@"
 ' '''
 # -*- coding: utf-8 -*-
 import re
