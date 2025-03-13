@@ -179,7 +179,7 @@ class Command(BaseCommand):
         """Fetch political parties from Alþingi."""
         self.stdout.write('Fetching political parties...')
         
-        url = 'https://www.althingi.is/altext/xml/thingflokkar/'
+        url = f'https://www.althingi.is/altext/xml/thingflokkar/?lthing={session_number}'
         try:
             response = requests.get(url)
             if response.status_code != 200:
@@ -202,35 +202,21 @@ class Command(BaseCommand):
                     abbr_elem = party.find('.//stuttskammstöfun')
                     short_abbr = abbr_elem.text.strip() if abbr_elem is not None and abbr_elem.text else ''
                     
-                    long_abbr_elem = party.find('.//löngskammstöfun')
-                    long_abbr = long_abbr_elem.text.strip() if long_abbr_elem is not None and long_abbr_elem.text else ''
-                    
                     # Skip empty or placeholder parties
                     if not name or name == ' ' or short_abbr == '-':
                         continue
                     
-                    # Get time period
-                    first_session = party.find('.//fyrstaþing')
-                    last_session = party.find('.//síðastaþing')
-                    
                     # Create description
-                    active_status = "Active" if last_session is None else "Inactive"
-                    time_period = f"First session: {first_session.text if first_session is not None and first_session.text else 'Unknown'}"
-                    if last_session is not None and last_session.text:
-                        time_period += f", Last session: {last_session.text}"
+                    description = f"Active political party in session {session_number}"
                     
-                    description = f"{active_status} political party. {time_period}"
-                    
-                    # Assign a color based on the party's ID (for visualization)
+                    # all colors from each of the parties website
                     color_map = {
-                        '35': '#0000FF',  # Sjálfstæðisflokkur - Blue
-                        '2': '#00FF00',   # Framsóknarflokkur - Green
-                        '38': '#FF0000',  # Samfylkingin - Red
-                        '23': '#006400',  # Vinstrihreyfingin - grænt framboð - Dark Green
-                        '43': '#800080',  # Píratar - Purple
-                        '45': '#FFA500',  # Viðreisn - Orange
-                        '47': '#008080',  # Miðflokkurinn - Teal
-                        '46': '#FF00FF',  # Flokkur fólksins - Magenta
+                        '35': '#4dabe9',  # Sjálfstæðisflokkur - Blue
+                        '2': '#19412c',   # Framsóknarflokkur - Green
+                        '38': '#da3520',  # Samfylkingin - Red
+                        '45': '#ee8532',  # Viðreisn - Orange
+                        '47': '#171f6a',  # Miðflokkurinn - Teal
+                        '46': '#f7cc5b',  # Flokkur fólksins - Magenta
                     }
                     color = color_map.get(party_id, '#777777')  # Default to gray if no specific color
                     
