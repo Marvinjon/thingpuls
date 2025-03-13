@@ -6,6 +6,7 @@ from datetime import datetime
 from django.core.management.base import BaseCommand
 from django.utils.text import slugify
 from django.db import transaction
+from django.utils import timezone
 from parliament.models import (
     PoliticalParty, 
     MP, 
@@ -24,19 +25,25 @@ class Command(BaseCommand):
         parser.add_argument(
             '--data-type',
             type=str,
-            choices=['mps', 'bills', 'parties', 'all'],
+            choices=['mps', 'bills', 'parties', 'speeches', 'all'],
             default='all',
-            help='Type of data to fetch (mps, bills, parties, or all)'
+            help='Type of data to fetch (mps, bills, parties, speeches, or all)'
         )
         parser.add_argument(
             '--session',
             type=int,
             help='Parliament session number to fetch data for (defaults to current session)'
         )
+        parser.add_argument(
+            '--mp-id',
+            type=int,
+            help='MP ID to fetch speeches for (only relevant for speeches data type)'
+        )
 
     def handle(self, *args, **options):
         data_type = options['data_type']
         session_number = options['session']
+        mp_id = options['mp_id']
         
         self.stdout.write(self.style.SUCCESS('Starting to fetch data from Alþingi website...'))
         
@@ -60,6 +67,14 @@ class Command(BaseCommand):
         
         if data_type in ['bills', 'all']:
             self.fetch_bills(session_number)
+            
+        if data_type in ['speeches', 'all']:
+            if mp_id:
+                self.fetch_mp_speeches(session_number, mp_id)
+            else:
+                # Fetch speeches for all MPs if no specific MP ID is provided
+                for mp in MP.objects.filter(active=True):
+                    self.fetch_mp_speeches(session_number, mp.althingi_id)
         
         self.stdout.write(self.style.SUCCESS('Data fetching completed!'))
     
@@ -651,3 +666,197 @@ class Command(BaseCommand):
         }
         
         return colors.get(party_name, '#777777')  # Default gray 
+
+    def fetch_mp_speeches(self, session_number, mp_id):
+        """Fetch speeches for a specific MP from Alþingi."""
+        self.stdout.write(f'Fetching speeches for MP ID {mp_id}...')
+        
+        # Get the session object
+        try:
+            session = ParliamentSession.objects.get(session_number=session_number)
+        except ParliamentSession.DoesNotExist:
+            self.stdout.write(self.style.ERROR(f'Session {session_number} does not exist. Creating it first.'))
+            session = self.create_session(session_number)
+            if not session:
+                self.stdout.write(self.style.ERROR(f'Could not create session {session_number}. Skipping speech fetching.'))
+                return
+        
+        # Get the MP object
+        try:
+            mp = MP.objects.get(althingi_id=mp_id)
+        except MP.DoesNotExist:
+            self.stdout.write(self.style.ERROR(f'MP with ID {mp_id} does not exist. Skipping.'))
+            return
+        
+        # URL for speeches for this MP
+        url = f'https://www.althingi.is/altext/xml/thingmenn/thingmadur/raedur/?nr={mp_id}'
+        
+        try:
+            response = requests.get(url)
+            if response.status_code != 200:
+                self.stdout.write(self.style.ERROR(f'Error fetching speeches: HTTP {response.status_code}'))
+                return
+            
+            # Parse XML content
+            try:
+                # Parse the XML properly
+                root = ET.fromstring(response.content)
+                
+                # Count speeches for this session
+                speeches_created = 0
+                speeches_updated = 0
+                speech_count = 0
+                
+                # Find all speech elements
+                for speech_elem in root.findall('.//ræða'):
+                    try:
+                        # Get parliament session for this speech
+                        session_elem = speech_elem.find('löggjafarþing')
+                        
+                        if session_elem is None or not session_elem.text:
+                            continue
+                            
+                        # Skip speeches from other sessions
+                        if int(session_elem.text) != session_number:
+                            continue
+                        
+                        # Get speech date
+                        date_elem = speech_elem.find('dagur')
+                        if date_elem is None or not date_elem.text:
+                            continue
+                            
+                        speech_date = self.parse_date(date_elem.text)
+                        if not speech_date:
+                            continue
+                        
+                        # Get speech type
+                        speech_type_elem = speech_elem.find('tegundræðu')
+                        speech_type = speech_type_elem.text if speech_type_elem is not None and speech_type_elem.text else ''
+                        
+                        # Get times
+                        start_time_elem = speech_elem.find('ræðahófst')
+                        end_time_elem = speech_elem.find('ræðulauk')
+                        
+                        start_time = None
+                        end_time = None
+                        duration = None
+                        
+                        if start_time_elem is not None and start_time_elem.text:
+                            try:
+                                # Parse datetime and add timezone info
+                                naive_start_time = datetime.fromisoformat(start_time_elem.text)
+                                start_time = timezone.make_aware(naive_start_time, timezone=timezone.get_current_timezone())
+                            except ValueError:
+                                pass
+                                
+                        if end_time_elem is not None and end_time_elem.text:
+                            try:
+                                # Parse datetime and add timezone info
+                                naive_end_time = datetime.fromisoformat(end_time_elem.text)
+                                end_time = timezone.make_aware(naive_end_time, timezone=timezone.get_current_timezone())
+                                
+                                if start_time and end_time:
+                                    duration = (end_time - start_time).total_seconds()
+                            except ValueError:
+                                pass
+                        
+                        # Get bill information
+                        bill_elem = speech_elem.find('mál')
+                        bill_id = None
+                        bill_obj = None
+                        title = ''
+                        
+                        if bill_elem is not None:
+                            bill_id_elem = bill_elem.find('málsnúmer')
+                            bill_title_elem = bill_elem.find('málsheiti')
+                            
+                            if bill_id_elem is not None and bill_id_elem.text:
+                                try:
+                                    bill_id = int(bill_id_elem.text)
+                                    
+                                    # Try to find the bill
+                                    try:
+                                        bill_obj = Bill.objects.get(althingi_id=bill_id, session=session)
+                                    except Bill.DoesNotExist:
+                                        pass
+                                except ValueError:
+                                    pass
+                                    
+                            if bill_title_elem is not None and bill_title_elem.text:
+                                title = bill_title_elem.text.strip()
+                        
+                        # Get URLs
+                        audio_url = ''
+                        xml_url = ''
+                        html_url = ''
+                        
+                        slodirs_elem = speech_elem.find('slóðir')
+                        if slodirs_elem is not None:
+                            # Find audio URL
+                            audio_elem = slodirs_elem.find('hljóð')
+                            if audio_elem is not None and audio_elem.text:
+                                audio_url = audio_elem.text
+                                
+                            # Find XML URL
+                            xml_elem = slodirs_elem.find('xml')
+                            if xml_elem is not None and xml_elem.text:
+                                xml_url = xml_elem.text
+                                
+                            # Find HTML URL
+                            html_elem = slodirs_elem.find('html')
+                            if html_elem is not None and html_elem.text:
+                                html_url = html_elem.text
+                        
+                        # Log what we found
+                        self.stdout.write(f'Found speech: Date: {speech_date}, Type: {speech_type}, Bill: {bill_id}, Time: {start_time} - {end_time}')
+                        
+                        # Create or update the speech in the database
+                        if speech_date and start_time:
+                            with transaction.atomic():
+                                speech, created = Speech.objects.update_or_create(
+                                    mp=mp,
+                                    session=session,
+                                    date=speech_date,
+                                    start_time=start_time,
+                                    defaults={
+                                        'bill': bill_obj,
+                                        'mp_althingi_id': mp_id,
+                                        'althingi_bill_id': bill_id,
+                                        'title': title,
+                                        'speech_type': speech_type,
+                                        'end_time': end_time,
+                                        'duration': duration,
+                                        'audio_url': audio_url,
+                                        'xml_url': xml_url,
+                                        'html_url': html_url
+                                    }
+                                )
+                                
+                                if created:
+                                    speeches_created += 1
+                                    self.stdout.write(self.style.SUCCESS(f'Created speech: {speech_date}, {speech_type}, {title[:50]}'))
+                                else:
+                                    speeches_updated += 1
+                                    self.stdout.write(f'Updated speech: {speech_date}, {speech_type}, {title[:50]}')
+                                
+                                speech_count += 1
+                                
+                    except Exception as e:
+                        self.stdout.write(self.style.ERROR(f'Error processing speech: {str(e)}'))
+                        continue
+                
+                # Update the MP's speech count
+                mp.speech_count = speech_count
+                mp.save(update_fields=['speech_count'])
+                
+                self.stdout.write(self.style.SUCCESS(
+                    f'MP {mp.full_name}: Speeches created: {speeches_created}, updated: {speeches_updated}, total: {speech_count}'
+                ))
+                
+            except ET.ParseError as e:
+                self.stdout.write(self.style.ERROR(f'Error parsing XML: {str(e)}'))
+                
+        except requests.RequestException as e:
+            self.stdout.write(self.style.ERROR(f'Error fetching speeches: {str(e)}'))
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f'Unexpected error: {str(e)}')) 

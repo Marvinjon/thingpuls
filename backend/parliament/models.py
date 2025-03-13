@@ -202,19 +202,31 @@ class Speech(models.Model):
     bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name='speeches', null=True, blank=True)
     session = models.ForeignKey(ParliamentSession, on_delete=models.CASCADE, related_name='speeches')
     date = models.DateField()
-    title = models.CharField(max_length=255)
-    text = models.TextField()
+    title = models.CharField(max_length=255, blank=True)
+    text = models.TextField(blank=True)
+    
+    # New fields for Alþingi data
+    mp_althingi_id = models.IntegerField(null=True, blank=True, help_text="MP ID from the Alþingi database")
+    althingi_bill_id = models.IntegerField(null=True, blank=True, help_text="Bill number in Alþingi")
+    speech_type = models.CharField(max_length=50, blank=True, help_text="Type of speech (e.g., ræða, andsvar)")
+    start_time = models.DateTimeField(null=True, blank=True)
+    end_time = models.DateTimeField(null=True, blank=True)
     duration = models.IntegerField(help_text="Duration in seconds", null=True, blank=True)
-    video_url = models.URLField(blank=True)
-    transcript_url = models.URLField(blank=True)
+    
+    # URLs for various resources
+    audio_url = models.URLField(blank=True, help_text="URL to audio recording")
+    video_url = models.URLField(blank=True, help_text="URL to video recording")
+    transcript_url = models.URLField(blank=True, help_text="URL to transcript")
+    xml_url = models.URLField(blank=True, help_text="URL to XML version")
+    html_url = models.URLField(blank=True, help_text="URL to HTML version")
     
     # For sentiment and topic analysis
     sentiment_score = models.FloatField(null=True, blank=True)
     keywords = models.JSONField(null=True, blank=True)
     
     class Meta:
-        ordering = ['-date']
+        ordering = ['-date', '-start_time']
         verbose_name_plural = 'Speeches'
     
     def __str__(self):
-        return f"{self.mp} speech on {self.date}" 
+        return f"{self.mp} speech on {self.date} ({self.speech_type})" 
