@@ -22,11 +22,11 @@ app.autodiscover_tasks()
 app.conf.beat_schedule = {
     'fetch-althingi-data-every-hour': {
         'task': 'parliament.tasks.fetch_althingi_data',
-        'schedule': crontab(minute=0),  # Run every hour
+        'schedule': crontab(minute=0, hour='*/3'),  # Run every 3 hours
     },
     'fetch-voting-records-every-hour': {
         'task': 'parliament.tasks.fetch_voting_records',
-        'schedule': crontab(minute=30),  # Run every hour at 30 minutes past
+        'schedule': crontab(minute=30, hour='*/3'),  # Run every 3 hours at 30 minutes past
     },
 }
 
