@@ -153,38 +153,41 @@ class MPInterest(models.Model):
 
 
 class Bill(models.Model):
-    """Model for parliamentary bills and legislation."""
+    """Model for parliamentary bills."""
     
     STATUS_CHOICES = [
         ('introduced', 'Introduced'),
         ('in_committee', 'In Committee'),
         ('in_debate', 'In Debate'),
-        ('amended', 'Amended'),
         ('passed', 'Passed'),
         ('rejected', 'Rejected'),
         ('withdrawn', 'Withdrawn')
     ]
     
     althingi_id = models.IntegerField()
+    session = models.ForeignKey(ParliamentSession, on_delete=models.CASCADE, related_name='bills')
     title = models.CharField(max_length=500)
-    slug = models.CharField(max_length=200)  # Increased from 50
     description = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='introduced')
     introduced_date = models.DateField()
-    session = models.ForeignKey(ParliamentSession, on_delete=models.CASCADE, related_name='bills')
-    topics = models.ManyToManyField(Topic, related_name='bills')
-    url = models.URLField(max_length=500, blank=True)
-    
-    # Add sponsors and cosponsors
-    primary_sponsor = models.ForeignKey('MP', on_delete=models.SET_NULL, null=True, blank=True, related_name='sponsored_bills')
+    vote_date = models.DateField(null=True, blank=True)
+    last_update = models.DateTimeField(auto_now=True)
+    url = models.URLField(max_length=500)
+    slug = models.SlugField(max_length=200)
+    topics = models.ManyToManyField(Topic, related_name='bills', blank=True)
+    sponsors = models.ManyToManyField('MP', related_name='sponsored_bills', blank=True)
     cosponsors = models.ManyToManyField('MP', related_name='cosponsored_bills', blank=True)
     
     class Meta:
-        unique_together = ('session', 'slug')  # Make slug unique per session
+        unique_together = ('althingi_id', 'session')
         ordering = ['-introduced_date']
     
     def __str__(self):
-        return f"{self.title} ({self.session.session_number}-{self.althingi_id})"
+        return f"{self.title} ({self.session})"
+    
+    @property
+    def full_name(self):
+        return f"{self.title} ({self.session})"
 
 
 class Amendment(models.Model):

@@ -148,21 +148,61 @@ const BillDetailPage = () => {
             <Accordion defaultExpanded>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
-                  <PersonIcon sx={{ mr: 1 }} /> Sponsors
+                  <PersonIcon sx={{ mr: 1 }} /> Sponsors & Co-sponsors
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
                 <Box>
+                  {/* Primary Sponsors */}
+                  <Typography variant="subtitle1" color="primary" gutterBottom>
+                    Primary Sponsor{bill.sponsors.length > 1 ? 's' : ''}
+                  </Typography>
                   {bill.sponsors.map((sponsor) => (
                     <Box key={sponsor.id} mb={2}>
                       <Typography variant="subtitle1">
-                        {sponsor.first_name} {sponsor.last_name}
+                        <Link 
+                          component={RouterLink} 
+                          to={`/parliament/members/${sponsor.slug}`}
+                          color="inherit"
+                          underline="hover"
+                        >
+                          {sponsor.first_name} {sponsor.last_name}
+                        </Link>
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         {sponsor.party_name}
                       </Typography>
                     </Box>
                   ))}
+
+                  {/* Co-sponsors */}
+                  {bill.cosponsors && bill.cosponsors.length > 0 && (
+                    <>
+                      <Divider sx={{ my: 2 }} />
+                      <Typography variant="subtitle1" color="primary" gutterBottom>
+                        Co-sponsors ({bill.cosponsors.length})
+                      </Typography>
+                      <Grid container spacing={2}>
+                        {bill.cosponsors.map((cosponsor) => (
+                          <Grid item xs={12} sm={6} key={cosponsor.id}>
+                            <Typography variant="subtitle2">
+                              <Link 
+                                component={RouterLink} 
+                                to={`/parliament/members/${cosponsor.slug}`}
+                                color="inherit"
+                                underline="hover"
+                              >
+                                {cosponsor.first_name} {cosponsor.last_name}
+                              </Link>
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {cosponsor.party_name}
+                            </Typography>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </>
+                  )}
                 </Box>
               </AccordionDetails>
             </Accordion>

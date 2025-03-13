@@ -107,6 +107,7 @@ class BillDetailSerializer(serializers.ModelSerializer):
     """Serializer for detailed bill objects."""
     
     sponsors = MPListSerializer(many=True, read_only=True)
+    cosponsors = MPListSerializer(many=True, read_only=True)
     topics = TopicSerializer(many=True, read_only=True)
     amendments = AmendmentSerializer(many=True, read_only=True)
     votes = serializers.SerializerMethodField()

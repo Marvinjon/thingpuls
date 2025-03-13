@@ -470,6 +470,74 @@ class Command(BaseCommand):
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'Error fetching MPs: {str(e)}'))
 
+    def process_bill_sponsors(self, bill_obj, root, session):
+        """Process sponsors and co-sponsors for a bill."""
+        try:
+            # Find the first document (þingskjal) which is usually the bill itself
+            first_doc = root.find(".//þingskjöl/þingskjal")
+            if first_doc is None:
+                return
+            
+            # Get document number and fetch its details
+            doc_number = first_doc.get("skjalsnúmer")
+            if not doc_number:
+                return
+                
+            # Fetch document details
+            url = f'https://www.althingi.is/altext/xml/thingskjol/thingskjal/?lthing={session.session_number}&skjalnr={doc_number}'
+            try:
+                response = requests.get(url)
+                if response.status_code != 200:
+                    self.stdout.write(self.style.ERROR(f'Error fetching document {doc_number}: HTTP {response.status_code}'))
+                    return
+                
+                # Parse document XML
+                doc_root = ET.fromstring(response.content)
+                
+                # Find sponsors element
+                sponsors_elem = doc_root.find(".//flutningsmenn")
+                if sponsors_elem is None:
+                    return
+                
+                # Clear existing sponsors (to handle updates correctly)
+                bill_obj.sponsors.clear()
+                bill_obj.cosponsors.clear()
+                
+                # Process each sponsor
+                for idx, sponsor_elem in enumerate(sponsors_elem.findall(".//flutningsmaður")):
+                    mp_id = sponsor_elem.get("id")
+                    if not mp_id:
+                        continue
+                    
+                    try:
+                        mp = MP.objects.get(althingi_id=mp_id)
+                        
+                        # First sponsor is the main sponsor, others are co-sponsors
+                        if idx == 0:
+                            bill_obj.sponsors.add(mp)
+                            # Update MP's sponsored bills count
+                            mp.bills_sponsored = Bill.objects.filter(sponsors=mp).count()
+                            mp.save(update_fields=['bills_sponsored'])
+                            self.stdout.write(f'Added primary sponsor {mp.full_name} to bill {bill_obj.title}')
+                        else:
+                            bill_obj.cosponsors.add(mp)
+                            # Update MP's co-sponsored bills count
+                            mp.bills_cosponsored = Bill.objects.filter(cosponsors=mp).count()
+                            mp.save(update_fields=['bills_cosponsored'])
+                            self.stdout.write(f'Added co-sponsor {mp.full_name} to bill {bill_obj.title}')
+                            
+                    except MP.DoesNotExist:
+                        self.stdout.write(self.style.WARNING(f'MP with ID {mp_id} not found'))
+                        continue
+                    
+            except requests.RequestException as e:
+                self.stdout.write(self.style.ERROR(f'Error fetching document: {str(e)}'))
+            except ET.ParseError as e:
+                self.stdout.write(self.style.ERROR(f'Error parsing document XML: {str(e)}'))
+                
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f'Error processing bill sponsors: {str(e)}'))
+
     def fetch_bills(self, session_number):
         """Fetch bills from Alþingi."""
         self.stdout.write('Fetching bills...')
@@ -589,6 +657,9 @@ class Command(BaseCommand):
                                 'url': f'https://www.althingi.is/thingstorf/thingmalalistar-eftir-thingum/ferill/?ltg={session_number}&mnr={bill_number}'
                             }
                         )
+                        
+                        # Process sponsors and co-sponsors
+                        self.process_bill_sponsors(bill, root, session)
                         
                         # Assign topics based on title and description
                         self.assign_topics_to_bill(bill, title_text, f"{bill_type_text} - {status_text}")
