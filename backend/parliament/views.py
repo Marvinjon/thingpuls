@@ -14,7 +14,8 @@ from .models import (
     Bill, 
     Amendment, 
     Vote, 
-    Speech
+    Speech,
+    MPInterest
 )
 from .serializers import (
     PoliticalPartySerializer,
@@ -26,7 +27,8 @@ from .serializers import (
     BillDetailSerializer,
     AmendmentSerializer,
     VoteSerializer,
-    SpeechSerializer
+    SpeechSerializer,
+    MPInterestSerializer
 )
 
 
@@ -139,6 +141,17 @@ class MPViewSet(viewsets.ReadOnlyModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = VoteSerializer(votes, many=True)
         return Response(serializer.data)
+    
+    @action(detail=True, methods=['get'])
+    def interests(self, request, slug=None):
+        """Return interests for this MP."""
+        mp = self.get_object()
+        try:
+            interest = MPInterest.objects.get(mp=mp)
+            serializer = MPInterestSerializer(interest)
+            return Response(serializer.data)
+        except MPInterest.DoesNotExist:
+            return Response({'detail': 'No interests found for this MP.'}, status=404)
 
 
 class BillViewSet(viewsets.ReadOnlyModelViewSet):
@@ -226,4 +239,15 @@ class SpeechViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['mp', 'bill', 'session']
     search_fields = ['title', 'text']
-    ordering_fields = ['date', 'sentiment_score'] 
+    ordering_fields = ['date', 'sentiment_score']
+
+
+class MPInterestViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for viewing MP interests."""
+    
+    queryset = MPInterest.objects.all()
+    serializer_class = MPInterestSerializer
+    permission_classes = [permissions.AllowAny]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['mp', 'mp__party']
+    search_fields = ['board_positions', 'paid_work', 'business_activities', 'company_ownership', 'other_positions'] 

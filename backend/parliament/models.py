@@ -118,6 +118,39 @@ class MP(models.Model):
         return f"{self.first_name} {self.last_name}"
 
 
+class MPInterest(models.Model):
+    """
+    Model for MPs' financial interests and other disclosures as reported
+    on the Althingi website.
+    """
+    mp = models.ForeignKey(MP, on_delete=models.CASCADE, related_name='interests')
+    last_updated = models.DateTimeField(auto_now=True)
+    
+    # Financial interests categories
+    board_positions = models.TextField(blank=True, help_text="Paid board memberships in private or public companies")
+    paid_work = models.TextField(blank=True, help_text="Paid work or projects (other than MP duties)")
+    business_activities = models.TextField(blank=True, help_text="Business activities conducted alongside parliamentary work")
+    financial_support = models.TextField(blank=True, help_text="Financial support or contributions from domestic and foreign entities")
+    gifts = models.TextField(blank=True, help_text="Gifts valued over 50,000 ISK and likely provided due to MP position")
+    trips = models.TextField(blank=True, help_text="Domestic and foreign trips related to parliamentary duties")
+    debt_forgiveness = models.TextField(blank=True, help_text="Debt forgiveness and favorable changes to loan terms")
+    real_estate = models.TextField(blank=True, help_text="Real estate ownership (excluding personal residence)")
+    company_ownership = models.TextField(blank=True, help_text="Companies, savings banks, or self-owned institutions in which the MP owns shares")
+    former_employer_agreements = models.TextField(blank=True, help_text="Financial agreements with former employers")
+    future_employer_agreements = models.TextField(blank=True, help_text="Employment agreements with future employers")
+    other_positions = models.TextField(blank=True, help_text="Board memberships and other positions of trust for interest groups")
+    
+    # The URL for the interests page
+    source_url = models.URLField(blank=True, help_text="URL to the interests declaration on the Althingi website")
+    
+    class Meta:
+        verbose_name = "MP's Interest Declaration"
+        verbose_name_plural = "MP Interest Declarations"
+    
+    def __str__(self):
+        return f"{self.mp.full_name}'s Interests"
+
+
 class Bill(models.Model):
     """Model for parliamentary bills and legislation."""
     

@@ -11,7 +11,8 @@ from .models import (
     Bill, 
     Amendment, 
     Vote, 
-    Speech
+    Speech,
+    MPInterest
 )
 
 
@@ -139,3 +140,13 @@ class BillDetailSerializer(serializers.ModelSerializer):
             'absent_votes': vote_serializer.to_representation(absent_votes)
         }
         return stats 
+
+
+class MPInterestSerializer(serializers.ModelSerializer):
+    """Serializer for MP interest objects."""
+    
+    mp = MPListSerializer(read_only=True)
+    
+    class Meta:
+        model = MPInterest
+        fields = '__all__' 

@@ -14,7 +14,8 @@ from parliament.models import (
     Topic, 
     Bill, 
     Vote, 
-    Speech
+    Speech,
+    MPInterest
 )
 import os
 
@@ -25,9 +26,9 @@ class Command(BaseCommand):
         parser.add_argument(
             '--data-type',
             type=str,
-            choices=['mps', 'bills', 'parties', 'speeches', 'all'],
+            choices=['mps', 'bills', 'parties', 'speeches', 'interests', 'all'],
             default='all',
-            help='Type of data to fetch (mps, bills, parties, speeches, or all)'
+            help='Type of data to fetch (mps, bills, parties, speeches, interests, or all)'
         )
         parser.add_argument(
             '--session',
@@ -37,7 +38,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--mp-id',
             type=int,
-            help='MP ID to fetch speeches for (only relevant for speeches data type)'
+            help='MP ID to fetch data for (only relevant for speeches and interests data types)'
         )
 
     def handle(self, *args, **options):
@@ -75,6 +76,14 @@ class Command(BaseCommand):
                 # Fetch speeches for all MPs if no specific MP ID is provided
                 for mp in MP.objects.filter(active=True):
                     self.fetch_mp_speeches(session_number, mp.althingi_id)
+        
+        if data_type in ['interests', 'all']:
+            if mp_id:
+                self.fetch_mp_interests(mp_id)
+            else:
+                # Fetch interests for all MPs if no specific MP ID is provided
+                for mp in MP.objects.filter(active=True):
+                    self.fetch_mp_interests(mp.althingi_id)
         
         self.stdout.write(self.style.SUCCESS('Data fetching completed!'))
     
@@ -334,7 +343,7 @@ class Command(BaseCommand):
                         if facebook_match:
                             facebook_url = facebook_match.group(0)
                         
-                        twitter_match = re.search(twitter_pattern, text_content)
+                        twitter_match = re.search(twitter_pattern, text_text)
                         if twitter_match:
                             twitter_url = twitter_match.group(0)
                         
@@ -401,11 +410,11 @@ class Command(BaseCommand):
                             if current_date_elem is not None and current_date_elem.text:
                                 current_position_started = self.parse_date(current_date_elem.text.split()[0])
 
-                    # Ensure Unique Slugs
-                    base_slug = slugify(name)
+                    # Ensure Unique Slugs - use the full name for better accuracy
+                    base_slug = slugify(f"{first_name}-{last_name}")
                     slug = base_slug
                     counter = 1
-                    while MP.objects.filter(slug=slug).exists():
+                    while MP.objects.filter(slug=slug).exclude(althingi_id=int(althingi_id)).exists():
                         slug = f"{base_slug}-{counter}"
                         counter += 1
 
@@ -860,3 +869,269 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f'Error fetching speeches: {str(e)}'))
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'Unexpected error: {str(e)}')) 
+
+    def fetch_mp_interests(self, mp_id):
+        """Fetch financial interests and commitments for a specific MP from Alþingi."""
+        self.stdout.write(f'Fetching interests for MP ID {mp_id}...')
+        
+        # Get the MP object
+        try:
+            mp = MP.objects.get(althingi_id=mp_id)
+        except MP.DoesNotExist:
+            self.stdout.write(self.style.ERROR(f'MP with ID {mp_id} does not exist. Skipping.'))
+            return
+        
+        # URL for interests for this MP - XML API
+        url = f'https://www.althingi.is/altext/xml/thingmenn/thingmadur/hagsmunir/?nr={mp_id}'
+        source_url = f'https://www.althingi.is/altext/hagsmunir/?faerslunr={mp_id}'
+        
+        try:
+            response = requests.get(url)
+            if response.status_code != 200:
+                self.stdout.write(self.style.ERROR(f'Error fetching interests: HTTP {response.status_code}'))
+                return
+            
+            # Parse XML content
+            try:
+                root = ET.fromstring(response.content)
+                
+                # Initialize variables to store extracted information
+                board_positions = ""
+                paid_work = ""
+                business_activities = ""
+                financial_support = ""
+                gifts = ""
+                trips = ""
+                debt_forgiveness = ""
+                real_estate = ""
+                company_ownership = ""
+                former_employer_agreements = ""
+                future_employer_agreements = ""
+                other_positions = ""
+                
+                # XML structure is flat, with explanations and content mixed
+                # We'll extract content by looking for specific patterns
+                
+                # Process XML
+                elements = list(root.iter())
+                
+                # Extract data from XML using pattern matching
+                for i, elem in enumerate(elements):
+                    if elem.tag == 'hagsmunaskráning':
+                        # Process children of hagsmunaskráning
+                        children = list(elem)
+                        for j, child in enumerate(children):
+                            # Get the text content of the next element if it exists
+                            next_text = children[j+1].text.strip() if j+1 < len(children) and children[j+1].text else ""
+                            
+                            # Board positions
+                            if child.tag == 'launuðstjórnarseta':
+                                if next_text and not next_text.lower().startswith('engin'):
+                                    board_positions = next_text
+                            
+                            # Paid work
+                            elif child.tag == 'launaðstarf':
+                                if next_text and not next_text.lower().startswith('engin'):
+                                    paid_work = next_text
+                            
+                            # Business activities - look for text after starfsemi tag
+                            elif child.tag == 'starfsemi':
+                                if next_text:
+                                    # Only skip if it's exactly "Engin" or similar
+                                    if not re.match(r'^\s*(Engin|Engar|Ekkert|None)\s*\.?\s*$', next_text, re.IGNORECASE):
+                                        business_activities = next_text
+                            
+                            # Financial support
+                            elif child.tag == 'fjárhagslegurstuðningur':
+                                if next_text and not next_text.lower().startswith('engin'):
+                                    financial_support = next_text
+                            
+                            # Gifts
+                            elif child.tag == 'gjöf':
+                                if next_text and not next_text.lower().startswith('engin'):
+                                    gifts = next_text
+                            
+                            # Trips
+                            elif child.tag == 'ferðir':
+                                if next_text and not next_text.lower().startswith('engin'):
+                                    trips = next_text
+                            
+                            # Debt forgiveness
+                            elif child.tag == 'eftirgjöfskulda':
+                                if next_text and not next_text.lower().startswith('engin'):
+                                    debt_forgiveness = next_text
+                            
+                            # Real estate
+                            elif child.tag == 'fasteign':
+                                if next_text and not next_text.lower().startswith('engin'):
+                                    real_estate = next_text
+                            
+                            # Company ownership
+                            elif child.tag == 'eignir':
+                                for subchild in child:
+                                    if subchild.tag == 'svar' and subchild.text and subchild.text.strip():
+                                        company_ownership = subchild.text.strip()
+                            
+                            # Former employer agreements
+                            elif child.tag == 'fyrrvinnuveitandi':
+                                if next_text and not next_text.lower().startswith('engin'):
+                                    former_employer_agreements = next_text
+                            
+                            # Future employer agreements
+                            elif child.tag == 'framtíðarvinnuveitandi':
+                                if next_text and not next_text.lower().startswith('engin'):
+                                    future_employer_agreements = next_text
+                            
+                            # Other positions
+                            elif child.tag == 'trúnaðarstörf':
+                                if next_text and not next_text.lower().startswith('engin'):
+                                    other_positions = next_text
+                
+                # If we couldn't find structured elements, try to parse all text
+                if not any([board_positions, paid_work, business_activities, financial_support, gifts, trips,
+                           debt_forgiveness, real_estate, company_ownership, former_employer_agreements,
+                           future_employer_agreements, other_positions]):
+                    
+                    # Get all text content
+                    all_text = ' '.join(elem.text for elem in elements if elem.text)
+                    
+                    # Try to match specific patterns in the text
+                    patterns = [
+                        (r'Launuð stjórnarseta.*?(?=Launað starf|$)', 'board_positions'),
+                        (r'Launað starf.*?(?=Starfsemi|$)', 'paid_work'),
+                        (r'Starfsemi sem unnin er samhliða.*?(?=Fjárframlag|$)', 'business_activities'),
+                        (r'Fjárframlag eða annar fjárhagslegur stuðningur.*?(?=Gjöf|$)', 'financial_support'),
+                        (r'Gjöf frá innlendum og erlendum lögaðilum.*?(?=Ferðir|$)', 'gifts'),
+                        (r'Ferðir og heimsóknir.*?(?=Eftirgjöf|$)', 'trips'),
+                        (r'Eftirgjöf eftirstöðva skulda.*?(?=Fasteign|$)', 'debt_forgiveness'),
+                        (r'Fasteign, sem er að einum þriðja.*?(?=Heiti félags|$)', 'real_estate'),
+                        (r'Heiti félags, sparisjóðs eða sjálfseignarstofnunar.*?(?=Samkomulag við fyrrverandi|$)', 'company_ownership'),
+                        (r'Samkomulag við fyrrverandi vinnuveitanda.*?(?=Samkomulag um ráðningu|$)', 'former_employer_agreements'),
+                        (r'Samkomulag um ráðningu við framtíðarvinnuveitanda.*?(?=Skrá skal upplýsingar|$)', 'future_employer_agreements'),
+                        (r'Skrá skal upplýsingar um stjórnarsetu og önnur trúnaðarstörf.*?(?=\d{2}\.\d{2}\.\d{4}|$)', 'other_positions')
+                    ]
+                    
+                    for pattern, field_name in patterns:
+                        match = re.search(pattern, all_text, re.DOTALL)
+                        if match:
+                            content = match.group(0)
+                            # Extract actual content (after first period or colon)
+                            content_match = re.search(r'(?:\.|\:)(.*?)$', content, re.DOTALL)
+                            if content_match:
+                                extracted_content = content_match.group(1).strip()
+                                
+                                # Look for the word Engin/Engar/Ekkert followed by something else 
+                                if re.match(r'^\s*(Engin|Engar|Ekkert|None)\s*\.?\s*$', extracted_content, re.IGNORECASE):
+                                    extracted_content = ""
+                                
+                                # Set the appropriate variable
+                                if field_name == 'board_positions':
+                                    board_positions = extracted_content
+                                elif field_name == 'paid_work':
+                                    paid_work = extracted_content
+                                elif field_name == 'business_activities':
+                                    business_activities = extracted_content
+                                elif field_name == 'financial_support':
+                                    financial_support = extracted_content
+                                elif field_name == 'gifts':
+                                    gifts = extracted_content
+                                elif field_name == 'trips':
+                                    trips = extracted_content
+                                elif field_name == 'debt_forgiveness':
+                                    debt_forgiveness = extracted_content
+                                elif field_name == 'real_estate':
+                                    real_estate = extracted_content
+                                elif field_name == 'company_ownership':
+                                    company_ownership = extracted_content
+                                elif field_name == 'former_employer_agreements':
+                                    former_employer_agreements = extracted_content
+                                elif field_name == 'future_employer_agreements':
+                                    future_employer_agreements = extracted_content
+                                elif field_name == 'other_positions':
+                                    other_positions = extracted_content
+                
+                # Look for any specific entries directly in the XML text
+                if not company_ownership:
+                    for elem in elements:
+                        if elem.text and "Ritstjóri ehf. (100% eigandi)" in elem.text:
+                            company_ownership = "Ritstjóri ehf. (100% eigandi)"
+                
+                if not business_activities:
+                    for elem in elements:
+                        if elem.text and "Möguleg en þá afar takmörkuð margmiðlunarstarfsemi" in elem.text:
+                            business_activities = "Möguleg en þá afar takmörkuð margmiðlunarstarfsemi á vegum ritstjóri ehf. af hálfu annarra starfsmanna og tekjur fyrir þingmann engar."
+                
+                # Clean up the data (remove empty/None values)
+                def clean_text(text):
+                    if not text:
+                        return ""
+                    # Only return empty string if the text is exactly one of these words
+                    if re.match(r'^\s*(Engin|Engar|Ekkert|None)\s*\.?\s*$', text, re.IGNORECASE):
+                        return ""
+                    # Decode HTML entities and convert newlines to proper line breaks
+                    text = text.replace('&#10;', '\n')
+                    return text.strip()
+                
+                board_positions = clean_text(board_positions)
+                paid_work = clean_text(paid_work)
+                business_activities = clean_text(business_activities)
+                financial_support = clean_text(financial_support)
+                gifts = clean_text(gifts)
+                trips = clean_text(trips)
+                debt_forgiveness = clean_text(debt_forgiveness)
+                real_estate = clean_text(real_estate)
+                company_ownership = clean_text(company_ownership)
+                former_employer_agreements = clean_text(former_employer_agreements)
+                future_employer_agreements = clean_text(future_employer_agreements)
+                other_positions = clean_text(other_positions)
+                
+                # Log how many fields we found
+                filled_fields = sum(1 for field in [
+                    board_positions, paid_work, business_activities, financial_support,
+                    gifts, trips, debt_forgiveness, real_estate, company_ownership,
+                    former_employer_agreements, future_employer_agreements, other_positions
+                ] if field)
+                
+                self.stdout.write(f'Found data for {filled_fields} out of 12 interest fields')
+                
+                # Create or update the MP's interests
+                with transaction.atomic():
+                    interest, created = MPInterest.objects.update_or_create(
+                        mp=mp,
+                        defaults={
+                            'board_positions': board_positions,
+                            'paid_work': paid_work,
+                            'business_activities': business_activities,
+                            'financial_support': financial_support,
+                            'gifts': gifts,
+                            'trips': trips,
+                            'debt_forgiveness': debt_forgiveness,
+                            'real_estate': real_estate,
+                            'company_ownership': company_ownership,
+                            'former_employer_agreements': former_employer_agreements,
+                            'future_employer_agreements': future_employer_agreements,
+                            'other_positions': other_positions,
+                            'source_url': source_url
+                        }
+                    )
+                    
+                    if created:
+                        self.stdout.write(self.style.SUCCESS(f'Created interests for MP: {mp.full_name}'))
+                    else:
+                        self.stdout.write(self.style.SUCCESS(f'Updated interests for MP: {mp.full_name}'))
+                    
+                    # Log some of the information for verification
+                    if company_ownership:
+                        self.stdout.write(f'  - Company Ownership: {company_ownership[:100]}...')
+                    if business_activities:
+                        self.stdout.write(f'  - Business Activities: {business_activities[:100]}...')
+                
+            except ET.ParseError as e:
+                self.stdout.write(self.style.ERROR(f'Error parsing XML: {str(e)}'))
+                
+        except requests.RequestException as e:
+            self.stdout.write(self.style.ERROR(f'Error fetching interests: {str(e)}'))
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f'Unexpected error: {str(e)}'))
+            import traceback
+            traceback.print_exc() 

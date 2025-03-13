@@ -12,7 +12,8 @@ from .views import (
     BillViewSet,
     AmendmentViewSet,
     VoteViewSet,
-    SpeechViewSet
+    SpeechViewSet,
+    MPInterestViewSet
 )
 
 router = DefaultRouter()
@@ -24,6 +25,7 @@ router.register('bills', BillViewSet)
 router.register('amendments', AmendmentViewSet)
 router.register('votes', VoteViewSet)
 router.register('speeches', SpeechViewSet)
+router.register('mp-interests', MPInterestViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

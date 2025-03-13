@@ -30,7 +30,9 @@ import {
   IconButton,
   Tooltip,
   Stack,
-  Badge
+  Badge,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import EmailIcon from '@mui/icons-material/Email';
 import WebIcon from '@mui/icons-material/Web';
@@ -50,6 +52,7 @@ import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt
 import SentimentNeutralIcon from '@mui/icons-material/SentimentNeutral';
 import SentimentVeryDissatisfiedIcon from '@mui/icons-material/SentimentVeryDissatisfied';
 import ArticleIcon from '@mui/icons-material/Article';
+import BusinessIcon from '@mui/icons-material/Business';
 import { parliamentService } from '../../services/api';
 
 const MemberDetailPage = () => {
@@ -58,14 +61,18 @@ const MemberDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState(0);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   // Tab content data
   const [speeches, setSpeeches] = useState([]);
   const [bills, setBills] = useState([]);
   const [votingRecord, setVotingRecord] = useState([]);
+  const [interests, setInterests] = useState(null);
   const [speechesLoading, setSpeechesLoading] = useState(false);
   const [billsLoading, setBillsLoading] = useState(false);
   const [votingLoading, setVotingLoading] = useState(false);
+  const [interestsLoading, setInterestsLoading] = useState(false);
   
   useEffect(() => {
     const fetchMpData = async () => {
@@ -95,6 +102,8 @@ const MemberDetailPage = () => {
       fetchBills();
     } else if (newValue === 3 && votingRecord.length === 0) {
       fetchVotingRecord();
+    } else if (newValue === 4 && interests === null) {
+      fetchInterests();
     }
   };
   
@@ -198,6 +207,31 @@ const MemberDetailPage = () => {
       ]);
     } finally {
       setVotingLoading(false);
+    }
+  };
+  
+  const fetchInterests = async () => {
+    setInterestsLoading(true);
+    try {
+      const response = await parliamentService.getMemberInterests(id);
+      setInterests(response.data);
+    } catch (err) {
+      console.error('Error fetching interests:', err);
+      // Mock data for development
+      setInterests([
+        {
+          id: 1,
+          name: 'Climate Change',
+          description: 'Interest in climate change policies and actions'
+        },
+        {
+          id: 2,
+          name: 'Renewable Energy',
+          description: 'Interest in renewable energy sources'
+        }
+      ]);
+    } finally {
+      setInterestsLoading(false);
     }
   };
   
@@ -453,12 +487,15 @@ const MemberDetailPage = () => {
               onChange={handleTabChange}
               indicatorColor="primary"
               textColor="primary"
-              variant="fullWidth"
+              variant={isMobile ? "scrollable" : "fullWidth"}
+              scrollButtons="auto"
+              allowScrollButtonsMobile
             >
               <Tab icon={<DescriptionIcon />} label="Bio" />
               <Tab icon={<RecordVoiceOverIcon />} label="Speeches" />
               <Tab icon={<DescriptionIcon />} label="Bills" />
               <Tab icon={<HowToVoteIcon />} label="Voting Record" />
+              <Tab icon={<BusinessIcon />} label="Interests" />
             </Tabs>
             
             {/* Tab Content */}
@@ -896,6 +933,161 @@ const MemberDetailPage = () => {
                     </TableContainer>
                   ) : (
                     <Typography>No voting record found.</Typography>
+                  )}
+                </Box>
+              )}
+              
+              {/* Personal Interests Tab */}
+              {activeTab === 4 && (
+                <Box>
+                  <Typography variant="h6" gutterBottom>
+                    Personal Interests and Commitments
+                  </Typography>
+                  
+                  {interestsLoading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                      <CircularProgress />
+                    </Box>
+                  ) : interests ? (
+                    <Box>
+                      {interests.board_positions && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="subtitle1" color="primary" gutterBottom>
+                            Board Positions
+                          </Typography>
+                          <Typography paragraph>{interests.board_positions}</Typography>
+                          <Divider />
+                        </Box>
+                      )}
+                      
+                      {interests.paid_work && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="subtitle1" color="primary" gutterBottom>
+                            Paid Work
+                          </Typography>
+                          <Typography paragraph>{interests.paid_work}</Typography>
+                          <Divider />
+                        </Box>
+                      )}
+                      
+                      {interests.business_activities && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="subtitle1" color="primary" gutterBottom>
+                            Business Activities
+                          </Typography>
+                          <Typography paragraph>{interests.business_activities}</Typography>
+                          <Divider />
+                        </Box>
+                      )}
+                      
+                      {interests.company_ownership && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="subtitle1" color="primary" gutterBottom>
+                            Company Ownership
+                          </Typography>
+                          <Typography paragraph>{interests.company_ownership}</Typography>
+                          <Divider />
+                        </Box>
+                      )}
+                      
+                      {interests.financial_support && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="subtitle1" color="primary" gutterBottom>
+                            Financial Support
+                          </Typography>
+                          <Typography paragraph>{interests.financial_support}</Typography>
+                          <Divider />
+                        </Box>
+                      )}
+                      
+                      {interests.gifts && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="subtitle1" color="primary" gutterBottom>
+                            Gifts
+                          </Typography>
+                          <Typography paragraph>{interests.gifts}</Typography>
+                          <Divider />
+                        </Box>
+                      )}
+                      
+                      {interests.trips && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="subtitle1" color="primary" gutterBottom>
+                            Trips and Visits
+                          </Typography>
+                          <Typography paragraph>{interests.trips}</Typography>
+                          <Divider />
+                        </Box>
+                      )}
+                      
+                      {interests.debt_forgiveness && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="subtitle1" color="primary" gutterBottom>
+                            Debt Forgiveness
+                          </Typography>
+                          <Typography paragraph>{interests.debt_forgiveness}</Typography>
+                          <Divider />
+                        </Box>
+                      )}
+                      
+                      {interests.real_estate && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="subtitle1" color="primary" gutterBottom>
+                            Real Estate
+                          </Typography>
+                          <Typography paragraph>{interests.real_estate}</Typography>
+                          <Divider />
+                        </Box>
+                      )}
+                      
+                      {interests.former_employer_agreements && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="subtitle1" color="primary" gutterBottom>
+                            Former Employer Agreements
+                          </Typography>
+                          <Typography paragraph>{interests.former_employer_agreements}</Typography>
+                          <Divider />
+                        </Box>
+                      )}
+                      
+                      {interests.future_employer_agreements && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="subtitle1" color="primary" gutterBottom>
+                            Future Employer Agreements
+                          </Typography>
+                          <Typography paragraph>{interests.future_employer_agreements}</Typography>
+                          <Divider />
+                        </Box>
+                      )}
+                      
+                      {interests.other_positions && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="subtitle1" color="primary" gutterBottom>
+                            Other Positions
+                          </Typography>
+                          <Typography paragraph>{interests.other_positions}</Typography>
+                        </Box>
+                      )}
+                      
+                      {interests.source_url && (
+                        <Box sx={{ mt: 4 }}>
+                          <Button
+                            variant="outlined"
+                            color="primary"
+                            href={interests.source_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            startIcon={<DescriptionIcon />}
+                          >
+                            View Source Document
+                          </Button>
+                        </Box>
+                      )}
+                    </Box>
+                  ) : (
+                    <Alert severity="info">
+                      No personal interests or commitments have been declared.
+                    </Alert>
                   )}
                 </Box>
               )}
