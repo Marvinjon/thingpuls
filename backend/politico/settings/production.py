@@ -42,8 +42,13 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
 # CORS settings for production
-CORS_ALLOW_ALL_ORIGINS = False
-CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ORIGIN_WHITELIST', '').split(',')
+cors_origins = os.environ.get('CORS_ORIGIN_WHITELIST', '')
+if cors_origins:
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = cors_origins.split(',')
+else:
+    # Default to allowing all origins if no specific origins are provided
+    CORS_ALLOW_ALL_ORIGINS = True
 
 # Email configuration for production
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
