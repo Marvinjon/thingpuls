@@ -22,10 +22,10 @@ const NotFoundPage = () => {
           404
         </Typography>
         <Typography variant="h4" color="text.primary" gutterBottom>
-          Page Not Found
+          Síða fannst ekki
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: '60%' }}>
-          The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.
+          Síðan sem þú ert að leita að gæti hafa verið fjarlægð, nafni hennar breytt eða er tímabundið óaðgengileg.
         </Typography>
         <Button
           variant="contained"
@@ -35,7 +35,7 @@ const NotFoundPage = () => {
           startIcon={<HomeIcon />}
           sx={{ mt: 2 }}
         >
-          Back to Home
+          Aftur á forsíðu
         </Button>
       </Box>
     </Container>

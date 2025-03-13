@@ -225,13 +225,13 @@ const BillsPage = () => {
   // Format status for display
   const formatStatus = (status) => {
     const statusMap = {
-      'introduced': 'Introduced',
-      'in_committee': 'In Committee',
-      'in_debate': 'In Debate',
-      'amended': 'Amended',
-      'passed': 'Passed',
-      'rejected': 'Rejected',
-      'withdrawn': 'Withdrawn'
+      'introduced': 'Lagt fram',
+      'in_committee': 'Í nefnd',
+      'in_debate': 'Í umræðu',
+      'amended': 'Breytt',
+      'passed': 'Samþykkt',
+      'rejected': 'Hafnað',
+      'withdrawn': 'Dregið til baka'
     };
     return statusMap[status] || status;
   };
@@ -261,12 +261,12 @@ const BillsPage = () => {
   return (
     <Container maxWidth="lg">
       <Typography variant="h4" component="h1" gutterBottom sx={{ mt: 4 }}>
-        Parliamentary Bills
+        Þingmál
       </Typography>
       
       <Typography variant="body1" color="text.secondary" paragraph>
-        Browse, search, and filter parliamentary bills in the Icelandic Althingi. 
-        Find detailed information about proposed legislation, their status, sponsors, and voting results.
+        Skoðaðu, leitaðu og síaðu þingmál í Alþingi. 
+        Finndu ítarlegar upplýsingar um löggjöf, stöðu þeirra, flutningsmenn og atkvæðagreiðslur.
       </Typography>
       
       {/* Search and Filter Bar */}
@@ -276,12 +276,12 @@ const BillsPage = () => {
           <Grid container spacing={2} alignItems="flex-end">
             <Grid item xs={12} md={6}>
               <TextField
-                label="Search Bills"
+                label="Leita að þingmálum"
                 variant="outlined"
                 fullWidth
                 value={pendingSearchTerm}
                 onChange={handleSearchInputChange}
-                placeholder="Search by title, number, or description"
+                placeholder="Leita eftir heiti, númeri eða lýsingu"
                 InputProps={{
                   endAdornment: (
                     <>
@@ -299,26 +299,7 @@ const BillsPage = () => {
               />
             </Grid>
             
-            <Grid item xs={6} md={2}>
-              <FormControl fullWidth variant="outlined">
-                <InputLabel id="sort-by-label">Sort By</InputLabel>
-                <Select
-                  labelId="sort-by-label"
-                  name="sortBy"
-                  value={sortBy}
-                  onChange={handleFilterChange}
-                  label="Sort By"
-                  disabled={loading}
-                >
-                  <MenuItem value="latest">Latest First</MenuItem>
-                  <MenuItem value="oldest">Oldest First</MenuItem>
-                  <MenuItem value="title_asc">Title (A-Z)</MenuItem>
-                  <MenuItem value="title_desc">Title (Z-A)</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            <Grid item xs={6} md={4}>
+            <Grid item xs={12} md={6}>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <Button 
                   variant="outlined" 
@@ -327,16 +308,16 @@ const BillsPage = () => {
                   sx={{ mr: 1 }}
                   disabled={loading}
                 >
-                  Filters
+                  Síur
                 </Button>
                 
                 <Button 
                   variant="contained" 
                   startIcon={<FilterListIcon />}
                   onClick={handleResetFilters}
-                  disabled={(!status && !topic && !year && !searchTerm && sortBy === 'latest') || loading}
+                  disabled={(!status && !topic && !year && !searchTerm) || loading}
                 >
-                  Reset
+                  Endurstilla
                 </Button>
               </Box>
             </Grid>
@@ -348,38 +329,38 @@ const BillsPage = () => {
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={4}>
                   <FormControl fullWidth variant="outlined">
-                    <InputLabel id="status-label">Status</InputLabel>
+                    <InputLabel id="status-label">Staða</InputLabel>
                     <Select
                       labelId="status-label"
                       name="status"
                       value={status}
                       onChange={handleFilterChange}
-                      label="Status"
+                      label="Staða"
                       disabled={loading}
                     >
-                      <MenuItem value="">All Statuses</MenuItem>
-                      <MenuItem value="introduced">Introduced</MenuItem>
-                      <MenuItem value="in_committee">In Committee</MenuItem>
-                      <MenuItem value="in_debate">In Debate</MenuItem>
-                      <MenuItem value="passed">Passed</MenuItem>
-                      <MenuItem value="rejected">Rejected</MenuItem>
-                      <MenuItem value="withdrawn">Withdrawn</MenuItem>
+                      <MenuItem value="">Allar stöður</MenuItem>
+                      <MenuItem value="introduced">Lagt fram</MenuItem>
+                      <MenuItem value="in_committee">Í nefnd</MenuItem>
+                      <MenuItem value="in_debate">Í umræðu</MenuItem>
+                      <MenuItem value="passed">Samþykkt</MenuItem>
+                      <MenuItem value="rejected">Hafnað</MenuItem>
+                      <MenuItem value="withdrawn">Dregið til baka</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
                 
                 <Grid item xs={12} sm={4}>
                   <FormControl fullWidth variant="outlined">
-                    <InputLabel id="topic-label">Topic</InputLabel>
+                    <InputLabel id="topic-label">Málaflokkur</InputLabel>
                     <Select
                       labelId="topic-label"
                       name="topic"
                       value={topic}
                       onChange={handleFilterChange}
-                      label="Topic"
+                      label="Málaflokkur"
                       disabled={loading}
                     >
-                      <MenuItem value="">All Topics</MenuItem>
+                      <MenuItem value="">Allir málaflokkar</MenuItem>
                       {topics.map((topic) => (
                         <MenuItem key={topic.id} value={topic.id}>
                           {topic.name}
@@ -391,16 +372,16 @@ const BillsPage = () => {
                 
                 <Grid item xs={12} sm={4}>
                   <FormControl fullWidth variant="outlined">
-                    <InputLabel id="year-label">Year</InputLabel>
+                    <InputLabel id="year-label">Ár</InputLabel>
                     <Select
                       labelId="year-label"
                       name="year"
                       value={year}
                       onChange={handleFilterChange}
-                      label="Year"
+                      label="Ár"
                       disabled={loading}
                     >
-                      <MenuItem value="">All Years</MenuItem>
+                      <MenuItem value="">Öll ár</MenuItem>
                       {years.map((year) => (
                         <MenuItem key={year} value={year}>
                           {year}
@@ -415,27 +396,48 @@ const BillsPage = () => {
         </form>
       </Paper>
       
-      {/* Error Alert */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 4 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-      
-      {/* Search Results Summary - Only show if we have results and no error */}
-      {!error && searchTerm && !loading && totalBills > 0 && (
-        <Box sx={{ mb: 2 }}>
+      {/* Search Results Summary */}
+      {!loading && !error && bills.length > 0 && (
+        <Box sx={{ mb: 3 }}>
           <Typography variant="body2" color="text.secondary">
-            Found {totalBills} {totalBills === 1 ? 'bill' : 'bills'} matching "{searchTerm}"
+            {searchTerm ? (
+              `${bills.length} niðurstöður fyrir "${searchTerm}"`
+            ) : (
+              `${bills.length} þingmál fundust`
+            )}
           </Typography>
         </Box>
       )}
       
-      {/* Loading Indicator */}
+      {/* Loading State */}
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
           <CircularProgress />
         </Box>
+      )}
+      
+      {/* Error State */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          Villa kom upp við að sækja þingmál: {error}
+        </Alert>
+      )}
+      
+      {/* No Results */}
+      {!loading && !error && bills.length === 0 && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Engin þingmál fundust{searchTerm ? ` fyrir leitina "${searchTerm}"` : ''}.
+          {searchTerm && (
+            <Button 
+              color="inherit" 
+              size="small" 
+              onClick={handleClearSearch}
+              sx={{ ml: 2 }}
+            >
+              Hreinsa leit
+            </Button>
+          )}
+        </Alert>
       )}
       
       {/* Bills List - Only show if we have bills and no error and not loading */}
@@ -514,28 +516,6 @@ const BillsPage = () => {
             </Box>
           )}
         </>
-      )}
-      
-      {/* No Results Message - Only show if we have no bills and no error and not loading */}
-      {!loading && !error && bills.length === 0 && (
-        <Box sx={{ textAlign: 'center', my: 4 }}>
-          <Typography variant="h6" color="text.secondary" gutterBottom>
-            No bills found matching the criteria
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Try adjusting your search terms or filters
-          </Typography>
-          {searchTerm && (
-            <Button 
-              variant="outlined" 
-              color="primary"
-              onClick={handleClearSearch}
-              sx={{ mt: 2 }}
-            >
-              Clear Search
-            </Button>
-          )}
-        </Box>
       )}
     </Container>
   );

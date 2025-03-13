@@ -10,7 +10,8 @@ import {
   Paper,
   Alert,
   InputAdornment,
-  IconButton
+  IconButton,
+  Grid
 } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -107,24 +108,24 @@ const LoginPage = () => {
           >
             <LockOutlinedIcon />
           </Box>
-          <Typography component="h1" variant="h5">
-            Sign in
+          <Typography component="h1" variant="h5" gutterBottom>
+            Innskráning
           </Typography>
         </Box>
         
         {error && (
-          <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
+          <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
         )}
         
-        <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1, width: '100%' }}>
+        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
           <TextField
             margin="normal"
             required
             fullWidth
             id="email"
-            label="Email Address"
+            label="Netfang"
             name="email"
             autoComplete="email"
             autoFocus
@@ -138,7 +139,7 @@ const LoginPage = () => {
             required
             fullWidth
             name="password"
-            label="Password"
+            label="Lykilorð"
             type={showPassword ? 'text' : 'password'}
             id="password"
             autoComplete="current-password"
@@ -167,13 +168,20 @@ const LoginPage = () => {
             sx={{ mt: 3, mb: 2 }}
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Signing in...' : 'Sign In'}
+            {isSubmitting ? 'Skrái inn...' : 'Skrá inn'}
           </Button>
-          <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-            <Link component={RouterLink} to="/register" variant="body2">
-              {"Don't have an account? Sign Up"}
-            </Link>
-          </Box>
+          <Grid container>
+            <Grid item xs>
+              <Link component={RouterLink} to="/forgot-password" variant="body2">
+                Gleymt lykilorð?
+              </Link>
+            </Grid>
+            <Grid item>
+              <Link component={RouterLink} to="/register" variant="body2">
+                {"Ekki með aðgang? Skráðu þig"}
+              </Link>
+            </Grid>
+          </Grid>
         </Box>
       </Paper>
     </Container>

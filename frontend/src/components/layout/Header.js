@@ -34,6 +34,8 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
 import { useAuth } from '../../context/AuthContext';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import PersonIcon from '@mui/icons-material/Person';
 
 const Header = () => {
   const navigate = useNavigate();
@@ -62,21 +64,21 @@ const Header = () => {
   
   // Navigation items for the sidebar drawer
   const navItems = [
-    { text: 'Home', icon: <DashboardIcon />, path: '/' },
-    { text: 'Members of Parliament', icon: <PeopleIcon />, path: '/parliament/members' },
-    { text: 'Bills', icon: <DescriptionIcon />, path: '/parliament/bills' },
-    { text: 'Voting Records', icon: <HowToVoteIcon />, path: '/parliament/voting-records' },
-    { text: 'Analytics', icon: <BarChartIcon />, path: '/analytics/dashboard' },
+    { text: 'Heim', icon: <DashboardIcon />, path: '/' },
+    { text: 'Þingmenn', icon: <PeopleIcon />, path: '/parliament/members' },
+    { text: 'Þingmál', icon: <DescriptionIcon />, path: '/parliament/bills' },
+    { text: 'Atkvæðagreiðslur', icon: <HowToVoteIcon />, path: '/parliament/voting-records' },
+    { text: 'Tölfræði', icon: <BarChartIcon />, path: '/analytics/dashboard' },
     ...(currentUser ? [
-      { text: 'Discussion Forums', icon: <ForumIcon />, path: '/engagement/forums' },
-      { text: 'Whistleblowing', icon: <CampaignIcon />, path: '/engagement/whistleblowing' },
+      { text: 'Umræður', icon: <ForumIcon />, path: '/engagement/forums' },
+      { text: 'Ábendingar', icon: <CampaignIcon />, path: '/engagement/whistleblowing' },
     ] : [])
   ];
   
   const drawer = (
     <Box sx={{ width: 250 }} role="presentation" onClick={handleDrawerToggle}>
       <Typography variant="h6" sx={{ my: 2, ml: 2 }}>
-        Politico
+        Þingpúls
       </Typography>
       <Divider />
       <List>
@@ -119,6 +121,21 @@ const Header = () => {
             </IconButton>
             
             {/* Logo/Title */}
+            <IconButton
+              component={RouterLink}
+              to="/"
+              sx={{
+                mr: 2,
+                display: { xs: 'none', md: 'flex' },
+                fontFamily: 'monospace',
+                fontWeight: 700,
+                color: 'inherit',
+                textDecoration: 'none',
+              }}
+            >
+              <AccountBalanceIcon />
+            </IconButton>
+            
             <Typography
               variant="h6"
               noWrap
@@ -126,14 +143,35 @@ const Header = () => {
               to="/"
               sx={{
                 mr: 2,
-                display: 'flex',
+                display: { xs: 'none', md: 'flex' },
+                fontFamily: 'monospace',
                 fontWeight: 700,
                 color: 'inherit',
                 textDecoration: 'none',
               }}
             >
-              POLITICO
+              ÞINGPÚLS
             </Typography>
+            
+            {/* Mobile logo */}
+            <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
+              <Typography
+                variant="h5"
+                noWrap
+                component={RouterLink}
+                to="/"
+                sx={{
+                  display: 'flex',
+                  flexGrow: 1,
+                  fontFamily: 'monospace',
+                  fontWeight: 700,
+                  color: 'inherit',
+                  textDecoration: 'none',
+                }}
+              >
+                ÞINGPÚLS
+              </Typography>
+            </Box>
             
             {/* Desktop navigation */}
             <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
@@ -142,40 +180,29 @@ const Header = () => {
                 to="/parliament/members"
                 sx={{ my: 2, color: 'white', display: 'block' }}
               >
-                MPs
+                Þingmenn
               </Button>
               <Button
                 component={RouterLink}
                 to="/parliament/bills"
                 sx={{ my: 2, color: 'white', display: 'block' }}
               >
-                Bills
+                Þingmál
               </Button>
               <Button
                 component={RouterLink}
                 to="/parliament/voting-records"
                 sx={{ my: 2, color: 'white', display: 'block' }}
               >
-                Votes
+                Atkvæðagreiðslur
               </Button>
               <Button
                 component={RouterLink}
                 to="/analytics/dashboard"
                 sx={{ my: 2, color: 'white', display: 'block' }}
               >
-                Analytics
+                Tölfræði
               </Button>
-              {currentUser && (
-                <>
-                  <Button
-                    component={RouterLink}
-                    to="/engagement/forums"
-                    sx={{ my: 2, color: 'white', display: 'block' }}
-                  >
-                    Forums
-                  </Button>
-                </>
-              )}
             </Box>
             
             {/* User section */}

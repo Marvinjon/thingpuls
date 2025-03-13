@@ -4,7 +4,7 @@ import {
   Container, Typography, Box, Paper, Chip, Button, 
   Accordion, AccordionSummary, AccordionDetails, Grid,
   Divider, CircularProgress, Alert, List, ListItem, ListItemText,
-  Link
+  Link, ListItemButton, ListItemAvatar, Avatar
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -106,7 +106,7 @@ const BillDetailPage = () => {
       <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="overline" color="text.secondary">
-            Bill #{bill.althingi_id}
+            Þingmál #{bill.althingi_id}
           </Typography>
           <Chip 
             label={formatStatus(bill.status)} 
@@ -122,7 +122,7 @@ const BillDetailPage = () => {
         <Box display="flex" gap={2} mb={3} flexWrap="wrap">
           <Chip 
             icon={<AccessTimeIcon />} 
-            label={`Submitted: ${new Date(bill.introduced_date).toLocaleDateString()}`} 
+            label={`Lagt fram: ${new Date(bill.introduced_date).toLocaleDateString()}`} 
             variant="outlined" 
           />
           {bill.topics?.map((topic) => (
@@ -136,193 +136,146 @@ const BillDetailPage = () => {
 
         <Divider sx={{ mb: 3 }} />
         
-        <Typography variant="h6" gutterBottom>Summary</Typography>
+        <Typography variant="h6" gutterBottom>Samantekt</Typography>
         <Typography paragraph>
-          {bill.description || 'No description available.'}
+          {bill.description || 'Engin lýsing í boði.'}
         </Typography>
-      </Paper>
 
-      <Grid container spacing={4}>
-        <Grid item xs={12} md={6}>
-          {bill.sponsors && bill.sponsors.length > 0 && (
-            <Accordion>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <Accordion defaultExpanded>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
-                  <PersonIcon sx={{ mr: 1 }} /> Sponsors & Co-sponsors
-                </Typography>
+                <Typography variant="h6">Flutningsmenn og meðflutningsmenn</Typography>
               </AccordionSummary>
               <AccordionDetails>
-                <Box>
-                  {/* Primary Sponsors */}
-                  <Typography variant="subtitle1" color="primary" gutterBottom>
-                    Primary Sponsor{bill.sponsors.length > 1 ? 's' : ''}
+                {/* Primary Sponsors */}
+                {bill.sponsors?.length > 0 && (
+                  <>
+                    <Typography variant="subtitle1" gutterBottom>
+                      Aðalflutningsmenn
+                    </Typography>
+                    <List>
+                      {bill.sponsors.map((sponsor) => (
+                        <ListItem key={sponsor.id} disablePadding>
+                          <ListItemButton component={RouterLink} to={`/parliament/members/${sponsor.slug}`}>
+                            <ListItemAvatar>
+                              <Avatar src={sponsor.image_url} alt={sponsor.full_name}>
+                                <PersonIcon />
+                              </Avatar>
+                            </ListItemAvatar>
+                            <ListItemText 
+                              primary={sponsor.full_name}
+                              secondary={sponsor.party?.name || 'Óháður þingmaður'}
+                            />
+                          </ListItemButton>
+                        </ListItem>
+                      ))}
+                    </List>
+                  </>
+                )}
+
+                {/* Co-Sponsors */}
+                {bill.cosponsors?.length > 0 && (
+                  <>
+                    <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
+                      Meðflutningsmenn
+                    </Typography>
+                    <List>
+                      {bill.cosponsors.map((cosponsor) => (
+                        <ListItem key={cosponsor.id} disablePadding>
+                          <ListItemButton component={RouterLink} to={`/parliament/members/${cosponsor.slug}`}>
+                            <ListItemAvatar>
+                              <Avatar src={cosponsor.image_url} alt={cosponsor.full_name}>
+                                <PersonIcon />
+                              </Avatar>
+                            </ListItemAvatar>
+                            <ListItemText 
+                              primary={cosponsor.full_name}
+                              secondary={cosponsor.party?.name || 'Óháður þingmaður'}
+                            />
+                          </ListItemButton>
+                        </ListItem>
+                      ))}
+                    </List>
+                  </>
+                )}
+
+                {bill.sponsors?.length === 0 && bill.cosponsors?.length === 0 && (
+                  <Typography color="text.secondary">
+                    Engir flutningsmenn skráðir
                   </Typography>
-                  {bill.sponsors.map((sponsor) => (
-                    <Box key={sponsor.id} mb={2}>
-                      <Typography variant="subtitle1">
-                        <Link 
-                          component={RouterLink} 
-                          to={`/parliament/members/${sponsor.slug}`}
-                          color="inherit"
-                          underline="hover"
-                        >
-                          {sponsor.first_name} {sponsor.last_name}
-                        </Link>
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {sponsor.party_name}
-                      </Typography>
-                    </Box>
-                  ))}
-
-                  {/* Co-sponsors */}
-                  {bill.cosponsors && bill.cosponsors.length > 0 && (
-                    <>
-                      <Divider sx={{ my: 2 }} />
-                      <Typography variant="subtitle1" color="primary" gutterBottom>
-                        Co-sponsors ({bill.cosponsors.length})
-                      </Typography>
-                      <Grid container spacing={2}>
-                        {bill.cosponsors.map((cosponsor) => (
-                          <Grid item xs={12} sm={6} key={cosponsor.id}>
-                            <Typography variant="subtitle2">
-                              <Link 
-                                component={RouterLink} 
-                                to={`/parliament/members/${cosponsor.slug}`}
-                                color="inherit"
-                                underline="hover"
-                              >
-                                {cosponsor.first_name} {cosponsor.last_name}
-                              </Link>
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {cosponsor.party_name}
-                            </Typography>
-                          </Grid>
-                        ))}
-                      </Grid>
-                    </>
-                  )}
-                </Box>
-              </AccordionDetails>
-            </Accordion>
-          )}
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          {bill.votes && (
-            <Accordion>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
-                  <HowToVoteIcon sx={{ mr: 1 }} /> Voting Summary
-                </Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Box>
-                  <Box display="flex" gap={2} flexWrap="wrap" mb={3}>
-                    <Chip label={`For: ${bill.votes.yes}`} color="success" />
-                    <Chip label={`Against: ${bill.votes.no}`} color="error" />
-                    <Chip label={`Abstain: ${bill.votes.abstain}`} />
-                    <Chip label={`Absent: ${bill.votes.absent}`} variant="outlined" />
-                    <Chip label={`Total: ${bill.votes.total}`} variant="outlined" />
-                  </Box>
-                  
-                  <Box display="flex" gap={2} mb={3}>
-                    <Button 
-                      variant="outlined" 
-                      size="small"
-                      onClick={() => setShowVoteDetails(prev => !prev)}
-                      startIcon={showVoteDetails ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                    >
-                      {showVoteDetails ? 'Hide Vote Details' : 'Show Vote Details'}
-                    </Button>
-                    <Button 
-                      component={RouterLink} 
-                      to={`/parliament/voting-records?bill=${bill.id}`} 
-                      variant="outlined" 
-                      size="small"
-                      startIcon={<HowToVoteIcon />}
-                    >
-                      View All Voting Records
-                    </Button>
-                  </Box>
-
-                  {showVoteDetails && (
-                    <Box>
-                      <Typography variant="subtitle1" gutterBottom>Individual Votes</Typography>
-                      <Grid container spacing={2}>
-                        {['yes', 'no', 'abstain', 'absent'].map((voteType) => (
-                          <Grid item xs={12} md={6} key={voteType}>
-                            <Accordion>
-                              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                <Typography>
-                                  {voteType.charAt(0).toUpperCase() + voteType.slice(1)} ({bill.votes[voteType]})
-                                </Typography>
-                              </AccordionSummary>
-                              <AccordionDetails>
-                                <List dense>
-                                  {bill.votes[`${voteType}_votes`]?.map((vote) => (
-                                    <ListItem key={vote.mp.id}>
-                                      <ListItemText
-                                        primary={
-                                          <Link 
-                                            component={RouterLink} 
-                                            to={`/parliament/members/${vote.mp.slug}`}
-                                            color="primary"
-                                            underline="hover"
-                                          >
-                                            {vote.mp.first_name} {vote.mp.last_name}
-                                          </Link>
-                                        }
-                                        secondary={vote.mp.party?.name || 'Independent'}
-                                      />
-                                    </ListItem>
-                                  ))}
-                                </List>
-                              </AccordionDetails>
-                            </Accordion>
-                          </Grid>
-                        ))}
-                      </Grid>
-                    </Box>
-                  )}
-                </Box>
-              </AccordionDetails>
-            </Accordion>
-          )}
-        </Grid>
-
-        {bill.amendments && bill.amendments.length > 0 && (
-          <Grid item xs={12}>
-            <Accordion>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
-                  <DescriptionIcon sx={{ mr: 1 }} /> Amendments
-                </Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Box>
-                  {bill.amendments.map((amendment) => (
-                    <Box key={amendment.id} mb={2}>
-                      <Typography variant="subtitle1">{amendment.title}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Proposed: {new Date(amendment.date_proposed).toLocaleDateString()}
-                      </Typography>
-                      <Chip 
-                        size="small"
-                        label={amendment.status}
-                        color={amendment.status === 'adopted' ? 'success' : 
-                               amendment.status === 'rejected' ? 'error' : 'default'}
-                        sx={{ mt: 1 }}
-                      />
-                    </Box>
-                  ))}
-                </Box>
+                )}
               </AccordionDetails>
             </Accordion>
           </Grid>
-        )}
-      </Grid>
+
+          <Grid item xs={12} md={6}>
+            <Accordion defaultExpanded>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="h6">Atkvæðagreiðslur</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                {bill.votes?.length > 0 ? (
+                  <List>
+                    {bill.votes.map((vote) => (
+                      <ListItem key={vote.id}>
+                        <ListItemText
+                          primary={vote.title}
+                          secondary={`${vote.yes_count} já, ${vote.no_count} nei, ${vote.abstain_count} sitja hjá`}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                ) : (
+                  <Typography color="text.secondary">
+                    Engar atkvæðagreiðslur skráðar
+                  </Typography>
+                )}
+              </AccordionDetails>
+            </Accordion>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="h6">Breytingartillögur</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                {bill.amendments?.length > 0 ? (
+                  <List>
+                    {bill.amendments.map((amendment) => (
+                      <ListItem key={amendment.id}>
+                        <ListItemText
+                          primary={amendment.title}
+                          secondary={`Lagt fram: ${new Date(amendment.date).toLocaleDateString()}`}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                ) : (
+                  <Typography color="text.secondary">
+                    Engar breytingartillögur skráðar
+                  </Typography>
+                )}
+              </AccordionDetails>
+            </Accordion>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Loading State */}
+      {loading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+          <CircularProgress />
+        </Box>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          Villa kom upp við að sækja þingmál: {error}
+        </Alert>
+      )}
     </Container>
   );
 };

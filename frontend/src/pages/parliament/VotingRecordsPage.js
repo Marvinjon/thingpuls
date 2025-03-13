@@ -232,20 +232,20 @@ const VotingRecordsPage = () => {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom>
-        Parliamentary Voting Records
+        Atkvæðagreiðslur
       </Typography>
       
       {billId && votingRecords[0] && (
         <Box mb={3}>
           <Alert severity="info" icon={<DescriptionIcon />}>
-            Viewing votes related to Bill #{votingRecords[0].billNumber}/{votingRecords[0].sessionNumber}: {votingRecords[0].billTitle}
+            Skoða atkvæðagreiðslur fyrir þingmál #{votingRecords[0].billNumber}/{votingRecords[0].sessionNumber}: {votingRecords[0].billTitle}
             <Button 
               component={RouterLink} 
               to={`/parliament/bills/${votingRecords[0].id}`} 
               size="small" 
               sx={{ ml: 2 }}
             >
-              View Bill Details
+              Skoða þingmál
             </Button>
           </Alert>
         </Box>
@@ -254,14 +254,14 @@ const VotingRecordsPage = () => {
       {memberId && (
         <Box mb={3}>
           <Alert severity="info" icon={<PersonIcon />}>
-            Viewing votes by {votingRecords[0]?.memberVotes.find(m => m.memberId === parseInt(memberId))?.memberName || 'MP'}
+            Skoða atkvæðagreiðslur fyrir þingmann
             <Button 
               component={RouterLink} 
               to={`/parliament/members/${memberId}`} 
               size="small" 
               sx={{ ml: 2 }}
             >
-              View MP Profile
+              Skoða þingmann
             </Button>
           </Alert>
         </Box>
@@ -418,66 +418,77 @@ const VotingRecordsPage = () => {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Bill</TableCell>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Result</TableCell>
-                    <TableCell>For</TableCell>
-                    <TableCell>Against</TableCell>
-                    <TableCell>Abstentions</TableCell>
-                    <TableCell>Absent</TableCell>
-                    <TableCell>Actions</TableCell>
+                    <TableCell>Þingmál</TableCell>
+                    <TableCell>Dagsetning</TableCell>
+                    <TableCell>Niðurstaða</TableCell>
+                    <TableCell align="center">Já</TableCell>
+                    <TableCell align="center">Nei</TableCell>
+                    <TableCell align="center">Situr hjá</TableCell>
+                    <TableCell align="center">Fjarverandi</TableCell>
+                    <TableCell>Aðgerðir</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {votingRecords.map((record) => (
-                    <TableRow key={record.id}>
+                    <TableRow key={`${record.id}-${record.date}`}>
                       <TableCell>
-                        <Link 
-                          component={RouterLink} 
-                          to={`/parliament/bills/${record.id}`}
-                          color="primary"
-                          underline="hover"
-                        >
-                          Bill #{record.billNumber}/{record.sessionNumber} • {record.stage}
-                        </Link>
-                        <Typography variant="body2" color="textSecondary">
-                          {record.billTitle}
-                          {record.billNumber && !isNaN(record.billNumber) && (
-                            <Link
-                              href={`https://www.althingi.is/thingstorf/thingmalalistar-eftir-thingum/ferill/${record.sessionNumber}/${record.billNumber}/?ltg=${record.sessionNumber}&mnr=${record.billNumber}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              sx={{ ml: 1, display: 'inline-flex', alignItems: 'center', fontSize: 'inherit' }}
-                            >
-                              <LaunchIcon sx={{ fontSize: '1rem', ml: 0.5 }} />
-                              Althingi
-                            </Link>
-                          )}
-                        </Typography>
+                        <Box>
+                          <Typography variant="subtitle2">
+                            Þingmál #{record.billNumber}/{record.sessionNumber} • {record.stage}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {record.billTitle}
+                          </Typography>
+                          <Link 
+                            href={record.althingi_voting_id ? 
+                              `https://www.althingi.is/thingstorf/thingmalin/atkvaedagreidsla/?nnafnak=${record.althingi_voting_id}` :
+                              `https://www.althingi.is/thingstorf/thingmalalistar-eftir-thingum/ferill/${record.sessionNumber}/${record.billNumber}/?ltg=${record.sessionNumber}&mnr=${record.billNumber}`
+                            }
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            sx={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              fontSize: '0.875rem',
+                              mt: 0.5 
+                            }}
+                          >
+                            Skoða atkvæðagreiðslu á vef Alþingis
+                            <LaunchIcon sx={{ ml: 0.5, fontSize: '0.875rem' }} />
+                          </Link>
+                        </Box>
                       </TableCell>
-                      <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        {new Date(record.date).toLocaleDateString('is-IS', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        })}
+                      </TableCell>
                       <TableCell>
                         <Chip 
-                          label={record.result}
-                          color={record.result?.toLowerCase() === 'passed' ? 'success' : 
-                                record.result?.toLowerCase() === 'failed' ? 'error' : 
-                                record.result?.toLowerCase() === 'in progress' ? 'info' :
-                                'default'}
+                          label={record.result === 'Passed' ? 'Samþykkt' :
+                                 record.result === 'In_committee' ? 'Í nefnd' :
+                                 record.result === 'Introduced' ? 'Lagt fram' :
+                                 record.result === 'Failed' ? 'Hafnað' :
+                                 record.result === 'Withdrawn' ? 'Dregið til baka' :
+                                 record.result}
+                          color={getResultColor(record.result)}
                           size="small"
                         />
                       </TableCell>
-                      <TableCell>{record.totalVotes.for}</TableCell>
-                      <TableCell>{record.totalVotes.against}</TableCell>
-                      <TableCell>{record.totalVotes.abstentions}</TableCell>
-                      <TableCell>{record.totalVotes.absent}</TableCell>
+                      <TableCell align="center">{record.totalVotes.for}</TableCell>
+                      <TableCell align="center">{record.totalVotes.against}</TableCell>
+                      <TableCell align="center">{record.totalVotes.abstentions}</TableCell>
+                      <TableCell align="center">{record.totalVotes.absent}</TableCell>
                       <TableCell>
                         <Button
                           component={RouterLink}
                           to={`/parliament/bills/${record.id}`}
                           size="small"
-                          startIcon={<HowToVoteIcon />}
+                          startIcon={<InfoIcon />}
                         >
-                          View Details
+                          Nánar
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -487,19 +498,17 @@ const VotingRecordsPage = () => {
             </TableContainer>
           )}
           
-          <Box display="flex" justifyContent="center" mt={4}>
-            <Pagination 
+          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Síða {page} af {totalPages} ({totalRecords} niðurstöður)
+            </Typography>
+            <Pagination
               count={totalPages}
               page={page}
               onChange={handlePageChange}
               color="primary"
             />
           </Box>
-          {totalRecords > 0 && (
-            <Typography variant="body2" color="textSecondary" align="center" mt={1}>
-              Total records: {totalRecords}
-            </Typography>
-          )}
         </>
       )}
     </Container>

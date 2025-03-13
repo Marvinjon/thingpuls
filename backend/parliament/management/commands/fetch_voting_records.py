@@ -264,16 +264,15 @@ class Command(BaseCommand):
                         
                         try:
                             mp = MP.objects.get(althingi_id=mp_id)
-                            
-                            Vote.objects.create(
+                            vote = Vote.objects.create(
                                 bill=bill_obj,
                                 mp=mp,
-                                vote=vote_value,
+                                vote=vote_value.lower(),
                                 vote_date=vote_date,
-                                session=session
+                                session=session,
+                                althingi_voting_id=voting_id  # Save the voting ID
                             )
                             votes_created += 1
-                            
                         except MP.DoesNotExist:
                             name_elem = mp_elem.find('nafn')
                             name = name_elem.text if name_elem is not None else "Unknown"

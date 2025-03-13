@@ -238,13 +238,12 @@ const MemberDetailPage = () => {
   // Format the status for display
   const formatStatus = (status) => {
     const statusMap = {
-      'introduced': 'Introduced',
-      'in_committee': 'In Committee',
-      'in_debate': 'In Debate',
-      'amended': 'Amended',
-      'passed': 'Passed',
-      'rejected': 'Rejected',
-      'withdrawn': 'Withdrawn'
+      'introduced': 'Lagt fram',
+      'in_committee': 'Í nefnd',
+      'in_debate': 'Í umræðu',
+      'passed': 'Samþykkt',
+      'rejected': 'Hafnað',
+      'withdrawn': 'Dregið til baka'
     };
     return statusMap[status] || status;
   };
@@ -252,10 +251,10 @@ const MemberDetailPage = () => {
   // Format the vote type for display
   const formatVote = (vote) => {
     const voteMap = {
-      'yes': 'Yes',
-      'no': 'No',
-      'abstain': 'Abstain',
-      'absent': 'Absent'
+      'yes': 'Já',
+      'no': 'Nei',
+      'abstain': 'Sat hjá',
+      'absent': 'Fjarverandi'
     };
     return voteMap[vote] || vote;
   };
@@ -287,29 +286,27 @@ const MemberDetailPage = () => {
   
   // Helper function to format duration from seconds to readable format
   const formatDuration = (seconds) => {
-    if (!seconds) return 'Unknown duration';
+    if (!seconds) return 'Engin gögn';
     
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
     
-    if (minutes === 0) {
-      return `${remainingSeconds} sec`;
-    } else if (remainingSeconds === 0) {
-      return `${minutes} min`;
+    if (hours === 0) {
+      return `${minutes} mínútur`;
     } else {
-      return `${minutes} min ${remainingSeconds} sec`;
+      return `${hours} klst ${minutes} mín`;
     }
   };
 
   // Helper function to format speech type
   const formatSpeechType = (type) => {
     const typeMap = {
-      'ræða': 'Main Speech',
-      'andsvar': 'Response',
-      'flutningsræða': 'Introductory Speech',
-      'um fundarstjórn': 'About Meeting Management',
-      'um atkvæðagreiðslu': 'About Voting',
-      'um dagskrá': 'About Agenda'
+      'ræða': 'Ræða',
+      'andsvar': 'Andsvar',
+      'flutningsræða': 'Flutningsræða',
+      'um fundarstjórn': 'Um fundarstjórn',
+      'um atkvæðagreiðslu': 'Um atkvæðagreiðslu',
+      'um dagskrá': 'Um dagskrá'
     };
     return typeMap[type] || type;
   };
@@ -391,7 +388,7 @@ const MemberDetailPage = () => {
                   }}
                   imgProps={{
                     onError: (e) => {
-                      e.target.onerror = null; // Prevent infinite loop
+                      e.target.onerror = null;
                       e.target.style.display = 'none';
                       const icon = document.createElement('div');
                       icon.innerHTML = '<svg style="width: 100px; height: 100px; color: #bdbdbd;" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
@@ -403,7 +400,7 @@ const MemberDetailPage = () => {
                   {`${mp.first_name} ${mp.last_name}`}
                 </Typography>
                 <Chip
-                  label={mp.party ? mp.party.name : "Unknown Party"}
+                  label={mp.party ? mp.party.name : "Óháður þingmaður"}
                   sx={{
                     bgcolor: mp.party?.color || 'grey.500',
                     color: 'white',
@@ -429,7 +426,7 @@ const MemberDetailPage = () => {
                   <ListItem>
                     <WebIcon sx={{ mr: 1 }} />
                     <Link href={mp.website} target="_blank" rel="noopener">
-                      Personal Website
+                      Vefsíða
                     </Link>
                   </ListItem>
                 )}
@@ -453,18 +450,18 @@ const MemberDetailPage = () => {
               
               {/* Statistics */}
               <Typography variant="h6" gutterBottom>
-                Statistics
+                Tölfræði
               </Typography>
               <List>
                 <ListItem>
                   <ListItemText
-                    primary="Bills Sponsored"
+                    primary="Flutt þingmál"
                     secondary={mp.bills_sponsored}
                   />
                 </ListItem>
                 <ListItem>
                   <ListItemText
-                    primary="Bills Co-sponsored"
+                    primary="Meðflutt þingmál"
                     secondary={mp.bills_cosponsored}
                   />
                 </ListItem>
@@ -473,17 +470,17 @@ const MemberDetailPage = () => {
                     primary={
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <RecordVoiceOverIcon sx={{ mr: 1, fontSize: '1rem' }} />
-                        Speeches Given
+                        Ræður
                       </Box>
                     }
                     secondary={
                       <Box>
                         <Typography variant="body2" component="span">
-                          {mp.speech_count} speeches
+                          {mp.speech_count} ræður
                         </Typography>
                         {mp.total_speaking_time && (
                           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                            Total speaking time: {formatDuration(mp.total_speaking_time)}
+                            Heildartími: {formatDuration(mp.total_speaking_time)}
                           </Typography>
                         )}
                       </Box>
@@ -496,10 +493,10 @@ const MemberDetailPage = () => {
                       primary={
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                           <EventIcon sx={{ mr: 1, fontSize: '1rem' }} />
-                          First Elected
+                          Fyrst kjörin(n)
                         </Box>
                       }
-                      secondary={new Date(mp.first_elected).toLocaleDateString()}
+                      secondary={new Date(mp.first_elected).toLocaleDateString('is-IS')}
                     />
                   </ListItem>
                 )}
@@ -509,10 +506,10 @@ const MemberDetailPage = () => {
                       primary={
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                           <EventIcon sx={{ mr: 1, fontSize: '1rem' }} />
-                          Current Position Started
+                          Núverandi seta hófst
                         </Box>
                       }
-                      secondary={new Date(mp.current_position_started).toLocaleDateString()}
+                      secondary={new Date(mp.current_position_started).toLocaleDateString('is-IS')}
                     />
                   </ListItem>
                 )}
@@ -533,11 +530,11 @@ const MemberDetailPage = () => {
               scrollButtons="auto"
               allowScrollButtonsMobile
             >
-              <Tab icon={<DescriptionIcon />} label="Bio" />
-              <Tab icon={<RecordVoiceOverIcon />} label="Speeches" />
-              <Tab icon={<DescriptionIcon />} label="Bills" />
-              <Tab icon={<HowToVoteIcon />} label="Voting Record" />
-              <Tab icon={<BusinessIcon />} label="Interests" />
+              <Tab icon={<DescriptionIcon />} label="Persónulegar upplýsingar" />
+              <Tab icon={<RecordVoiceOverIcon />} label="Ræður" />
+              <Tab icon={<DescriptionIcon />} label="Þingmál" />
+              <Tab icon={<HowToVoteIcon />} label="Atkvæðaskrá" />
+              <Tab icon={<BusinessIcon />} label="Hagsmunaskráning" />
             </Tabs>
             
             {/* Tab Content */}
@@ -546,7 +543,6 @@ const MemberDetailPage = () => {
               {activeTab === 0 && (
                 <Box>
                   <Typography variant="h6" gutterBottom>
-                    Biography
                   </Typography>
                   {mp.bio ? (
                     <Box>
@@ -565,7 +561,7 @@ const MemberDetailPage = () => {
 
                         // Extract personal information (always present)
                         sections.personal = {
-                          title: "Personal Information",
+                          title: "Persónulegar upplýsingar um þingmann",
                           content: ""
                         };
 
@@ -620,12 +616,12 @@ const MemberDetailPage = () => {
                           
                           if (nextStart !== Infinity) {
                             sections.education = {
-                              title: "Education",
+                              title: "Menntun",
                               content: bio.substring(educationStart, nextStart).trim()
                             };
                           } else {
                             sections.education = {
-                              title: "Education",
+                              title: "Menntun",
                               content: bio.substring(educationStart).trim()
                             };
                           }
@@ -641,7 +637,7 @@ const MemberDetailPage = () => {
                         // Add career section if found
                         if (careerStart !== -1) {
                           sections.career = {
-                            title: "Professional Career",
+                            title: "Starfsferill",
                             content: bio.substring(
                               careerStart,
                               publicServiceStart !== -1 ? publicServiceStart : undefined
@@ -652,7 +648,7 @@ const MemberDetailPage = () => {
                         // Add public service section if found
                         if (publicServiceStart !== -1) {
                           sections.publicService = {
-                            title: "Public Service",
+                            title: "Opinber störf",
                             content: bio.substring(publicServiceStart).trim()
                           };
                         }
@@ -700,7 +696,7 @@ const MemberDetailPage = () => {
                     </Box>
                   ) : (
                     <Typography paragraph>
-                      No biography available.
+                      Engar persónulegar upplýsingar eru til staðar.
                     </Typography>
                   )}
                 </Box>
@@ -710,7 +706,7 @@ const MemberDetailPage = () => {
               {activeTab === 1 && (
                 <Box>
                   <Typography variant="h6" gutterBottom>
-                    Parliamentary Speeches
+                    Ræður á Alþingi
                   </Typography>
                   
                   {speechesLoading ? (
@@ -731,7 +727,7 @@ const MemberDetailPage = () => {
                           }}>
                             <TodayIcon sx={{ mr: 1 }} />
                             <Typography variant="subtitle1" fontWeight="bold">
-                              {new Date(group.date).toLocaleDateString(undefined, { 
+                              {new Date(group.date).toLocaleDateString('is-IS', { 
                                 weekday: 'long', 
                                 year: 'numeric', 
                                 month: 'long', 
@@ -868,7 +864,7 @@ const MemberDetailPage = () => {
                       ))}
                     </Box>
                   ) : (
-                    <Alert severity="info">No speeches found for this MP.</Alert>
+                    <Alert severity="info">Engar ræður fundust hjá þingmanni.</Alert>
                   )}
                 </Box>
               )}
@@ -906,7 +902,7 @@ const MemberDetailPage = () => {
                       ))}
                     </List>
                   ) : (
-                    <Typography>No bills found.</Typography>
+                    <Typography>Engin þingmál fundust.</Typography>
                   )}
                 </Box>
               )}
@@ -921,9 +917,9 @@ const MemberDetailPage = () => {
                       <Table>
                         <TableHead>
                           <TableRow>
-                            <TableCell>Bill</TableCell>
-                            <TableCell>Vote</TableCell>
-                            <TableCell>Date</TableCell>
+                            <TableCell>Þingmál</TableCell>
+                            <TableCell>Atkvæði</TableCell>
+                            <TableCell>Dagsetning</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -950,7 +946,7 @@ const MemberDetailPage = () => {
                       </Table>
                     </TableContainer>
                   ) : (
-                    <Typography>No voting record found.</Typography>
+                    <Typography>Engin atkvæðaskrá fannst.</Typography>
                   )}
                 </Box>
               )}
@@ -959,7 +955,7 @@ const MemberDetailPage = () => {
               {activeTab === 4 && (
                 <Box>
                   <Typography variant="h6" gutterBottom>
-                    Personal Interests and Commitments
+                    Hagsmunaskráning
                   </Typography>
                   
                   {interestsLoading ? (
@@ -971,7 +967,7 @@ const MemberDetailPage = () => {
                       {interests.board_positions && (
                         <Box sx={{ mb: 3 }}>
                           <Typography variant="subtitle1" color="primary" gutterBottom>
-                            Board Positions
+                            Stjórnarseta
                           </Typography>
                           <Typography paragraph>{interests.board_positions}</Typography>
                           <Divider />
@@ -981,7 +977,7 @@ const MemberDetailPage = () => {
                       {interests.paid_work && (
                         <Box sx={{ mb: 3 }}>
                           <Typography variant="subtitle1" color="primary" gutterBottom>
-                            Paid Work
+                            Launuð störf
                           </Typography>
                           <Typography paragraph>{interests.paid_work}</Typography>
                           <Divider />
@@ -991,7 +987,7 @@ const MemberDetailPage = () => {
                       {interests.business_activities && (
                         <Box sx={{ mb: 3 }}>
                           <Typography variant="subtitle1" color="primary" gutterBottom>
-                            Business Activities
+                            Atvinnurekstur
                           </Typography>
                           <Typography paragraph>{interests.business_activities}</Typography>
                           <Divider />
@@ -1001,7 +997,7 @@ const MemberDetailPage = () => {
                       {interests.company_ownership && (
                         <Box sx={{ mb: 3 }}>
                           <Typography variant="subtitle1" color="primary" gutterBottom>
-                            Company Ownership
+                            Eignarhlutir í fyrirtækjum
                           </Typography>
                           <Typography paragraph>{interests.company_ownership}</Typography>
                           <Divider />
@@ -1011,7 +1007,7 @@ const MemberDetailPage = () => {
                       {interests.financial_support && (
                         <Box sx={{ mb: 3 }}>
                           <Typography variant="subtitle1" color="primary" gutterBottom>
-                            Financial Support
+                            Fjárhagslegur stuðningur
                           </Typography>
                           <Typography paragraph>{interests.financial_support}</Typography>
                           <Divider />
@@ -1021,7 +1017,7 @@ const MemberDetailPage = () => {
                       {interests.gifts && (
                         <Box sx={{ mb: 3 }}>
                           <Typography variant="subtitle1" color="primary" gutterBottom>
-                            Gifts
+                            Gjafir
                           </Typography>
                           <Typography paragraph>{interests.gifts}</Typography>
                           <Divider />
@@ -1031,7 +1027,7 @@ const MemberDetailPage = () => {
                       {interests.trips && (
                         <Box sx={{ mb: 3 }}>
                           <Typography variant="subtitle1" color="primary" gutterBottom>
-                            Trips and Visits
+                            Ferðir og heimsóknir
                           </Typography>
                           <Typography paragraph>{interests.trips}</Typography>
                           <Divider />
@@ -1041,7 +1037,7 @@ const MemberDetailPage = () => {
                       {interests.debt_forgiveness && (
                         <Box sx={{ mb: 3 }}>
                           <Typography variant="subtitle1" color="primary" gutterBottom>
-                            Debt Forgiveness
+                            Eftirgjöf skulda
                           </Typography>
                           <Typography paragraph>{interests.debt_forgiveness}</Typography>
                           <Divider />
@@ -1051,7 +1047,7 @@ const MemberDetailPage = () => {
                       {interests.real_estate && (
                         <Box sx={{ mb: 3 }}>
                           <Typography variant="subtitle1" color="primary" gutterBottom>
-                            Real Estate
+                            Fasteignir
                           </Typography>
                           <Typography paragraph>{interests.real_estate}</Typography>
                           <Divider />
@@ -1061,7 +1057,7 @@ const MemberDetailPage = () => {
                       {interests.former_employer_agreements && (
                         <Box sx={{ mb: 3 }}>
                           <Typography variant="subtitle1" color="primary" gutterBottom>
-                            Former Employer Agreements
+                            Samkomulag við fyrrverandi vinnuveitendur
                           </Typography>
                           <Typography paragraph>{interests.former_employer_agreements}</Typography>
                           <Divider />
@@ -1071,7 +1067,7 @@ const MemberDetailPage = () => {
                       {interests.future_employer_agreements && (
                         <Box sx={{ mb: 3 }}>
                           <Typography variant="subtitle1" color="primary" gutterBottom>
-                            Future Employer Agreements
+                            Samkomulag um framtíðarstörf
                           </Typography>
                           <Typography paragraph>{interests.future_employer_agreements}</Typography>
                           <Divider />
@@ -1081,7 +1077,7 @@ const MemberDetailPage = () => {
                       {interests.other_positions && (
                         <Box sx={{ mb: 3 }}>
                           <Typography variant="subtitle1" color="primary" gutterBottom>
-                            Other Positions
+                            Önnur trúnaðarstörf
                           </Typography>
                           <Typography paragraph>{interests.other_positions}</Typography>
                         </Box>
@@ -1097,14 +1093,14 @@ const MemberDetailPage = () => {
                             rel="noopener noreferrer"
                             startIcon={<DescriptionIcon />}
                           >
-                            View Source Document
+                            Skoða frumskjal
                           </Button>
                         </Box>
                       )}
                     </Box>
                   ) : (
                     <Alert severity="info">
-                      No personal interests or commitments have been declared.
+                      Engin hagsmunaskráning fannst.
                     </Alert>
                   )}
                 </Box>

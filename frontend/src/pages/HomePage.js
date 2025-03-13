@@ -34,10 +34,10 @@ const HomePage = () => {
       >
         <Container maxWidth="md">
           <Typography variant="h2" gutterBottom>
-            Iceland Politics Monitoring Platform
+            Þingpúls
           </Typography>
           <Typography variant="h5" sx={{ mb: 4 }}>
-            Tracking parliamentary proceedings, political activities, and engaging citizens in the democratic process
+            Fylgstu með þingstörfum, stjórnmálastarfi og taktu þátt í lýðræðislegri umræðu
           </Typography>
           <Button
             variant="contained"
@@ -46,7 +46,7 @@ const HomePage = () => {
             component={RouterLink}
             to="/parliament/members"
           >
-            Explore Parliament
+            Skoða Þingmenn
           </Button>
         </Container>
       </Paper>
@@ -54,7 +54,7 @@ const HomePage = () => {
       {/* Features Section */}
       <Box sx={{ my: 6 }}>
         <Typography variant="h4" align="center" gutterBottom>
-          Key Features
+          Helstu Eiginleikar
         </Typography>
         <Divider sx={{ mb: 4, width: '100px', mx: 'auto', borderBottomWidth: 3 }} />
         
@@ -66,10 +66,10 @@ const HomePage = () => {
                   <PeopleIcon sx={{ fontSize: 60, color: 'primary.main' }} />
                 </Box>
                 <Typography gutterBottom variant="h5" component="div" align="center">
-                  MP Profiles
+                  Þingmenn
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Access detailed information about each Member of Parliament, including voting records, speeches, and bills sponsored.
+                  Aðgangur að ítarlegum upplýsingum um hvern þingmann, þar með talið atkvæðasögu, ræður og flutt frumvörp.
                 </Typography>
               </CardContent>
               <CardActions>
@@ -79,7 +79,7 @@ const HomePage = () => {
                   to="/parliament/members" 
                   fullWidth
                 >
-                  View MPs
+                  Skoða Þingmenn
                 </Button>
               </CardActions>
             </Card>
@@ -92,10 +92,10 @@ const HomePage = () => {
                   <DescriptionIcon sx={{ fontSize: 60, color: 'primary.main' }} />
                 </Box>
                 <Typography gutterBottom variant="h5" component="div" align="center">
-                  Bill Tracking
+                  Frumvörp
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Monitor bills as they progress through parliament, with details on sponsors, amendments, and current status.
+                  Fylgstu með frumvörpum í gegnum þingið, með upplýsingum um flutningsmenn, breytingar og stöðu.
                 </Typography>
               </CardContent>
               <CardActions>
@@ -105,7 +105,7 @@ const HomePage = () => {
                   to="/parliament/bills" 
                   fullWidth
                 >
-                  View Bills
+                  Skoða Frumvörp
                 </Button>
               </CardActions>
             </Card>
@@ -118,10 +118,10 @@ const HomePage = () => {
                   <HowToVoteIcon sx={{ fontSize: 60, color: 'primary.main' }} />
                 </Box>
                 <Typography gutterBottom variant="h5" component="div" align="center">
-                  Voting Analysis
+                  Kosningar þingmanna
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Analyze voting patterns at individual and party levels, with visualizations and historical comparisons.
+                  Taktu þátt í umræðum um frumvörp og stefnumál, og leggðu þitt af mörkum til lýðræðisins með þátttökutækjum okkar.
                 </Typography>
               </CardContent>
               <CardActions>
@@ -131,7 +131,7 @@ const HomePage = () => {
                   to="/parliament/voting-records" 
                   fullWidth
                 >
-                  View Votes
+                  Taka Þátt í Umræðum
                 </Button>
               </CardActions>
             </Card>
@@ -144,10 +144,10 @@ const HomePage = () => {
                   <ForumIcon sx={{ fontSize: 60, color: 'primary.main' }} />
                 </Box>
                 <Typography gutterBottom variant="h5" component="div" align="center">
-                  Citizen Engagement
+                  Þátttaka Almennings
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Participate in discussions about bills and policies, and contribute to the democratic process through our engagement tools.
+                  Taktu þátt í umræðum um frumvörp og stefnumál, og leggðu þitt af mörkum til lýðræðisins með þátttökutækjum okkar.
                 </Typography>
               </CardContent>
               <CardActions>
@@ -157,7 +157,7 @@ const HomePage = () => {
                   to="/engagement/forums" 
                   fullWidth
                 >
-                  Join Discussions
+                  Taka Þátt í Umræðum
                 </Button>
               </CardActions>
             </Card>
@@ -168,32 +168,32 @@ const HomePage = () => {
       {/* Latest Activity Section */}
       <Box sx={{ my: 6 }}>
         <Typography variant="h4" align="center" gutterBottom>
-          Latest Parliamentary Activity
+          Nýjustu Þingstörf
         </Typography>
         <Divider sx={{ mb: 4, width: '100px', mx: 'auto', borderBottomWidth: 3 }} />
         
         <Paper sx={{ p: 3, mb: 3, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
           <Box sx={{ flex: '1 1 70%' }}>
             <Typography variant="h6" gutterBottom>
-              Recent Bills
+              Nýleg Frumvörp
             </Typography>
             <Typography variant="body2" paragraph>
-              Bill data will be displayed here once connected to the backend API. The latest bills introduced to the Icelandic Parliament will show here with their status and sponsors.
+              Hér birtast nýjustu frumvörpin sem lögð hafa verið fram á Alþingi þegar tenging við gagnagrunn er virk.
             </Typography>
             <Button variant="outlined" component={RouterLink} to="/parliament/bills">
-              See All Bills
+              Öll Frumvörp
             </Button>
           </Box>
           <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
           <Box sx={{ flex: '1 1 30%' }}>
             <Typography variant="h6" gutterBottom>
-              Upcoming Votes
+              Væntanlegar Atkvæðagreiðslur
             </Typography>
             <Typography variant="body2" paragraph>
-              Information about upcoming votes in parliament will be displayed here once connected to the backend API.
+              Upplýsingar um væntanlegar atkvæðagreiðslur á Alþingi birtast hér þegar tenging við gagnagrunn er virk.
             </Typography>
             <Button variant="outlined" component={RouterLink} to="/parliament/voting-records">
-              View Voting Calendar
+              Skoða Atkvæðadagatal
             </Button>
           </Box>
         </Paper>

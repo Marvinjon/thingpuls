@@ -227,6 +227,7 @@ class Vote(models.Model):
     vote = models.CharField(max_length=10, choices=VOTE_CHOICES)
     vote_date = models.DateField()
     session = models.ForeignKey(ParliamentSession, on_delete=models.CASCADE, related_name='votes')
+    althingi_voting_id = models.CharField(max_length=20, null=True, blank=True, help_text="Voting session ID from Alþingi (nnafnak)")
     
     class Meta:
         ordering = ['-vote_date']
