@@ -26,7 +26,11 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TableRow
+  TableRow,
+  IconButton,
+  Tooltip,
+  Stack,
+  Badge
 } from '@mui/material';
 import EmailIcon from '@mui/icons-material/Email';
 import WebIcon from '@mui/icons-material/Web';
@@ -37,6 +41,15 @@ import HowToVoteIcon from '@mui/icons-material/HowToVote';
 import TwitterIcon from '@mui/icons-material/Twitter';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import InstagramIcon from '@mui/icons-material/Instagram';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import MicIcon from '@mui/icons-material/Mic';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import OndemandVideoIcon from '@mui/icons-material/OndemandVideo';
+import TodayIcon from '@mui/icons-material/Today';
+import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
+import SentimentNeutralIcon from '@mui/icons-material/SentimentNeutral';
+import SentimentVeryDissatisfiedIcon from '@mui/icons-material/SentimentVeryDissatisfied';
+import ArticleIcon from '@mui/icons-material/Article';
 import { parliamentService } from '../../services/api';
 
 const MemberDetailPage = () => {
@@ -236,6 +249,69 @@ const MemberDetailPage = () => {
       'withdrawn': 'default'
     };
     return colorMap[status] || 'default';
+  };
+  
+  // Helper function to format duration from seconds to readable format
+  const formatDuration = (seconds) => {
+    if (!seconds) return 'Unknown duration';
+    
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    
+    if (minutes === 0) {
+      return `${remainingSeconds} sec`;
+    } else if (remainingSeconds === 0) {
+      return `${minutes} min`;
+    } else {
+      return `${minutes} min ${remainingSeconds} sec`;
+    }
+  };
+
+  // Helper function to format speech type
+  const formatSpeechType = (type) => {
+    const typeMap = {
+      'ræða': 'Main Speech',
+      'andsvar': 'Response',
+      'flutningsræða': 'Introductory Speech',
+      'um fundarstjórn': 'About Meeting Management',
+      'um atkvæðagreiðslu': 'About Voting',
+      'um dagskrá': 'About Agenda'
+    };
+    return typeMap[type] || type;
+  };
+
+  // Helper function to get sentiment icon
+  const getSentimentIcon = (score) => {
+    if (!score && score !== 0) return null;
+    
+    if (score > 0.3) {
+      return <SentimentSatisfiedAltIcon color="success" />;
+    } else if (score < -0.3) {
+      return <SentimentVeryDissatisfiedIcon color="error" />;
+    } else {
+      return <SentimentNeutralIcon color="warning" />;
+    }
+  };
+
+  // Helper function to group speeches by date
+  const groupSpeechesByDate = (speeches) => {
+    const grouped = {};
+    
+    speeches.forEach(speech => {
+      const date = speech.date;
+      if (!grouped[date]) {
+        grouped[date] = [];
+      }
+      grouped[date].push(speech);
+    });
+    
+    // Sort dates in descending order (newest first)
+    return Object.keys(grouped)
+      .sort((a, b) => new Date(b) - new Date(a))
+      .map(date => ({
+        date,
+        speeches: grouped[date]
+      }));
   };
   
   if (loading) {
@@ -578,35 +654,166 @@ const MemberDetailPage = () => {
               {/* Speeches Tab */}
               {activeTab === 1 && (
                 <Box>
+                  <Typography variant="h6" gutterBottom>
+                    Parliamentary Speeches
+                  </Typography>
+                  
                   {speechesLoading ? (
-                    <CircularProgress />
+                    <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                      <CircularProgress />
+                    </Box>
                   ) : speeches.length > 0 ? (
-                    <List>
-                      {speeches.map((speech) => (
-                        <ListItem key={speech.id}>
-                          <ListItemText
-                            primary={speech.title}
-                            secondary={
-                              <>
-                                <Typography component="span" variant="body2" color="text.primary">
-                                  {new Date(speech.date).toLocaleDateString()}
-                                </Typography>
-                                {speech.bill && (
-                                  <Typography component="span" variant="body2">
-                                    {' - '}
-                                    <Link component={RouterLink} to={`/parliament/bills/${speech.bill.id}`}>
-                                      {speech.bill.title}
-                                    </Link>
-                                  </Typography>
+                    <Box>
+                      {groupSpeechesByDate(speeches).map(group => (
+                        <Box key={group.date} sx={{ mb: 4 }}>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            bgcolor: 'primary.light', 
+                            color: 'white', 
+                            p: 1, 
+                            borderRadius: '4px 4px 0 0' 
+                          }}>
+                            <TodayIcon sx={{ mr: 1 }} />
+                            <Typography variant="subtitle1" fontWeight="bold">
+                              {new Date(group.date).toLocaleDateString(undefined, { 
+                                weekday: 'long', 
+                                year: 'numeric', 
+                                month: 'long', 
+                                day: 'numeric' 
+                              })}
+                            </Typography>
+                            <Badge 
+                              badgeContent={group.speeches.length} 
+                              color="error" 
+                              sx={{ ml: 2 }}
+                            />
+                          </Box>
+                          
+                          {group.speeches.map((speech, index) => (
+                            <Card 
+                              key={speech.id} 
+                              sx={{ 
+                                mb: 2, 
+                                borderTop: 0,
+                                borderTopLeftRadius: index === 0 ? 0 : undefined,
+                                borderTopRightRadius: index === 0 ? 0 : undefined
+                              }}
+                            >
+                              <CardContent>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                  <Box>
+                                    <Typography variant="h6" component="div">
+                                      {speech.title || (speech.bill ? speech.bill.title : 'Untitled Speech')}
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                      <Chip 
+                                        icon={<MicIcon />} 
+                                        label={formatSpeechType(speech.speech_type)} 
+                                        size="small" 
+                                        color="primary"
+                                        sx={{ mr: 1 }}
+                                      />
+                                      {speech.bill && (
+                                        <Chip
+                                          icon={<ArticleIcon />}
+                                          label={`Bill #${speech.althingi_bill_id || speech.bill.id}`}
+                                          size="small"
+                                          component={RouterLink}
+                                          to={`/parliament/bills/${speech.bill.id}`}
+                                          clickable
+                                        />
+                                      )}
+                                    </Box>
+                                  </Box>
+                                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                    {speech.start_time && (
+                                      <Typography variant="body2" color="text.secondary">
+                                        {new Date(speech.start_time).toLocaleTimeString(undefined, {
+                                          hour: '2-digit',
+                                          minute: '2-digit'
+                                        })}
+                                      </Typography>
+                                    )}
+                                    {speech.duration && (
+                                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                        <AccessTimeIcon fontSize="small" sx={{ mr: 0.5 }} />
+                                        <Typography variant="body2" color="text.secondary">
+                                          {formatDuration(speech.duration)}
+                                        </Typography>
+                                      </Box>
+                                    )}
+                                  </Box>
+                                </Box>
+                                
+                                {/* Media links */}
+                                <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                                  {speech.audio_url && (
+                                    <Tooltip title="Listen to audio">
+                                      <IconButton 
+                                        color="primary" 
+                                        size="small"
+                                        component="a" 
+                                        href={speech.audio_url} 
+                                        target="_blank"
+                                      >
+                                        <VolumeUpIcon />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
+                                  {speech.video_url && (
+                                    <Tooltip title="Watch video">
+                                      <IconButton 
+                                        color="primary" 
+                                        size="small"
+                                        component="a" 
+                                        href={speech.video_url} 
+                                        target="_blank"
+                                      >
+                                        <OndemandVideoIcon />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
+                                  {speech.html_url && (
+                                    <Tooltip title="View transcript">
+                                      <IconButton 
+                                        color="primary" 
+                                        size="small"
+                                        component="a" 
+                                        href={speech.html_url} 
+                                        target="_blank"
+                                      >
+                                        <DescriptionIcon />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
+                                  {speech.sentiment_score !== null && (
+                                    <Tooltip title={`Sentiment score: ${speech.sentiment_score.toFixed(2)}`}>
+                                      <Box>
+                                        {getSentimentIcon(speech.sentiment_score)}
+                                      </Box>
+                                    </Tooltip>
+                                  )}
+                                </Stack>
+                                
+                                {speech.text && (
+                                  <Box sx={{ mt: 2 }}>
+                                    <Divider sx={{ mb: 2 }} />
+                                    <Typography variant="body2" color="text.secondary">
+                                      {speech.text.length > 200 
+                                        ? `${speech.text.substring(0, 200)}...` 
+                                        : speech.text}
+                                    </Typography>
+                                  </Box>
                                 )}
-                              </>
-                            }
-                          />
-                        </ListItem>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </Box>
                       ))}
-                    </List>
+                    </Box>
                   ) : (
-                    <Typography>No speeches found.</Typography>
+                    <Alert severity="info">No speeches found for this MP.</Alert>
                   )}
                 </Box>
               )}
