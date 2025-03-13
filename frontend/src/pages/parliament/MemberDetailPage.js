@@ -470,10 +470,52 @@ const MemberDetailPage = () => {
                 </ListItem>
                 <ListItem>
                   <ListItemText
-                    primary="Speeches Given"
-                    secondary={mp.speech_count}
+                    primary={
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <RecordVoiceOverIcon sx={{ mr: 1, fontSize: '1rem' }} />
+                        Speeches Given
+                      </Box>
+                    }
+                    secondary={
+                      <Box>
+                        <Typography variant="body2" component="span">
+                          {mp.speech_count} speeches
+                        </Typography>
+                        {mp.total_speaking_time && (
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                            Total speaking time: {formatDuration(mp.total_speaking_time)}
+                          </Typography>
+                        )}
+                      </Box>
+                    }
                   />
                 </ListItem>
+                {mp.first_elected && (
+                  <ListItem>
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <EventIcon sx={{ mr: 1, fontSize: '1rem' }} />
+                          First Elected
+                        </Box>
+                      }
+                      secondary={new Date(mp.first_elected).toLocaleDateString()}
+                    />
+                  </ListItem>
+                )}
+                {mp.current_position_started && (
+                  <ListItem>
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <EventIcon sx={{ mr: 1, fontSize: '1rem' }} />
+                          Current Position Started
+                        </Box>
+                      }
+                      secondary={new Date(mp.current_position_started).toLocaleDateString()}
+                    />
+                  </ListItem>
+                )}
               </List>
             </CardContent>
           </Card>
@@ -661,30 +703,6 @@ const MemberDetailPage = () => {
                       No biography available.
                     </Typography>
                   )}
-                  
-                  <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
-                    Service Information
-                  </Typography>
-                  <List>
-                    {mp.first_elected && (
-                      <ListItem>
-                        <EventIcon sx={{ mr: 1 }} />
-                        <ListItemText
-                          primary="First Elected"
-                          secondary={new Date(mp.first_elected).toLocaleDateString()}
-                        />
-                      </ListItem>
-                    )}
-                    {mp.current_position_started && (
-                      <ListItem>
-                        <EventIcon sx={{ mr: 1 }} />
-                        <ListItemText
-                          primary="Current Position Started"
-                          secondary={new Date(mp.current_position_started).toLocaleDateString()}
-                        />
-                      </ListItem>
-                    )}
-                  </List>
                 </Box>
               )}
               

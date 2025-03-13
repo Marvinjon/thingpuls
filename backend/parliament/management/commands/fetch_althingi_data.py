@@ -18,6 +18,7 @@ from parliament.models import (
     MPInterest
 )
 import os
+from django.db import models
 
 class Command(BaseCommand):
     help = 'Fetches data from the Alþingi website'
@@ -343,7 +344,7 @@ class Command(BaseCommand):
                         if facebook_match:
                             facebook_url = facebook_match.group(0)
                         
-                        twitter_match = re.search(twitter_pattern, text_text)
+                        twitter_match = re.search(twitter_pattern, text_content)
                         if twitter_match:
                             twitter_url = twitter_match.group(0)
                         
@@ -418,6 +419,9 @@ class Command(BaseCommand):
                         slug = f"{base_slug}-{counter}"
                         counter += 1
 
+                    # Calculate speech count from existing speeches
+                    speech_count = Speech.objects.filter(mp_althingi_id=althingi_id).count()
+
                     # Create or update the MP
                     with transaction.atomic():
                         mp, created = MP.objects.update_or_create(
@@ -437,7 +441,7 @@ class Command(BaseCommand):
                                 'active': True,
                                 'first_elected': first_elected,
                                 'current_position_started': current_position_started,
-                                'speech_count': 0,
+                                'speech_count': speech_count,
                                 'bills_sponsored': 0,
                                 'bills_cosponsored': 0,
                                 'image_url': image_url
@@ -854,12 +858,19 @@ class Command(BaseCommand):
                         self.stdout.write(self.style.ERROR(f'Error processing speech: {str(e)}'))
                         continue
                 
-                # Update the MP's speech count
+                # Calculate total speaking time from all speeches
+                total_speaking_time = Speech.objects.filter(mp_althingi_id=mp_id).aggregate(
+                    total_time=models.Sum('duration')
+                )['total_time'] or 0
+                
+                # Update both speech count and total speaking time
                 mp.speech_count = speech_count
-                mp.save(update_fields=['speech_count'])
+                mp.total_speaking_time = total_speaking_time
+                mp.save(update_fields=['speech_count', 'total_speaking_time'])
                 
                 self.stdout.write(self.style.SUCCESS(
-                    f'MP {mp.full_name}: Speeches created: {speeches_created}, updated: {speeches_updated}, total: {speech_count}'
+                    f'MP {mp.full_name}: Speeches created: {speeches_created}, updated: {speeches_updated}, '
+                    f'total: {speech_count}, total speaking time: {total_speaking_time} seconds'
                 ))
                 
             except ET.ParseError as e:
@@ -868,7 +879,7 @@ class Command(BaseCommand):
         except requests.RequestException as e:
             self.stdout.write(self.style.ERROR(f'Error fetching speeches: {str(e)}'))
         except Exception as e:
-            self.stdout.write(self.style.ERROR(f'Unexpected error: {str(e)}')) 
+            self.stdout.write(self.style.ERROR(f'Unexpected error: {str(e)}'))
 
     def fetch_mp_interests(self, mp_id):
         """Fetch financial interests and commitments for a specific MP from Alþingi."""
@@ -895,183 +906,64 @@ class Command(BaseCommand):
             try:
                 root = ET.fromstring(response.content)
                 
-                # Initialize variables to store extracted information
-                board_positions = ""
-                paid_work = ""
-                business_activities = ""
-                financial_support = ""
-                gifts = ""
-                trips = ""
-                debt_forgiveness = ""
-                real_estate = ""
-                company_ownership = ""
-                former_employer_agreements = ""
-                future_employer_agreements = ""
-                other_positions = ""
-                
-                # XML structure is flat, with explanations and content mixed
-                # We'll extract content by looking for specific patterns
-                
                 # Process XML
                 elements = list(root.iter())
                 
-                # Extract data from XML using pattern matching
-                for i, elem in enumerate(elements):
-                    if elem.tag == 'hagsmunaskráning':
-                        # Process children of hagsmunaskráning
-                        children = list(elem)
-                        for j, child in enumerate(children):
-                            # Get the text content of the next element if it exists
-                            next_text = children[j+1].text.strip() if j+1 < len(children) and children[j+1].text else ""
-                            
-                            # Board positions
-                            if child.tag == 'launuðstjórnarseta':
-                                if next_text and not next_text.lower().startswith('engin'):
-                                    board_positions = next_text
-                            
-                            # Paid work
-                            elif child.tag == 'launaðstarf':
-                                if next_text and not next_text.lower().startswith('engin'):
-                                    paid_work = next_text
-                            
-                            # Business activities - look for text after starfsemi tag
-                            elif child.tag == 'starfsemi':
-                                if next_text:
-                                    # Only skip if it's exactly "Engin" or similar
-                                    if not re.match(r'^\s*(Engin|Engar|Ekkert|None)\s*\.?\s*$', next_text, re.IGNORECASE):
-                                        business_activities = next_text
-                            
-                            # Financial support
-                            elif child.tag == 'fjárhagslegurstuðningur':
-                                if next_text and not next_text.lower().startswith('engin'):
-                                    financial_support = next_text
-                            
-                            # Gifts
-                            elif child.tag == 'gjöf':
-                                if next_text and not next_text.lower().startswith('engin'):
-                                    gifts = next_text
-                            
-                            # Trips
-                            elif child.tag == 'ferðir':
-                                if next_text and not next_text.lower().startswith('engin'):
-                                    trips = next_text
-                            
-                            # Debt forgiveness
-                            elif child.tag == 'eftirgjöfskulda':
-                                if next_text and not next_text.lower().startswith('engin'):
-                                    debt_forgiveness = next_text
-                            
-                            # Real estate
-                            elif child.tag == 'fasteign':
-                                if next_text and not next_text.lower().startswith('engin'):
-                                    real_estate = next_text
-                            
-                            # Company ownership
-                            elif child.tag == 'eignir':
-                                for subchild in child:
-                                    if subchild.tag == 'svar' and subchild.text and subchild.text.strip():
-                                        company_ownership = subchild.text.strip()
-                            
-                            # Former employer agreements
-                            elif child.tag == 'fyrrvinnuveitandi':
-                                if next_text and not next_text.lower().startswith('engin'):
-                                    former_employer_agreements = next_text
-                            
-                            # Future employer agreements
-                            elif child.tag == 'framtíðarvinnuveitandi':
-                                if next_text and not next_text.lower().startswith('engin'):
-                                    future_employer_agreements = next_text
-                            
-                            # Other positions
-                            elif child.tag == 'trúnaðarstörf':
-                                if next_text and not next_text.lower().startswith('engin'):
-                                    other_positions = next_text
+                # Helper function to get text between tags
+                def get_text_between_tags(start_tag, end_tag=None):
+                    try:
+                        # Find the element with the specified tag
+                        element = root.find(f'.//{start_tag}')
+                        if element is not None:
+                            # Find the 'svar' element within this element
+                            svar_elem = element.find('svar')
+                            if svar_elem is not None and svar_elem.text:
+                                return svar_elem.text.strip()
+                        return ""
+                    except Exception:
+                        return ""
+
+                # Extract data using the helper function
+                board_positions = get_text_between_tags('launuðstjórnarseta')
+                paid_work = get_text_between_tags('launaðstarf')
+                business_activities = get_text_between_tags('tekjumyndandistarfsemi')
+                financial_support = get_text_between_tags('fjárhagslegurstuðningur')
+                gifts = get_text_between_tags('gjafir')
+                trips = get_text_between_tags('ferðir')
+                debt_forgiveness = get_text_between_tags('eftirgjöfskulda')
+                real_estate = get_text_between_tags('fasteignir')
+                company_ownership = get_text_between_tags('eignir')
+                former_employer_agreements = get_text_between_tags('fyrrverandivinnuveitandi')
+                future_employer_agreements = get_text_between_tags('framtíðarvinnuveitandi')
+                other_positions = get_text_between_tags('trúnaðarstörf')
                 
-                # If we couldn't find structured elements, try to parse all text
-                if not any([board_positions, paid_work, business_activities, financial_support, gifts, trips,
-                           debt_forgiveness, real_estate, company_ownership, former_employer_agreements,
-                           future_employer_agreements, other_positions]):
-                    
-                    # Get all text content
-                    all_text = ' '.join(elem.text for elem in elements if elem.text)
-                    
-                    # Try to match specific patterns in the text
-                    patterns = [
-                        (r'Launuð stjórnarseta.*?(?=Launað starf|$)', 'board_positions'),
-                        (r'Launað starf.*?(?=Starfsemi|$)', 'paid_work'),
-                        (r'Starfsemi sem unnin er samhliða.*?(?=Fjárframlag|$)', 'business_activities'),
-                        (r'Fjárframlag eða annar fjárhagslegur stuðningur.*?(?=Gjöf|$)', 'financial_support'),
-                        (r'Gjöf frá innlendum og erlendum lögaðilum.*?(?=Ferðir|$)', 'gifts'),
-                        (r'Ferðir og heimsóknir.*?(?=Eftirgjöf|$)', 'trips'),
-                        (r'Eftirgjöf eftirstöðva skulda.*?(?=Fasteign|$)', 'debt_forgiveness'),
-                        (r'Fasteign, sem er að einum þriðja.*?(?=Heiti félags|$)', 'real_estate'),
-                        (r'Heiti félags, sparisjóðs eða sjálfseignarstofnunar.*?(?=Samkomulag við fyrrverandi|$)', 'company_ownership'),
-                        (r'Samkomulag við fyrrverandi vinnuveitanda.*?(?=Samkomulag um ráðningu|$)', 'former_employer_agreements'),
-                        (r'Samkomulag um ráðningu við framtíðarvinnuveitanda.*?(?=Skrá skal upplýsingar|$)', 'future_employer_agreements'),
-                        (r'Skrá skal upplýsingar um stjórnarsetu og önnur trúnaðarstörf.*?(?=\d{2}\.\d{2}\.\d{4}|$)', 'other_positions')
-                    ]
-                    
-                    for pattern, field_name in patterns:
-                        match = re.search(pattern, all_text, re.DOTALL)
-                        if match:
-                            content = match.group(0)
-                            # Extract actual content (after first period or colon)
-                            content_match = re.search(r'(?:\.|\:)(.*?)$', content, re.DOTALL)
-                            if content_match:
-                                extracted_content = content_match.group(1).strip()
-                                
-                                # Look for the word Engin/Engar/Ekkert followed by something else 
-                                if re.match(r'^\s*(Engin|Engar|Ekkert|None)\s*\.?\s*$', extracted_content, re.IGNORECASE):
-                                    extracted_content = ""
-                                
-                                # Set the appropriate variable
-                                if field_name == 'board_positions':
-                                    board_positions = extracted_content
-                                elif field_name == 'paid_work':
-                                    paid_work = extracted_content
-                                elif field_name == 'business_activities':
-                                    business_activities = extracted_content
-                                elif field_name == 'financial_support':
-                                    financial_support = extracted_content
-                                elif field_name == 'gifts':
-                                    gifts = extracted_content
-                                elif field_name == 'trips':
-                                    trips = extracted_content
-                                elif field_name == 'debt_forgiveness':
-                                    debt_forgiveness = extracted_content
-                                elif field_name == 'real_estate':
-                                    real_estate = extracted_content
-                                elif field_name == 'company_ownership':
-                                    company_ownership = extracted_content
-                                elif field_name == 'former_employer_agreements':
-                                    former_employer_agreements = extracted_content
-                                elif field_name == 'future_employer_agreements':
-                                    future_employer_agreements = extracted_content
-                                elif field_name == 'other_positions':
-                                    other_positions = extracted_content
-                
-                # Look for any specific entries directly in the XML text
-                if not company_ownership:
-                    for elem in elements:
-                        if elem.text and "Ritstjóri ehf. (100% eigandi)" in elem.text:
-                            company_ownership = "Ritstjóri ehf. (100% eigandi)"
-                
-                if not business_activities:
-                    for elem in elements:
-                        if elem.text and "Möguleg en þá afar takmörkuð margmiðlunarstarfsemi" in elem.text:
-                            business_activities = "Möguleg en þá afar takmörkuð margmiðlunarstarfsemi á vegum ritstjóri ehf. af hálfu annarra starfsmanna og tekjur fyrir þingmann engar."
-                
-                # Clean up the data (remove empty/None values)
+                # Clean up the data
                 def clean_text(text):
                     if not text:
                         return ""
                     # Only return empty string if the text is exactly one of these words
                     if re.match(r'^\s*(Engin|Engar|Ekkert|None)\s*\.?\s*$', text, re.IGNORECASE):
                         return ""
-                    # Decode HTML entities and convert newlines to proper line breaks
-                    text = text.replace('&#10;', '\n')
+                    # Remove the field descriptions that might be included
+                    text = re.sub(r'^Launuð stjórnarseta[^.]*\.\s*', '', text)
+                    text = re.sub(r'^Launað starf[^.]*\.\s*', '', text)
+                    text = re.sub(r'^Starfsemi sem unnin er[^.]*\.\s*', '', text)
+                    text = re.sub(r'^Fjárframlag eða annar[^.]*\.\s*', '', text)
+                    text = re.sub(r'^Gjöf frá innlendum[^.]*\.\s*', '', text)
+                    text = re.sub(r'^Ferðir og heimsóknir[^.]*\.\s*', '', text)
+                    text = re.sub(r'^Eftirgjöf eftirstöðva[^.]*\.\s*', '', text)
+                    text = re.sub(r'^Fasteign, sem er[^.]*\.\s*', '', text)
+                    text = re.sub(r'^Heiti félags[^.]*\.\s*', '', text)
+                    text = re.sub(r'^Samkomulag við fyrrverandi[^.]*\.\s*', '', text)
+                    text = re.sub(r'^Samkomulag um ráðningu[^.]*\.\s*', '', text)
+                    text = re.sub(r'^Skrá skal upplýsingar[^.]*\.\s*', '', text)
+                    # Decode HTML entities and convert newlines
+                    text = text.replace('&#10;', '\n').replace('<br>', '\n').replace('</br>', '\n')
+                    # Remove HTML tags
+                    text = re.sub(r'<[^>]+>', '', text)
                     return text.strip()
                 
+                # Clean all text fields
                 board_positions = clean_text(board_positions)
                 paid_work = clean_text(paid_work)
                 business_activities = clean_text(business_activities)
@@ -1084,7 +976,7 @@ class Command(BaseCommand):
                 former_employer_agreements = clean_text(former_employer_agreements)
                 future_employer_agreements = clean_text(future_employer_agreements)
                 other_positions = clean_text(other_positions)
-                
+
                 # Log how many fields we found
                 filled_fields = sum(1 for field in [
                     board_positions, paid_work, business_activities, financial_support,

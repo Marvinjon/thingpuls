@@ -95,6 +95,7 @@ class MP(models.Model):
     speech_count = models.IntegerField(default=0)
     bills_sponsored = models.IntegerField(default=0)
     bills_cosponsored = models.IntegerField(default=0)
+    total_speaking_time = models.IntegerField(default=0, help_text="Total speaking time in seconds")
     
     image_url = models.URLField(blank=True, help_text="URL to MP's image on Althingi website")
     
