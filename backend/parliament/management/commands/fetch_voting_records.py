@@ -14,12 +14,13 @@ from parliament.models import (
 
 class Command(BaseCommand):
     help = 'Fetches voting records from the Alþingi website'
+    DEFAULT_SESSION = 156  # Define a class constant for the default session
 
     def add_arguments(self, parser):
         parser.add_argument(
             '--session',
             type=int,
-            help='Parliament session number to fetch data for (defaults to current session)'
+            help=f'Parliament session number to fetch data for (defaults to {self.DEFAULT_SESSION})'
         )
         parser.add_argument(
             '--bill',
@@ -39,7 +40,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        session_number = options['session'] or 156  # Default to session 156 if not specified
+        session_number = options['session'] or self.DEFAULT_SESSION  # Use the class constant
         bill_number = options['bill']
         force = options['force']
         
@@ -291,6 +292,19 @@ class Command(BaseCommand):
     
     def fetch_voting_details_direct(self, session, bill_number, voting_id):
         """Fetch voting details directly using a known voting ID."""
+        # If session is None, use default
+        if session is None:
+            try:
+                session = ParliamentSession.objects.get(session_number=self.DEFAULT_SESSION)
+            except ParliamentSession.DoesNotExist:
+                self.stdout.write(self.style.ERROR(f'Default session {self.DEFAULT_SESSION} does not exist'))
+                self.stdout.write(self.style.WARNING('Creating default session...'))
+                session = ParliamentSession.objects.create(
+                    session_number=self.DEFAULT_SESSION,
+                    start_date=datetime.now().date(),
+                    is_active=True
+                )
+        
         self.stdout.write(f'Fetching voting details directly for voting ID {voting_id}...')
         
         url = f'https://www.althingi.is/altext/xml/atkvaedagreidslur/atkvaedagreidsla/?numer={voting_id}'

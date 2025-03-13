@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import {
   Container,
@@ -27,6 +27,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ClearIcon from '@mui/icons-material/Clear';
 import { parliamentService } from '../../services/api';
 
 const BillsPage = () => {
@@ -38,9 +39,12 @@ const BillsPage = () => {
   // State for pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalBills, setTotalBills] = useState(0);
   
   // State for filters
   const [searchTerm, setSearchTerm] = useState('');
+  const [pendingSearchTerm, setPendingSearchTerm] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   const [status, setStatus] = useState('');
   const [topic, setTopic] = useState('');
   const [year, setYear] = useState('');
@@ -51,27 +55,33 @@ const BillsPage = () => {
   const [topics, setTopics] = useState([]);
   const [years, setYears] = useState([]);
   
-  // Fetch bills on component mount and when filters or pagination changes
-  useEffect(() => {
-    const fetchBills = async () => {
-      setLoading(true);
-      try {
-        // Build query parameters
-        const params = {
-          page: currentPage,
-          search: searchTerm,
-          status: status || undefined,
-          topic: topic || undefined,
-          year: year || undefined,
-          ordering: sortBy === 'latest' ? '-introduced_date' : 
-                   sortBy === 'oldest' ? 'introduced_date' :
-                   sortBy === 'title_asc' ? 'title' : '-title'
-        };
-        
-        const response = await parliamentService.getBills(params);
+  // Fetch bills function that can be called directly
+  const fetchBills = useCallback(async (page = 1, search = searchTerm) => {
+    let isMounted = true;
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Build query parameters
+      const params = {
+        page: page,
+        search: search,
+        status: status || undefined,
+        topic: topic || undefined,
+        year: year || undefined,
+        ordering: sortBy === 'latest' ? '-introduced_date' : 
+                 sortBy === 'oldest' ? 'introduced_date' :
+                 sortBy === 'title_asc' ? 'title' : '-title'
+      };
+      
+      console.log('Fetching bills with params:', params);
+      const response = await parliamentService.getBills(params);
+      
+      // Only update state if component is still mounted
+      if (isMounted) {
         console.log('Bills response:', response.data);
-        console.log('First bill topics:', response.data.results[0]?.topics);
         setBills(response.data.results || []);
+        setTotalBills(response.data.count || 0);
         setTotalPages(Math.ceil(response.data.count / 10)); // Assuming 10 items per page
         
         // Extract unique years from bills if not already set
@@ -82,51 +92,102 @@ const BillsPage = () => {
             .sort((a, b) => b - a);
           setYears(uniqueYears);
         }
-        
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching bills:', err);
+      }
+    } catch (err) {
+      console.error('Error fetching bills:', err);
+      if (isMounted) {
         setError('Failed to load bills. Please try again later.');
         setBills([]);
-      } finally {
-        setLoading(false);
+        setTotalBills(0);
+        setTotalPages(1);
       }
-    };
+    } finally {
+      if (isMounted) {
+        setLoading(false);
+        setIsSearching(false);
+      }
+    }
     
-    fetchBills();
-  }, [currentPage, searchTerm, status, topic, year, sortBy]);
+    return () => {
+      isMounted = false;
+    };
+  }, [searchTerm, status, topic, year, sortBy]);
+  
+  // Fetch bills when filters or pagination changes
+  useEffect(() => {
+    fetchBills(currentPage);
+  }, [currentPage, fetchBills]);
   
   // Fetch topics on component mount
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchTopics = async () => {
       try {
         const response = await parliamentService.getTopics();
-        console.log('Topics response:', response.data);
-        setTopics(response.data || []);
+        if (isMounted) {
+          console.log('Topics response:', response.data);
+          setTopics(response.data || []);
+        }
       } catch (err) {
         console.error('Error fetching topics:', err);
-        setTopics([]);
+        if (isMounted) {
+          setTopics([]);
+        }
       }
     };
     
     fetchTopics();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
   
   // Handle pagination change
   const handlePageChange = (event, value) => {
+    // Clear any previous errors when changing page
+    setError(null);
     setCurrentPage(value);
     window.scrollTo(0, 0);
   };
   
-  // Handle search
+  // Handle input change in search field
+  const handleSearchInputChange = (e) => {
+    setPendingSearchTerm(e.target.value);
+  };
+  
+  // Handle search form submission
   const handleSearch = (event) => {
     event.preventDefault();
+    // Clear any errors before starting a new search
+    setError(null);
+    setIsSearching(true);
+    setSearchTerm(pendingSearchTerm);
     setCurrentPage(1); // Reset to first page when search changes
+    
+    // Explicitly call fetchBills with page 1 and the new search term
+    // This ensures we don't use the stale currentPage value from closure
+    fetchBills(1, pendingSearchTerm);
+  };
+  
+  // Clear search
+  const handleClearSearch = () => {
+    setError(null);
+    setPendingSearchTerm('');
+    setSearchTerm('');
+    setCurrentPage(1);
+    
+    // Explicitly fetch bills with page 1 and empty search
+    fetchBills(1, '');
   };
   
   // Handle filter changes
   const handleFilterChange = (event) => {
     const { name, value } = event.target;
+    
+    // Clear any errors before changing filters
+    setError(null);
     
     if (name === 'status') {
       setStatus(value);
@@ -143,12 +204,17 @@ const BillsPage = () => {
   
   // Reset all filters
   const handleResetFilters = () => {
+    setError(null);
+    setPendingSearchTerm('');
     setSearchTerm('');
     setStatus('');
     setTopic('');
     setYear('');
     setSortBy('latest');
     setCurrentPage(1);
+    
+    // Explicitly fetch bills with reset filters
+    fetchBills(1, '');
   };
   
   // Toggle filter visibility
@@ -184,6 +250,14 @@ const BillsPage = () => {
     return colorMap[status] || 'default';
   };
   
+  // Determine if there are search results to show
+  const hasSearchResults = !loading && !error && bills.length > 0;
+  
+  // Initialize pendingSearchTerm from searchTerm on first render
+  useEffect(() => {
+    setPendingSearchTerm(searchTerm);
+  }, []);
+
   return (
     <Container maxWidth="lg">
       <Typography variant="h4" component="h1" gutterBottom sx={{ mt: 4 }}>
@@ -205,14 +279,21 @@ const BillsPage = () => {
                 label="Search Bills"
                 variant="outlined"
                 fullWidth
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={pendingSearchTerm}
+                onChange={handleSearchInputChange}
                 placeholder="Search by title, number, or description"
                 InputProps={{
                   endAdornment: (
-                    <IconButton type="submit" edge="end">
-                      <SearchIcon />
-                    </IconButton>
+                    <>
+                      {pendingSearchTerm && (
+                        <IconButton size="small" onClick={handleClearSearch}>
+                          <ClearIcon />
+                        </IconButton>
+                      )}
+                      <IconButton type="submit" edge="end" color="primary" disabled={isSearching || loading}>
+                        {isSearching ? <CircularProgress size={24} /> : <SearchIcon />}
+                      </IconButton>
+                    </>
                   ),
                 }}
               />
@@ -227,6 +308,7 @@ const BillsPage = () => {
                   value={sortBy}
                   onChange={handleFilterChange}
                   label="Sort By"
+                  disabled={loading}
                 >
                   <MenuItem value="latest">Latest First</MenuItem>
                   <MenuItem value="oldest">Oldest First</MenuItem>
@@ -243,6 +325,7 @@ const BillsPage = () => {
                   startIcon={showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                   onClick={toggleFilters}
                   sx={{ mr: 1 }}
+                  disabled={loading}
                 >
                   Filters
                 </Button>
@@ -251,7 +334,7 @@ const BillsPage = () => {
                   variant="contained" 
                   startIcon={<FilterListIcon />}
                   onClick={handleResetFilters}
-                  disabled={!status && !topic && !year && sortBy === 'latest'}
+                  disabled={(!status && !topic && !year && !searchTerm && sortBy === 'latest') || loading}
                 >
                   Reset
                 </Button>
@@ -272,6 +355,7 @@ const BillsPage = () => {
                       value={status}
                       onChange={handleFilterChange}
                       label="Status"
+                      disabled={loading}
                     >
                       <MenuItem value="">All Statuses</MenuItem>
                       <MenuItem value="introduced">Introduced</MenuItem>
@@ -293,6 +377,7 @@ const BillsPage = () => {
                       value={topic}
                       onChange={handleFilterChange}
                       label="Topic"
+                      disabled={loading}
                     >
                       <MenuItem value="">All Topics</MenuItem>
                       {topics.map((topic) => (
@@ -313,6 +398,7 @@ const BillsPage = () => {
                       value={year}
                       onChange={handleFilterChange}
                       label="Year"
+                      disabled={loading}
                     >
                       <MenuItem value="">All Years</MenuItem>
                       {years.map((year) => (
@@ -329,16 +415,31 @@ const BillsPage = () => {
         </form>
       </Paper>
       
-      {/* Bills List */}
-      {loading ? (
+      {/* Error Alert */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 4 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+      
+      {/* Search Results Summary - Only show if we have results and no error */}
+      {!error && searchTerm && !loading && totalBills > 0 && (
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            Found {totalBills} {totalBills === 1 ? 'bill' : 'bills'} matching "{searchTerm}"
+          </Typography>
+        </Box>
+      )}
+      
+      {/* Loading Indicator */}
+      {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
           <CircularProgress />
         </Box>
-      ) : error ? (
-        <Alert severity="error" sx={{ my: 4 }}>
-          {error}
-        </Alert>
-      ) : bills.length > 0 ? (
+      )}
+      
+      {/* Bills List - Only show if we have bills and no error and not loading */}
+      {!loading && !error && bills.length > 0 && (
         <>
           <Grid container spacing={3}>
             {bills.map((bill) => (
@@ -398,9 +499,12 @@ const BillsPage = () => {
             ))}
           </Grid>
           
-          {/* Pagination */}
+          {/* Pagination with count */}
           {totalPages > 1 && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', my: 4 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Page {currentPage} of {totalPages} ({totalBills} total {totalBills === 1 ? 'bill' : 'bills'})
+              </Typography>
               <Pagination
                 count={totalPages}
                 page={currentPage}
@@ -410,7 +514,10 @@ const BillsPage = () => {
             </Box>
           )}
         </>
-      ) : (
+      )}
+      
+      {/* No Results Message - Only show if we have no bills and no error and not loading */}
+      {!loading && !error && bills.length === 0 && (
         <Box sx={{ textAlign: 'center', my: 4 }}>
           <Typography variant="h6" color="text.secondary" gutterBottom>
             No bills found matching the criteria
@@ -418,6 +525,16 @@ const BillsPage = () => {
           <Typography variant="body2" color="text.secondary">
             Try adjusting your search terms or filters
           </Typography>
+          {searchTerm && (
+            <Button 
+              variant="outlined" 
+              color="primary"
+              onClick={handleClearSearch}
+              sx={{ mt: 2 }}
+            >
+              Clear Search
+            </Button>
+          )}
         </Box>
       )}
     </Container>
