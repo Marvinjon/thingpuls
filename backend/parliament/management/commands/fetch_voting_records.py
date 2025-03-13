@@ -1,6 +1,7 @@
 import requests
 import xml.etree.ElementTree as ET
 from datetime import datetime
+import time
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from parliament.models import (
@@ -30,11 +31,20 @@ class Command(BaseCommand):
             action='store_true',
             help='Force update even if records already exist'
         )
+        parser.add_argument(
+            '--max-retries',
+            type=int,
+            default=3,
+            help='Maximum number of retries for failed requests'
+        )
 
     def handle(self, *args, **options):
         session_number = options['session'] or 156  # Default to session 156 if not specified
         bill_number = options['bill']
         force = options['force']
+        
+        self.max_retries = options.get('max_retries', 3)
+        self.timeout = 10  # Set a 10 second timeout for requests
         
         self.stdout.write(self.style.SUCCESS(f'Fetching voting records for session {session_number}...'))
         
@@ -62,9 +72,11 @@ class Command(BaseCommand):
         url = f'https://www.althingi.is/altext/xml/thingmalalisti/?lthing={session.session_number}'
         
         try:
-            response = requests.get(url)
-            response.raise_for_status()
-            
+            response = self.make_request(url)
+            if not response:
+                self.stdout.write(self.style.ERROR(f'Failed to fetch bill list after retries'))
+                return
+                
             root = ET.fromstring(response.content)
             bills = root.findall('.//mál')
             
@@ -93,8 +105,15 @@ class Command(BaseCommand):
                     self.stdout.write(f'Title: {title}')
                     
                     # Process the bill
-                    self.fetch_bill_voting_records(session, bill_id, force)
-                    bills_processed += 1
+                    try:
+                        self.fetch_bill_voting_records(session, bill_id, force)
+                        bills_processed += 1
+                    except Exception as e:
+                        self.stdout.write(self.style.ERROR(f'Error processing bill {bill_id}: {str(e)}'))
+                        continue
+                    
+                    # Add a small delay between requests to avoid overwhelming the server
+                    time.sleep(0.5)
                     
                     # Log progress every 10 bills
                     if bills_processed % 10 == 0:
@@ -113,6 +132,21 @@ class Command(BaseCommand):
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'Unexpected error: {str(e)}'))
     
+    def make_request(self, url, retries=0):
+        """Make a request with timeout and retry logic"""
+        try:
+            response = requests.get(url, timeout=self.timeout)
+            response.raise_for_status()
+            return response
+        except (requests.RequestException, requests.Timeout) as e:
+            if retries < self.max_retries:
+                self.stdout.write(self.style.WARNING(f'Request failed: {str(e)}. Retrying ({retries+1}/{self.max_retries})...'))
+                time.sleep(2)  # Wait before retrying
+                return self.make_request(url, retries + 1)
+            else:
+                self.stdout.write(self.style.ERROR(f'Request failed after {self.max_retries} retries: {str(e)}'))
+                return None
+    
     def fetch_bill_voting_records(self, session, bill_number, force):
         """Fetch voting records for a specific bill."""
         self.stdout.write(f'Fetching voting records for bill {bill_number}...')
@@ -120,8 +154,11 @@ class Command(BaseCommand):
         try:
             # Get the bill details to find voting IDs and create/update the bill record
             bill_details_url = f'https://www.althingi.is/altext/xml/thingmalalisti/thingmal/?lthing={session.session_number}&malnr={bill_number}'
-            bill_response = requests.get(bill_details_url)
-            bill_response.raise_for_status()
+            
+            bill_response = self.make_request(bill_details_url)
+            if not bill_response:
+                self.stdout.write(self.style.ERROR(f'Failed to fetch details for bill {bill_number}'))
+                return
             
             root = ET.fromstring(bill_response.content)
             
@@ -160,8 +197,10 @@ class Command(BaseCommand):
                 voting_details_url = f'https://www.althingi.is/altext/xml/atkvaedagreidslur/atkvaedagreidsla/?numer={voting_id}'
                 self.stdout.write(f"Fetching voting details from: {voting_details_url}")
                 
-                voting_details_response = requests.get(voting_details_url)
-                voting_details_response.raise_for_status()
+                voting_details_response = self.make_request(voting_details_url)
+                if not voting_details_response:
+                    self.stdout.write(self.style.ERROR(f'Failed to fetch voting details for ID {voting_id}'))
+                    continue
                 
                 voting_root = ET.fromstring(voting_details_response.content)
                 
@@ -240,13 +279,15 @@ class Command(BaseCommand):
                             self.stdout.write(self.style.WARNING(f"MP with ID {mp_id} ({name}) not found in database"))
                     
                     self.stdout.write(self.style.SUCCESS(f"Created {votes_created} votes"))
+                
+                # Small delay between requests
+                time.sleep(0.5)
             
-        except requests.RequestException as e:
-            self.stdout.write(self.style.ERROR(f'Error fetching data: {str(e)}'))
         except ET.ParseError as e:
             self.stdout.write(self.style.ERROR(f'Error parsing XML: {str(e)}'))
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'Unexpected error: {str(e)}'))
+            raise
     
     def fetch_voting_details_direct(self, session, bill_number, voting_id):
         """Fetch voting details directly using a known voting ID."""
