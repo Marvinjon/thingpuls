@@ -141,6 +141,10 @@ class Bill(models.Model):
     topics = models.ManyToManyField(Topic, related_name='bills')
     url = models.URLField(max_length=500, blank=True)
     
+    # Add sponsors and cosponsors
+    primary_sponsor = models.ForeignKey('MP', on_delete=models.SET_NULL, null=True, blank=True, related_name='sponsored_bills')
+    cosponsors = models.ManyToManyField('MP', related_name='cosponsored_bills', blank=True)
+    
     class Meta:
         unique_together = ('session', 'slug')  # Make slug unique per session
         ordering = ['-introduced_date']
