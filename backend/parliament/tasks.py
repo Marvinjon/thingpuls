@@ -19,6 +19,9 @@ def fetch_althingi_data():
     # Fetch bills
     call_command('fetch_althingi_data', data_type='bills', session=session_number)
     
+    # Fetch speeches
+    call_command('fetch_althingi_data', data_type='speeches', session=session_number)
+    
     return "Data fetch completed successfully"
 
 @shared_task
