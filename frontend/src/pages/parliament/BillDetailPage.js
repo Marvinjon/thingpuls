@@ -143,9 +143,9 @@ const BillDetailPage = () => {
       </Paper>
 
       <Grid container spacing={4}>
-        {bill.sponsors && bill.sponsors.length > 0 && (
-          <Grid item xs={12} md={6}>
-            <Accordion defaultExpanded>
+        <Grid item xs={12} md={6}>
+          {bill.sponsors && bill.sponsors.length > 0 && (
+            <Accordion>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
                   <PersonIcon sx={{ mr: 1 }} /> Sponsors & Co-sponsors
@@ -206,42 +206,11 @@ const BillDetailPage = () => {
                 </Box>
               </AccordionDetails>
             </Accordion>
-          </Grid>
-        )}
+          )}
+        </Grid>
 
-        {bill.amendments && bill.amendments.length > 0 && (
-          <Grid item xs={12} md={6}>
-            <Accordion>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
-                  <DescriptionIcon sx={{ mr: 1 }} /> Amendments
-                </Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Box>
-                  {bill.amendments.map((amendment) => (
-                    <Box key={amendment.id} mb={2}>
-                      <Typography variant="subtitle1">{amendment.title}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Proposed: {new Date(amendment.date_proposed).toLocaleDateString()}
-                      </Typography>
-                      <Chip 
-                        size="small"
-                        label={amendment.status}
-                        color={amendment.status === 'adopted' ? 'success' : 
-                               amendment.status === 'rejected' ? 'error' : 'default'}
-                        sx={{ mt: 1 }}
-                      />
-                    </Box>
-                  ))}
-                </Box>
-              </AccordionDetails>
-            </Accordion>
-          </Grid>
-        )}
-
-        {bill.votes && (
-          <Grid item xs={12}>
+        <Grid item xs={12} md={6}>
+          {bill.votes && (
             <Accordion>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
@@ -298,7 +267,7 @@ const BillDetailPage = () => {
                                         primary={
                                           <Link 
                                             component={RouterLink} 
-                                            to={`/parliament/members/${vote.mp.id}`}
+                                            to={`/parliament/members/${vote.mp.slug}`}
                                             color="primary"
                                             underline="hover"
                                           >
@@ -317,6 +286,37 @@ const BillDetailPage = () => {
                       </Grid>
                     </Box>
                   )}
+                </Box>
+              </AccordionDetails>
+            </Accordion>
+          )}
+        </Grid>
+
+        {bill.amendments && bill.amendments.length > 0 && (
+          <Grid item xs={12}>
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
+                  <DescriptionIcon sx={{ mr: 1 }} /> Amendments
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Box>
+                  {bill.amendments.map((amendment) => (
+                    <Box key={amendment.id} mb={2}>
+                      <Typography variant="subtitle1">{amendment.title}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Proposed: {new Date(amendment.date_proposed).toLocaleDateString()}
+                      </Typography>
+                      <Chip 
+                        size="small"
+                        label={amendment.status}
+                        color={amendment.status === 'adopted' ? 'success' : 
+                               amendment.status === 'rejected' ? 'error' : 'default'}
+                        sx={{ mt: 1 }}
+                      />
+                    </Box>
+                  ))}
                 </Box>
               </AccordionDetails>
             </Accordion>
