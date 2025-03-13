@@ -19,10 +19,17 @@ import {
   CircularProgress,
   Alert,
   InputAdornment,
-  Divider
+  Divider,
+  IconButton,
+  Paper,
+  Button
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import PersonIcon from '@mui/icons-material/Person';
+import ClearIcon from '@mui/icons-material/Clear';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { parliamentService } from '../../services/api';
 
 const MemberPage = () => {
@@ -33,9 +40,12 @@ const MemberPage = () => {
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
+  const [pendingSearchTerm, setPendingSearchTerm] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   const [selectedParty, setSelectedParty] = useState('');
   const [selectedConstituency, setSelectedConstituency] = useState('');
   const [constituencies, setConstituencies] = useState([]);
+  const [showFilters, setShowFilters] = useState(false);
   
   // Pagination
   const [page, setPage] = useState(1);
@@ -83,101 +93,185 @@ const MemberPage = () => {
         setConstituencies([]);
       } finally {
         setLoading(false);
+        setIsSearching(false);
       }
     };
     
     fetchData();
   }, [page, searchTerm, selectedParty, selectedConstituency]);
+
+  // Initialize pendingSearchTerm from searchTerm on first render
+  useEffect(() => {
+    setPendingSearchTerm(searchTerm);
+  }, []);
   
-  const handleSearchChange = (event) => {
-    setSearchTerm(event.target.value);
-    setPage(1); // Reset to first page when search changes
+  const handleSearchInputChange = (event) => {
+    setPendingSearchTerm(event.target.value);
+  };
+  
+  const handleSearch = (event) => {
+    event.preventDefault();
+    setError(null);
+    setIsSearching(true);
+    setSearchTerm(pendingSearchTerm);
+    setPage(1);
+  };
+  
+  const handleClearSearch = () => {
+    setError(null);
+    setPendingSearchTerm('');
+    setSearchTerm('');
+    setPage(1);
   };
   
   const handlePartyChange = (event) => {
     setSelectedParty(event.target.value);
-    setPage(1); // Reset to first page when filter changes
+    setPage(1);
   };
   
   const handleConstituencyChange = (event) => {
     setSelectedConstituency(event.target.value);
-    setPage(1); // Reset to first page when filter changes
+    setPage(1);
   };
   
   const handlePageChange = (event, value) => {
     setPage(value);
   };
+
+  const handleResetFilters = () => {
+    setError(null);
+    setPendingSearchTerm('');
+    setSearchTerm('');
+    setSelectedParty('');
+    setSelectedConstituency('');
+    setPage(1);
+  };
+
+  const toggleFilters = () => {
+    setShowFilters(!showFilters);
+  };
   
   return (
     <Container maxWidth="lg">
-      <Typography variant="h4" component="h1" gutterBottom>
+      <Typography variant="h4" component="h1" gutterBottom sx={{ mt: 4 }}>
         Members of Parliament
       </Typography>
-      <Typography variant="body1" paragraph>
+      
+      <Typography variant="body1" color="text.secondary" paragraph>
         Browse and search for current and former Members of the Icelandic Parliament (Alþingi).
       </Typography>
       
-      {/* Filters */}
-      <Box sx={{ mb: 4, mt: 3 }}>
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              label="Search MPs"
-              variant="outlined"
-              value={searchTerm}
-              onChange={handleSearchChange}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-            />
+      {/* Search and Filter Bar */}
+      <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
+        <form onSubmit={handleSearch}>
+          <Grid container spacing={2} alignItems="flex-end">
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="Search MPs"
+                variant="outlined"
+                fullWidth
+                value={pendingSearchTerm}
+                onChange={handleSearchInputChange}
+                placeholder="Search by name or constituency"
+                InputProps={{
+                  endAdornment: (
+                    <>
+                      {pendingSearchTerm && (
+                        <IconButton size="small" onClick={handleClearSearch}>
+                          <ClearIcon />
+                        </IconButton>
+                      )}
+                      <IconButton type="submit" edge="end" color="primary" disabled={isSearching || loading}>
+                        {isSearching ? <CircularProgress size={24} /> : <SearchIcon />}
+                      </IconButton>
+                    </>
+                  ),
+                }}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button 
+                  variant="outlined" 
+                  startIcon={showFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                  onClick={toggleFilters}
+                  sx={{ mr: 1 }}
+                  disabled={loading}
+                >
+                  Filters
+                </Button>
+                
+                <Button 
+                  variant="contained" 
+                  startIcon={<FilterListIcon />}
+                  onClick={handleResetFilters}
+                  disabled={(!selectedParty && !selectedConstituency && !searchTerm) || loading}
+                >
+                  Reset
+                </Button>
+              </Box>
+            </Grid>
           </Grid>
-          <Grid item xs={12} sm={6} md={4}>
-            <FormControl fullWidth variant="outlined">
-              <InputLabel>Party</InputLabel>
-              <Select
-                value={selectedParty}
-                onChange={handlePartyChange}
-                label="Party"
-              >
-                <MenuItem value="">
-                  <em>All Parties</em>
-                </MenuItem>
-                {parties.map((party) => (
-                  <MenuItem key={party.id} value={party.id}>
-                    {party.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6} md={4}>
-            <FormControl fullWidth variant="outlined">
-              <InputLabel>Constituency</InputLabel>
-              <Select
-                value={selectedConstituency}
-                onChange={handleConstituencyChange}
-                label="Constituency"
-              >
-                <MenuItem value="">
-                  <em>All Constituencies</em>
-                </MenuItem>
-                {constituencies.map((constituency) => (
-                  <MenuItem key={constituency} value={constituency}>
-                    {constituency}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-        </Grid>
-      </Box>
-      
-      <Divider sx={{ mb: 4 }} />
+          
+          {/* Filter Options */}
+          {showFilters && (
+            <Box sx={{ mt: 3 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth variant="outlined">
+                    <InputLabel>Party</InputLabel>
+                    <Select
+                      value={selectedParty}
+                      onChange={handlePartyChange}
+                      label="Party"
+                      disabled={loading}
+                    >
+                      <MenuItem value="">
+                        <em>All Parties</em>
+                      </MenuItem>
+                      {parties.map((party) => (
+                        <MenuItem key={party.id} value={party.id}>
+                          {party.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth variant="outlined">
+                    <InputLabel>Constituency</InputLabel>
+                    <Select
+                      value={selectedConstituency}
+                      onChange={handleConstituencyChange}
+                      label="Constituency"
+                      disabled={loading}
+                    >
+                      <MenuItem value="">
+                        <em>All Constituencies</em>
+                      </MenuItem>
+                      {constituencies.map((constituency) => (
+                        <MenuItem key={constituency} value={constituency}>
+                          {constituency}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+        </form>
+      </Paper>
+
+      {/* Search Results Summary - Only show if we have results and no error */}
+      {!error && searchTerm && !loading && members.length > 0 && (
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            Found {members.length} {members.length === 1 ? 'MP' : 'MPs'} matching "{searchTerm}"
+          </Typography>
+        </Box>
+      )}
       
       {/* Error message */}
       {error && (
@@ -211,7 +305,7 @@ const MemberPage = () => {
                         alt={`${mp.first_name} ${mp.last_name}`}
                         sx={{ objectFit: 'cover' }}
                         onError={(e) => {
-                          e.target.onerror = null; // Prevent infinite loop
+                          e.target.onerror = null;
                           e.target.style.display = 'none';
                           const icon = document.createElement('div');
                           icon.innerHTML = '<svg style="width: 100px; height: 100px; color: #bdbdbd;" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4-4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
@@ -265,9 +359,34 @@ const MemberPage = () => {
             ))}
           </Grid>
           
+          {/* No Results Message */}
+          {!loading && !error && members.length === 0 && (
+            <Box sx={{ textAlign: 'center', my: 4 }}>
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                No MPs found matching the criteria
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Try adjusting your search terms or filters
+              </Typography>
+              {searchTerm && (
+                <Button 
+                  variant="outlined" 
+                  color="primary"
+                  onClick={handleClearSearch}
+                  sx={{ mt: 2 }}
+                >
+                  Clear Search
+                </Button>
+              )}
+            </Box>
+          )}
+          
           {/* Pagination */}
           {totalPages > 1 && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', my: 4 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Page {page} of {totalPages}
+              </Typography>
               <Pagination 
                 count={totalPages} 
                 page={page} 
