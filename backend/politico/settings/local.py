@@ -44,11 +44,11 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Add debug toolbar for development
 INSTALLED_APPS += [
-    'debug_toolbar',
+    # Removing debug_toolbar
 ]
 
 MIDDLEWARE += [
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
+    # Removing debug toolbar middleware
 ]
 
 INTERNAL_IPS = [
@@ -63,4 +63,11 @@ CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'] = (
     'rest_framework.renderers.JSONRenderer',
     'rest_framework.renderers.BrowsableAPIRenderer',
-) 
+)
+
+# Removing debug toolbar config
+# DEBUG_TOOLBAR_CONFIG = {
+#     'SHOW_TOOLBAR_CALLBACK': lambda request: True,
+# }
+
+# Make sure debug_toolbar is properly included in urls.py 
