@@ -13,7 +13,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install additional packages required by the application
-RUN pip install django-filter pandas openpyxl
+RUN pip install django-filter pandas openpyxl Pillow
 
 # Create necessary directories
 RUN mkdir -p /app/staticfiles /app/media /app/logs
