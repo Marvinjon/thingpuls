@@ -1,8 +1,10 @@
 FROM nginx:alpine
 
-# Create directories for static and media files
-RUN mkdir -p /usr/share/nginx/html/static \
+# Create directories and set permissions
+RUN mkdir -p /usr/share/nginx/html \
+    && mkdir -p /usr/share/nginx/html/static \
     && mkdir -p /usr/share/nginx/html/media \
+    && chown -R nginx:nginx /usr/share/nginx/html \
     && chmod -R 755 /usr/share/nginx/html
 
 # Copy nginx configuration
