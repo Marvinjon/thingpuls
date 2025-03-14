@@ -12,6 +12,9 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install additional packages required by the application
+RUN pip install django-filter pandas openpyxl
+
 # Create necessary directories
 RUN mkdir -p /app/staticfiles /app/media /app/logs
 
