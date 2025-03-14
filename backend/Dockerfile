@@ -8,16 +8,22 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project files
-COPY backend/ .
-COPY .env .
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p /app/static /app/media
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV DJANGO_SETTINGS_MODULE=politico.settings
 
 # Collect static files
 RUN python manage.py collectstatic --noinput
 
 # Run gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "backend.wsgi:application"] 
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "politico.wsgi:application"] 
