@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ backend/
 
 # Create necessary directories
-RUN mkdir -p /app/static /app/media
+RUN mkdir -p /app/backend/static /app/backend/media /app/backend/staticfiles
 
 # Set environment variables
 ENV PYTHONPATH=/app/backend
