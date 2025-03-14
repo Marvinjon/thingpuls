@@ -12,5 +12,10 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Keep the container running
-CMD ["tail", "-f", "/dev/null"] 
+# Create a directory to store the build files
+RUN mkdir -p /build
+RUN cp -r build/* /build/
+
+# Keep the container running and ensure the build files are accessible
+VOLUME ["/build"]
+CMD ["sh", "-c", "cp -r /build/* /app/build/ && tail -f /dev/null"] 
