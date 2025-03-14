@@ -13,14 +13,17 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project files
-COPY backend/ .
+COPY backend/ backend/
 
 # Create necessary directories
 RUN mkdir -p /app/static /app/media
 
 # Set environment variables
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app/backend
 ENV DJANGO_SETTINGS_MODULE=politico.settings.production
+
+# Change to the Django project directory
+WORKDIR /app/backend
 
 # Collect static files
 RUN python manage.py collectstatic --noinput
