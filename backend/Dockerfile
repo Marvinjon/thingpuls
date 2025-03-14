@@ -21,6 +21,19 @@ RUN mkdir -p /app/staticfiles /app/media /app/logs
 # Copy project files
 COPY . .
 
+# Create entrypoint script
+RUN echo '#!/bin/sh\n\
+set -e\n\
+\n\
+echo "Waiting for postgres..."\n\
+sleep 5\n\
+\n\
+echo "Running migrations..."\n\
+python manage.py migrate\n\
+\n\
+echo "Starting application..."\n\
+exec "$@"' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
+
 # Set environment variables
 ENV PYTHONPATH=/app
 ENV DJANGO_SETTINGS_MODULE=politico.settings.production
@@ -29,6 +42,9 @@ ENV PYTHONUNBUFFERED=1
 
 # Collect static files
 RUN python manage.py collectstatic --noinput --clear
+
+# Set the entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Run gunicorn
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120", "politico.wsgi:application"] 
