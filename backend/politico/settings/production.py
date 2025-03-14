@@ -16,7 +16,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 # Restrict allowed hosts in production
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
+ALLOWED_HOSTS = ['localhost', 'thingpuls.mhmehf.is']
 
 # Static files configuration
 STATIC_URL = '/static/'
@@ -46,18 +46,19 @@ X_FRAME_OPTIONS = 'DENY'
 SECURE_HSTS_SECONDS = 31536000  # 1 year
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
-SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+SECURE_SSL_REDIRECT = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
 
 # CORS settings for production
-cors_origins = os.environ.get('CORS_ORIGIN_WHITELIST', '')
-if cors_origins:
-    CORS_ALLOW_ALL_ORIGINS = False
-    CORS_ALLOWED_ORIGINS = cors_origins.split(',')
-else:
-    # Default to allowing all origins if no specific origins are provided
-    CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = True  # Temporarily allow all origins for testing
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost',
+    'https://localhost',
+    'http://thingpuls.mhmehf.is',
+    'https://thingpuls.mhmehf.is'
+]
+CORS_ALLOW_CREDENTIALS = True
 
 # Email configuration for production
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

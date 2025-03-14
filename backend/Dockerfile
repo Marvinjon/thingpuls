@@ -21,9 +21,11 @@ COPY . .
 # Set environment variables
 ENV PYTHONPATH=/app
 ENV DJANGO_SETTINGS_MODULE=politico.settings.production
+ENV DJANGO_ENV=production
+ENV PYTHONUNBUFFERED=1
 
 # Collect static files
 RUN python manage.py collectstatic --noinput --clear
 
 # Run gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "politico.wsgi:application"] 
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120", "politico.wsgi:application"] 
