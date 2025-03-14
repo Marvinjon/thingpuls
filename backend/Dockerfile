@@ -20,7 +20,7 @@ RUN mkdir -p /app/static /app/media
 
 # Set environment variables
 ENV PYTHONPATH=/app
-ENV DJANGO_SETTINGS_MODULE=politico.settings
+ENV DJANGO_SETTINGS_MODULE=politico.settings.production
 
 # Collect static files
 RUN python manage.py collectstatic --noinput
