@@ -13,13 +13,13 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project files
-COPY . /app/
+COPY backend/ .
 
 # Create necessary directories
 RUN mkdir -p /app/static /app/media
 
 # Set environment variables
-ENV PYTHONPATH=/app/backend
+ENV PYTHONPATH=/app
 ENV DJANGO_SETTINGS_MODULE=politico.settings
 
 # Collect static files
