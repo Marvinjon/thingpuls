@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ backend/
 
 # Create necessary directories
-RUN mkdir -p /app/backend/static /app/backend/media /app/backend/staticfiles
+RUN mkdir -p /app/backend/static /app/backend/media
 
 # Set environment variables
 ENV PYTHONPATH=/app/backend
@@ -26,7 +26,7 @@ ENV DJANGO_SETTINGS_MODULE=politico.settings.production
 WORKDIR /app/backend
 
 # Collect static files
-RUN python manage.py collectstatic --noinput
+RUN python manage.py collectstatic --noinput --clear
 
 # Run gunicorn
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "politico.wsgi:application"] 
