@@ -25,7 +25,7 @@ DATABASES = {
         'NAME': os.getenv('DB_NAME', 'politico_db'),
         'USER': os.getenv('DB_USER', 'politico_user'),
         'PASSWORD': os.getenv('DB_PASSWORD', 'password'),
-        'HOST': 'localhost',  # Always use localhost for local development
+        'HOST': os.getenv('DB_HOST', 'db'),  # Use Docker service name in container
         'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
@@ -56,8 +56,8 @@ INTERNAL_IPS = [
 ]
 
 # Local Redis setup (if needed)
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://redis:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://redis:6379/0')
 
 # REST Framework additional settings for development
 REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'] = (

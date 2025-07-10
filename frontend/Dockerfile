@@ -1,4 +1,5 @@
-FROM node:18-alpine as build
+# Multi-stage build for both development and production
+FROM node:18-alpine as base
 
 WORKDIR /app
 
@@ -8,6 +9,22 @@ RUN npm install
 
 # Copy source code
 COPY . .
+
+# Development stage
+FROM base as development
+
+ENV NODE_ENV=development
+ENV REACT_APP_API_URL=http://localhost:8000
+
+EXPOSE 3000
+
+CMD ["npm", "start"]
+
+# Production build stage
+FROM base as production
+
+ENV NODE_ENV=production
+ENV REACT_APP_API_URL=http://localhost:8000
 
 # Build the application
 RUN npm run build

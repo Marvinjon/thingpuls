@@ -1,0 +1,39 @@
+services:
+  # Backend API - Production mode
+  backend:
+    build:
+      target: production
+    environment:
+      - DJANGO_ENV=production
+      - DEBUG=False
+    restart: unless-stopped
+
+  # Frontend - Production mode
+  frontend:
+    build:
+      target: production
+    environment:
+      - NODE_ENV=production
+    command: sh -c "npm run build && tail -f /dev/null"
+
+  # Celery Worker - Production mode
+  celery_worker:
+    build:
+      target: production
+    environment:
+      - DJANGO_ENV=production
+      - DEBUG=False
+    restart: unless-stopped
+
+  # Celery Beat - Production mode
+  celery_beat:
+    build:
+      target: production
+    environment:
+      - DJANGO_ENV=production
+      - DEBUG=False
+    restart: unless-stopped
+
+  # Nginx - Production mode
+  nginx:
+    restart: unless-stopped 

@@ -1,0 +1,45 @@
+services:
+  # Backend API - Development mode
+  backend:
+    build:
+      target: development
+    environment:
+      - DJANGO_ENV=local
+      - DEBUG=True
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+
+  # Frontend - Development mode
+  frontend:
+    build:
+      target: development
+    environment:
+      - NODE_ENV=development
+      - REACT_APP_API_URL=http://localhost:8000
+    command: npm start
+    ports:
+      - "3000:3000"
+
+  # Celery Worker - Development mode
+  celery_worker:
+    build:
+      target: development
+    environment:
+      - DJANGO_ENV=local
+      - DEBUG=True
+    command: celery -A politico.celery worker -l debug
+
+  # Celery Beat - Development mode
+  celery_beat:
+    build:
+      target: development
+    environment:
+      - DJANGO_ENV=local
+      - DEBUG=True
+    command: celery -A politico.celery beat -l debug
+
+  # Nginx - Development mode (optional, can be disabled)
+  nginx:
+    profiles:
+      - nginx 

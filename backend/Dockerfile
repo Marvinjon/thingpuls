@@ -1,4 +1,5 @@
-FROM python:3.11-slim
+# Multi-stage build for both development and production
+FROM python:3.11-slim as base
 
 WORKDIR /app
 
@@ -21,7 +22,17 @@ RUN mkdir -p /app/staticfiles /app/media /app/logs
 # Copy project files
 COPY . .
 
-# Create entrypoint script
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+# Development stage
+FROM base as development
+
+ENV DJANGO_SETTINGS_MODULE=politico.settings.local
+ENV DJANGO_ENV=local
+
+# Create entrypoint script for development
 RUN echo '#!/bin/sh\n\
 set -e\n\
 \n\
@@ -31,20 +42,33 @@ sleep 5\n\
 echo "Running migrations..."\n\
 python manage.py migrate\n\
 \n\
-echo "Starting application..."\n\
+echo "Starting development server..."\n\
 exec "$@"' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 
-# Set environment variables
-ENV PYTHONPATH=/app
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+
+# Production stage
+FROM base as production
+
 ENV DJANGO_SETTINGS_MODULE=politico.settings.production
 ENV DJANGO_ENV=production
-ENV PYTHONUNBUFFERED=1
 
 # Collect static files
 RUN python manage.py collectstatic --noinput --clear
 
-# Set the entrypoint
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Create entrypoint script for production
+RUN echo '#!/bin/sh\n\
+set -e\n\
+\n\
+echo "Waiting for postgres..."\n\
+sleep 5\n\
+\n\
+echo "Running migrations..."\n\
+python manage.py migrate\n\
+\n\
+echo "Starting production server..."\n\
+exec "$@"' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 
-# Run gunicorn
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120", "politico.wsgi:application"] 
