@@ -117,30 +117,66 @@ class BillDetailSerializer(serializers.ModelSerializer):
         fields = '__all__'
     
     def get_votes(self, obj):
-        """Return vote statistics and individual votes."""
-        votes = obj.votes.all()
+        """Return vote statistics grouped by voting session with individual MP votes."""
+        votes = obj.votes.all().select_related('mp', 'mp__party')
         
-        # Get vote counts
-        yes_votes = votes.filter(vote='yes')
-        no_votes = votes.filter(vote='no')
-        abstain_votes = votes.filter(vote='abstain')
-        absent_votes = votes.filter(vote='absent')
+        if not votes.exists():
+            return []
         
-        # Create serializer for individual votes
-        vote_serializer = VoteSerializer(many=True)
+        # Group votes by voting session (using althingi_voting_id and vote_date)
+        voting_sessions = {}
+        for vote in votes:
+            session_key = vote.althingi_voting_id or f"session_{vote.vote_date}"
+            if session_key not in voting_sessions:
+                voting_sessions[session_key] = {
+                    'id': session_key,
+                    'title': f"Atkvæðagreiðsla {vote.vote_date.strftime('%d/%m/%Y')}",
+                    'vote_date': vote.vote_date,
+                    'althingi_voting_id': vote.althingi_voting_id,
+                    'votes': []
+                }
+            voting_sessions[session_key]['votes'].append(vote)
         
-        stats = {
-            'yes': yes_votes.count(),
-            'no': no_votes.count(),
-            'abstain': abstain_votes.count(),
-            'absent': absent_votes.count(),
-            'total': votes.count(),
-            'yes_votes': vote_serializer.to_representation(yes_votes),
-            'no_votes': vote_serializer.to_representation(no_votes),
-            'abstain_votes': vote_serializer.to_representation(abstain_votes),
-            'absent_votes': vote_serializer.to_representation(absent_votes)
-        }
-        return stats 
+        # Calculate statistics for each voting session and sort by date
+        result = []
+        for session_data in sorted(voting_sessions.values(), key=lambda x: x['vote_date'], reverse=True):
+            session_votes = session_data['votes']
+            
+            # Count votes by type
+            yes_votes = [v for v in session_votes if v.vote == 'yes']
+            no_votes = [v for v in session_votes if v.vote == 'no']
+            abstain_votes = [v for v in session_votes if v.vote == 'abstain']
+            absent_votes = [v for v in session_votes if v.vote == 'absent']
+            
+            # Create MP vote details
+            def format_mp_vote(vote):
+                return {
+                    'mp_id': vote.mp.id,
+                    'mp_name': vote.mp.full_name,
+                    'mp_slug': vote.mp.slug,
+                    'party': vote.mp.party.abbreviation if vote.mp.party else 'Óháður',
+                    'party_color': vote.mp.party.color if vote.mp.party else '#808080',
+                    'vote': vote.vote,
+                    'image_url': vote.mp.image_url
+                }
+            
+            result.append({
+                'id': session_data['id'],
+                'title': session_data['title'],
+                'vote_date': session_data['vote_date'].isoformat() if session_data['vote_date'] else None,
+                'althingi_voting_id': session_data['althingi_voting_id'],
+                'yes_count': len(yes_votes),
+                'no_count': len(no_votes),
+                'abstain_count': len(abstain_votes),
+                'absent_count': len(absent_votes),
+                'total_count': len(session_votes),
+                'yes_votes': [format_mp_vote(v) for v in yes_votes],
+                'no_votes': [format_mp_vote(v) for v in no_votes],
+                'abstain_votes': [format_mp_vote(v) for v in abstain_votes],
+                'absent_votes': [format_mp_vote(v) for v in absent_votes]
+            })
+        
+        return result 
 
 
 class MPInterestSerializer(serializers.ModelSerializer):

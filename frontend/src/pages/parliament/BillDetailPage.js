@@ -4,14 +4,11 @@ import {
   Container, Typography, Box, Paper, Chip, Button, 
   Accordion, AccordionSummary, AccordionDetails, Grid,
   Divider, CircularProgress, Alert, List, ListItem, ListItemText,
-  Link, ListItemButton, ListItemAvatar, Avatar
+  ListItemButton, ListItemAvatar, Avatar
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PersonIcon from '@mui/icons-material/Person';
-import DescriptionIcon from '@mui/icons-material/Description';
-import HowToVoteIcon from '@mui/icons-material/HowToVote';
 import { parliamentService } from '../../services/api';
 
 const BillDetailPage = () => {
@@ -19,7 +16,6 @@ const BillDetailPage = () => {
   const [bill, setBill] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showVoteDetails, setShowVoteDetails] = useState(false);
 
   useEffect(() => {
     const fetchBill = async () => {
@@ -209,23 +205,192 @@ const BillDetailPage = () => {
             </Accordion>
           </Grid>
 
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12}>
             <Accordion defaultExpanded>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="h6">Atkvæðagreiðslur</Typography>
               </AccordionSummary>
               <AccordionDetails>
                 {bill.votes?.length > 0 ? (
-                  <List>
-                    {bill.votes.map((vote) => (
-                      <ListItem key={vote.id}>
-                        <ListItemText
-                          primary={vote.title}
-                          secondary={`${vote.yes_count} já, ${vote.no_count} nei, ${vote.abstain_count} sitja hjá`}
-                        />
-                      </ListItem>
+                  <Box>
+                    {bill.votes.map((votingSession) => (
+                      <Box key={votingSession.id} mb={3}>
+                        <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                          {votingSession.title}
+                        </Typography>
+                        <Box display="flex" gap={2} mb={2} flexWrap="wrap">
+                          <Chip 
+                            label={`${votingSession.yes_count} já`} 
+                            color="success" 
+                            size="small"
+                          />
+                          <Chip 
+                            label={`${votingSession.no_count} nei`} 
+                            color="error" 
+                            size="small"
+                          />
+                          {votingSession.abstain_count > 0 && (
+                            <Chip 
+                              label={`${votingSession.abstain_count} sitja hjá`} 
+                              color="warning" 
+                              size="small"
+                            />
+                          )}
+                          {votingSession.absent_count > 0 && (
+                            <Chip 
+                              label={`${votingSession.absent_count} fjarverandi`} 
+                              color="default" 
+                              size="small"
+                            />
+                          )}
+                        </Box>
+
+                        {/* Yes Votes */}
+                        {votingSession.yes_votes?.length > 0 && (
+                          <Accordion sx={{ mb: 1 }}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                              <Typography variant="body2" color="success.main">
+                                Greiddu atkvæði með ({votingSession.yes_count})
+                              </Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                              <List dense>
+                                {votingSession.yes_votes.map((mpVote) => (
+                                  <ListItem 
+                                    key={mpVote.mp_id}
+                                    component={RouterLink}
+                                    to={`/parliament/members/${mpVote.mp_slug}`}
+                                    sx={{ 
+                                      '&:hover': { bgcolor: 'action.hover' },
+                                      borderRadius: 1
+                                    }}
+                                  >
+                                    <ListItemAvatar>
+                                      <Avatar src={mpVote.image_url} alt={mpVote.mp_name}>
+                                        <PersonIcon />
+                                      </Avatar>
+                                    </ListItemAvatar>
+                                    <ListItemText 
+                                      primary={mpVote.mp_name}
+                                      secondary={mpVote.party}
+                                    />
+                                  </ListItem>
+                                ))}
+                              </List>
+                            </AccordionDetails>
+                          </Accordion>
+                        )}
+
+                        {/* No Votes */}
+                        {votingSession.no_votes?.length > 0 && (
+                          <Accordion sx={{ mb: 1 }}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                              <Typography variant="body2" color="error.main">
+                                Greiddu atkvæði á móti ({votingSession.no_count})
+                              </Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                              <List dense>
+                                {votingSession.no_votes.map((mpVote) => (
+                                  <ListItem 
+                                    key={mpVote.mp_id}
+                                    component={RouterLink}
+                                    to={`/parliament/members/${mpVote.mp_slug}`}
+                                    sx={{ 
+                                      '&:hover': { bgcolor: 'action.hover' },
+                                      borderRadius: 1
+                                    }}
+                                  >
+                                    <ListItemAvatar>
+                                      <Avatar src={mpVote.image_url} alt={mpVote.mp_name}>
+                                        <PersonIcon />
+                                      </Avatar>
+                                    </ListItemAvatar>
+                                    <ListItemText 
+                                      primary={mpVote.mp_name}
+                                      secondary={mpVote.party}
+                                    />
+                                  </ListItem>
+                                ))}
+                              </List>
+                            </AccordionDetails>
+                          </Accordion>
+                        )}
+
+                        {/* Abstain Votes */}
+                        {votingSession.abstain_votes?.length > 0 && (
+                          <Accordion sx={{ mb: 1 }}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                              <Typography variant="body2" color="warning.main">
+                                Sátu hjá ({votingSession.abstain_count})
+                              </Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                              <List dense>
+                                {votingSession.abstain_votes.map((mpVote) => (
+                                  <ListItem 
+                                    key={mpVote.mp_id}
+                                    component={RouterLink}
+                                    to={`/parliament/members/${mpVote.mp_slug}`}
+                                    sx={{ 
+                                      '&:hover': { bgcolor: 'action.hover' },
+                                      borderRadius: 1
+                                    }}
+                                  >
+                                    <ListItemAvatar>
+                                      <Avatar src={mpVote.image_url} alt={mpVote.mp_name}>
+                                        <PersonIcon />
+                                      </Avatar>
+                                    </ListItemAvatar>
+                                    <ListItemText 
+                                      primary={mpVote.mp_name}
+                                      secondary={mpVote.party}
+                                    />
+                                  </ListItem>
+                                ))}
+                              </List>
+                            </AccordionDetails>
+                          </Accordion>
+                        )}
+
+                        {/* Absent Votes */}
+                        {votingSession.absent_votes?.length > 0 && (
+                          <Accordion sx={{ mb: 1 }}>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                              <Typography variant="body2" color="text.secondary">
+                                Fjarverandi ({votingSession.absent_count})
+                              </Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                              <List dense>
+                                {votingSession.absent_votes.map((mpVote) => (
+                                  <ListItem 
+                                    key={mpVote.mp_id}
+                                    component={RouterLink}
+                                    to={`/parliament/members/${mpVote.mp_slug}`}
+                                    sx={{ 
+                                      '&:hover': { bgcolor: 'action.hover' },
+                                      borderRadius: 1
+                                    }}
+                                  >
+                                    <ListItemAvatar>
+                                      <Avatar src={mpVote.image_url} alt={mpVote.mp_name}>
+                                        <PersonIcon />
+                                      </Avatar>
+                                    </ListItemAvatar>
+                                    <ListItemText 
+                                      primary={mpVote.mp_name}
+                                      secondary={mpVote.party}
+                                    />
+                                  </ListItem>
+                                ))}
+                              </List>
+                            </AccordionDetails>
+                          </Accordion>
+                        )}
+                      </Box>
                     ))}
-                  </List>
+                  </Box>
                 ) : (
                   <Typography color="text.secondary">
                     Engar atkvæðagreiðslur skráðar
