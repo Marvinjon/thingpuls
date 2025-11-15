@@ -7,11 +7,15 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables
+# First load .env, then .env.local (local overrides Docker settings)
+load_dotenv()  # Loads .env from project root
+# Load .env.local from project root (parent of backend directory)
+env_local_path = BASE_DIR.parent / '.env.local'
+load_dotenv(str(env_local_path), override=True)  # Loads .env.local if exists and overrides
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-dev-key-change-in-production')
