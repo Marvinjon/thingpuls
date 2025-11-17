@@ -99,7 +99,6 @@ class MPViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['first_name', 'last_name', 'bio']
     ordering_fields = ['last_name', 'first_name', 'bills_sponsored', 'speech_count']
     lookup_field = 'slug'
-    pagination_class = None  # Disable pagination to return all MPs at once
     
     def get_serializer_class(self):
         """Return appropriate serializer class."""
