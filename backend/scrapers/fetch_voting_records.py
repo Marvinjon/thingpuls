@@ -75,102 +75,105 @@ def fetch_bill_voting_records(session, bill_number, force=False):
             print(f'  No voting records found for bill {bill_number}')
             return
         
+        # Only process the LAST voting record (final vote)
+        # This is the final vote when the bill is passed or rejected
+        last_voting_record = voting_records[-1]
+        voting_id = last_voting_record.get('atkvæðagreiðslunúmer')
+        
+        if not voting_id:
+            print(f'  Error: Could not find voting ID for final vote')
+            return
+        
+        print(f'  Processing final vote (ID: {voting_id}, total votes available: {len(voting_records)})')
+        
         votes_created_total = 0
         
-        for voting_record in voting_records:
-            voting_id = voting_record.get('atkvæðagreiðslunúmer')
-            if not voting_id:
-                continue
-            
-            # Fetch the actual voting details
-            voting_details_url = f'https://www.althingi.is/altext/xml/atkvaedagreidslur/atkvaedagreidsla/?numer={voting_id}'
-            
-            voting_details_response = make_request(voting_details_url)
-            if not voting_details_response:
-                print(f'  Error: Failed to fetch voting details for ID {voting_id}')
-                continue
-            
-            voting_root = ET.fromstring(voting_details_response.content)
-            
-            # Get voting date
-            date_elem = voting_root.find('.//tími')
-            if date_elem is None or not date_elem.text:
-                print(f'  Warning: Could not find date for voting session {voting_id}')
-                continue
-            
-            vote_date = datetime.strptime(date_elem.text.split('T')[0], '%Y-%m-%d').date()
-            
-            # Check if we already have this voting session
-            if not force and Vote.objects.filter(bill=bill_obj, vote_date=vote_date).exists():
-                print(f'  Skipping: Voting records for {vote_date} already exist (use force=True to update)')
-                continue
-            
-            # Extract the result
-            result = 'unknown'
-            result_elem = voting_root.find('.//niðurstaða')
-            if result_elem is not None and result_elem.text:
-                if 'samþykkt' in result_elem.text.lower():
-                    result = 'passed'
-                    bill_obj.status = 'passed'
-                elif 'fellt' in result_elem.text.lower():
-                    result = 'rejected'
-                    bill_obj.status = 'rejected'
-                bill_obj.save()
-            
-            # Process individual votes
-            with transaction.atomic():
-                # Delete existing votes for this bill and date if updating
-                Vote.objects.filter(bill=bill_obj, vote_date=vote_date).delete()
-                
-                # Find all MP votes
-                mp_votes = voting_root.findall('.//þingmaður')
-                
-                votes_created = 0
-                for mp_elem in mp_votes:
-                    mp_id = mp_elem.get('id')
-                    vote_elem = mp_elem.find('atkvæði')
-                    
-                    if not mp_id or vote_elem is None:
-                        continue
-                    
-                    vote_value = vote_elem.text
-                    if not vote_value:
-                        continue
-                    
-                    # Map Althingi vote values to our model's values
-                    vote_mapping = {
-                        'já': 'yes',
-                        'nei': 'no',
-                        'greiðir ekki atkvæði': 'abstain',
-                        'fjarverandi': 'absent',
-                        'boðaði fjarvist': 'absent'
-                    }
-                    
-                    vote_value = vote_mapping.get(vote_value.lower(), 'abstain')
-                    
-                    try:
-                        mp = MP.objects.get(althingi_id=mp_id)
-                        Vote.objects.create(
-                            bill=bill_obj,
-                            mp=mp,
-                            vote=vote_value.lower(),
-                            vote_date=vote_date,
-                            session=session,
-                            althingi_voting_id=voting_id
-                        )
-                        votes_created += 1
-                    except MP.DoesNotExist:
-                        name_elem = mp_elem.find('nafn')
-                        name = name_elem.text if name_elem is not None else "Unknown"
-                        print(f'  Warning: MP with ID {mp_id} ({name}) not found')
-                
-                votes_created_total += votes_created
-                print(f'  ✓ Created {votes_created} votes for date {vote_date}')
-            
-            # Small delay between requests
-            time.sleep(0.5)
+        # Fetch the actual voting details
+        voting_details_url = f'https://www.althingi.is/altext/xml/atkvaedagreidslur/atkvaedagreidsla/?numer={voting_id}'
         
-        print(f'  Summary: Total {votes_created_total} votes created for bill {bill_number}')
+        voting_details_response = make_request(voting_details_url)
+        if not voting_details_response:
+            print(f'  Error: Failed to fetch voting details for ID {voting_id}')
+            return
+        
+        voting_root = ET.fromstring(voting_details_response.content)
+        
+        # Get voting date
+        date_elem = voting_root.find('.//tími')
+        if date_elem is None or not date_elem.text:
+            print(f'  Warning: Could not find date for voting session {voting_id}')
+            return
+        
+        vote_date = datetime.strptime(date_elem.text.split('T')[0], '%Y-%m-%d').date()
+        
+        # Check if we already have this voting session
+        if not force and Vote.objects.filter(bill=bill_obj, althingi_voting_id=voting_id).exists():
+            print(f'  Skipping: Voting records for ID {voting_id} already exist (use force=True to update)')
+            return
+        
+        # Extract the result
+        result = 'unknown'
+        result_elem = voting_root.find('.//niðurstaða')
+        if result_elem is not None and result_elem.text:
+            if 'samþykkt' in result_elem.text.lower():
+                result = 'passed'
+                bill_obj.status = 'passed'
+            elif 'fellt' in result_elem.text.lower():
+                result = 'rejected'
+                bill_obj.status = 'rejected'
+            bill_obj.save()
+        
+        # Process individual votes
+        with transaction.atomic():
+            # Delete existing votes for this bill if updating
+            Vote.objects.filter(bill=bill_obj).delete()
+            
+            # Find all MP votes
+            mp_votes = voting_root.findall('.//þingmaður')
+            
+            votes_created = 0
+            for mp_elem in mp_votes:
+                mp_id = mp_elem.get('id')
+                vote_elem = mp_elem.find('atkvæði')
+                
+                if not mp_id or vote_elem is None:
+                    continue
+                
+                vote_value = vote_elem.text
+                if not vote_value:
+                    continue
+                
+                # Map Althingi vote values to our model's values
+                vote_mapping = {
+                    'já': 'yes',
+                    'nei': 'no',
+                    'greiðir ekki atkvæði': 'abstain',
+                    'fjarverandi': 'absent',
+                    'boðaði fjarvist': 'absent'
+                }
+                
+                vote_value = vote_mapping.get(vote_value.lower(), 'abstain')
+                
+                try:
+                    mp = MP.objects.get(althingi_id=mp_id)
+                    Vote.objects.create(
+                        bill=bill_obj,
+                        mp=mp,
+                        vote=vote_value.lower(),
+                        vote_date=vote_date,
+                        session=session,
+                        althingi_voting_id=voting_id
+                    )
+                    votes_created += 1
+                except MP.DoesNotExist:
+                    name_elem = mp_elem.find('nafn')
+                    name = name_elem.text if name_elem is not None else "Unknown"
+                    print(f'  Warning: MP with ID {mp_id} ({name}) not found')
+            
+            votes_created_total = votes_created
+            print(f'  ✓ Created {votes_created} votes for final vote on {vote_date}')
+        
+        print(f'  Summary: {votes_created_total} votes created for bill {bill_number} (voting ID: {voting_id})')
         
     except ET.ParseError as e:
         print(f'  Error: XML parsing error: {str(e)}')

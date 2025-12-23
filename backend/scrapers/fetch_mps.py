@@ -12,6 +12,7 @@ import sys
 import django
 from django.utils.text import slugify
 from django.db import transaction
+import html
 
 # Setup Django
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -95,6 +96,7 @@ def fetch_mps(session_number=156):
                     
                     # Get email from text content
                     text_content = ' '.join(detail_root.itertext())
+                    text_content = html.unescape(text_content)
                     email_pattern = r'([\w\.]+)\s+althingi\.is'
                     email_match = re.search(email_pattern, text_content)
                     if email_match:
@@ -124,6 +126,8 @@ def fetch_mps(session_number=156):
                         if lifshlaup_response.status_code == 200:
                             lifshlaup_root = ET.fromstring(lifshlaup_response.content)
                             bio_text = ' '.join(lifshlaup_root.itertext()).strip()
+                            # Decode HTML entities like &ndash; &mdash; &amp; etc.
+                            bio_text = html.unescape(bio_text)
                             # Clean up URLs and whitespace
                             bio_text = re.sub(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', '', bio_text)
                             bio_text = re.sub(r'\s+', ' ', bio_text)
@@ -167,6 +171,7 @@ def fetch_mps(session_number=156):
                         constituency_elem = latest_thingseta.find('kjördæmi')
                         if constituency_elem is not None:
                             constituency = ''.join(constituency_elem.itertext()).strip()
+                            constituency = html.unescape(constituency)
                         
                         # Get first elected date
                         first_thingseta = min(thingseta_entries, key=lambda x: int(x.find('þing').text))
