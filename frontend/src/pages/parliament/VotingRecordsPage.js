@@ -3,20 +3,17 @@ import { useLocation, Link as RouterLink } from 'react-router-dom';
 import { 
   Container, Typography, Box, Paper, Table, TableBody, 
   TableCell, TableContainer, TableHead, TableRow, Chip,
-  Card, CardContent, Grid, TextField, MenuItem, 
-  InputAdornment, CircularProgress, Divider, Alert,
-  Pagination, Button, IconButton, Link
+  Grid, TextField,
+  CircularProgress, Alert,
+  Pagination, Button, Link, IconButton
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import FilterListIcon from '@mui/icons-material/FilterList';
 import SortIcon from '@mui/icons-material/Sort';
-import HowToVoteIcon from '@mui/icons-material/HowToVote';
-import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import PersonIcon from '@mui/icons-material/Person';
 import DescriptionIcon from '@mui/icons-material/Description';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import InfoIcon from '@mui/icons-material/Info';
 import LaunchIcon from '@mui/icons-material/Launch';
+import ClearIcon from '@mui/icons-material/Clear';
 import api from '../../services/api';
 
 // Helper function to get URL parameters
@@ -41,6 +38,8 @@ const VotingRecordsPage = () => {
     dateTo: '',
     searchQuery: ''
   });
+  const [pendingSearchTerm, setPendingSearchTerm] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   const [page, setPage] = useState(1);
   const [rowsPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
@@ -48,6 +47,11 @@ const VotingRecordsPage = () => {
   const [allVotes, setAllVotes] = useState({});  // Store all votes across pages
   const [showStats, setShowStats] = useState(false);
   const [sortOrder, setSortOrder] = useState('dateDesc');
+  
+  // Initialize pendingSearchTerm from searchQuery on first render
+  useEffect(() => {
+    setPendingSearchTerm(filters.searchQuery);
+  }, []);
   
   useEffect(() => {
     const fetchVotingRecords = async () => {
@@ -65,7 +69,7 @@ const VotingRecordsPage = () => {
         if (filters.vote) params.vote = filters.vote;
         if (filters.dateFrom) params.date_from = filters.dateFrom;
         if (filters.dateTo) params.date_to = filters.dateTo;
-        if (filters.searchQuery) params.search = filters.searchQuery;
+        // Note: Search is handled client-side after grouping, not sent to backend
         
         // Sort order
         if (sortOrder === 'dateAsc') params.ordering = 'vote_date';
@@ -111,24 +115,52 @@ const VotingRecordsPage = () => {
           else if (vote.vote === 'abstain') groupedVotes[vote.bill.id].totalVotes.abstentions++;
           else if (vote.vote === 'absent') groupedVotes[vote.bill.id].totalVotes.absent++;
           
-          // Add member vote
+          // Add member vote - translate vote types to Icelandic
+          const voteTranslations = {
+            'yes': 'Já',
+            'no': 'Nei',
+            'abstain': 'Situr hjá',
+            'absent': 'Fjarverandi'
+          };
+          
           groupedVotes[vote.bill.id].memberVotes.push({
             memberId: vote.mp.id,
             memberName: `${vote.mp.first_name} ${vote.mp.last_name}`,
-            party: vote.mp.party ? vote.mp.party.name : 'Independent',
-            vote: vote.vote.charAt(0).toUpperCase() + vote.vote.slice(1)
+            party: vote.mp.party ? vote.mp.party.name : 'Óháður',
+            vote: voteTranslations[vote.vote] || vote.vote.charAt(0).toUpperCase() + vote.vote.slice(1)
           });
         });
         
         // Convert to array and sort by date
-        const processedData = Object.values(groupedVotes).sort((a, b) => {
+        let processedData = Object.values(groupedVotes).sort((a, b) => {
           if (sortOrder === 'dateDesc') {
             return new Date(b.date) - new Date(a.date);
           }
           return new Date(a.date) - new Date(b.date);
         });
         
-        // Calculate total pages based on processed data
+        // Apply client-side search filtering
+        if (filters.searchQuery && filters.searchQuery.trim()) {
+          const searchLower = filters.searchQuery.toLowerCase().trim();
+          processedData = processedData.filter(record => {
+            // Search in bill title
+            const titleMatch = record.billTitle.toLowerCase().includes(searchLower);
+            // Search in bill number
+            const numberMatch = record.billNumber.toString().includes(searchLower);
+            // Search in member names
+            const memberMatch = record.memberVotes.some(vote => 
+              vote.memberName.toLowerCase().includes(searchLower)
+            );
+            // Search in party names
+            const partyMatch = record.memberVotes.some(vote => 
+              vote.party.toLowerCase().includes(searchLower)
+            );
+            
+            return titleMatch || numberMatch || memberMatch || partyMatch;
+          });
+        }
+        
+        // Calculate total pages based on filtered data
         const totalItems = processedData.length;
         setTotalRecords(totalItems);
         setTotalPages(Math.ceil(totalItems / rowsPerPage));
@@ -139,9 +171,11 @@ const VotingRecordsPage = () => {
         setVotingRecords(processedData.slice(startIndex, endIndex));
         
         setLoading(false);
+        setIsSearching(false);
       } catch (err) {
-        setError("Failed to load voting records. Please try again later.");
+        setError("Ekki tókst að sækja atkvæðagreiðslur. Vinsamlegast reyndu aftur síðar.");
         setLoading(false);
+        setIsSearching(false);
         console.error(err);
       }
     };
@@ -149,6 +183,10 @@ const VotingRecordsPage = () => {
     fetchVotingRecords();
   }, [filters, sortOrder, page, rowsPerPage]);
 
+  const handleSearchInputChange = (e) => {
+    setPendingSearchTerm(e.target.value);
+  };
+  
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({
@@ -168,8 +206,21 @@ const VotingRecordsPage = () => {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    // In a real app, this would trigger a search request
-    console.log("Search submitted:", filters.searchQuery);
+    setIsSearching(true);
+    setFilters(prev => ({
+      ...prev,
+      searchQuery: pendingSearchTerm
+    }));
+    setPage(1);
+  };
+  
+  const handleClearSearch = () => {
+    setPendingSearchTerm('');
+    setFilters(prev => ({
+      ...prev,
+      searchQuery: ''
+    }));
+    setPage(1);
   };
 
   const resetFilters = () => {
@@ -231,8 +282,13 @@ const VotingRecordsPage = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
+      <Typography variant="h4" component="h1" gutterBottom sx={{ mt: 4 }}>
         Atkvæðagreiðslur
+      </Typography>
+      
+      <Typography variant="body1" color="text.secondary" paragraph>
+        Skoðaðu niðurstöður atkvæðagreiðslna í Alþingi. 
+        Finndu ítarlegar upplýsingar um hvernig þingmenn greiddu atkvæði í einstökum þingmálum.
       </Typography>
       
       {billId && votingRecords[0] && (
@@ -254,7 +310,7 @@ const VotingRecordsPage = () => {
       {memberId && (
         <Box mb={3}>
           <Alert severity="info" icon={<PersonIcon />}>
-            Skoða atkvæðagreiðslur fyrir þingmann
+            Sýni atkvæðagreiðslur fyrir þingmann
             <Button 
               component={RouterLink} 
               to={`/parliament/members/${memberId}`} 
@@ -267,149 +323,80 @@ const VotingRecordsPage = () => {
         </Box>
       )}
 
-      <Paper elevation={3} sx={{ mb: 4, p: 3 }}>
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={8}>
-            <form onSubmit={handleSearchSubmit}>
+      <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
+        <form onSubmit={handleSearchSubmit}>
+          <Grid container spacing={2} alignItems="flex-end">
+            <Grid item xs={12} md={6}>
               <TextField
+                label="Leita að atkvæðagreiðslum"
+                variant="outlined"
                 fullWidth
-                name="searchQuery"
-                value={filters.searchQuery}
-                onChange={handleFilterChange}
-                placeholder="Search bill title, MP name, or keywords..."
+                value={pendingSearchTerm}
+                onChange={handleSearchInputChange}
+                placeholder="Leita eftir heiti þingmáls, nafni þingmanns eða leitarorðum"
                 InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
                   endAdornment: (
-                    <InputAdornment position="end">
-                      <Button type="submit" variant="contained" size="small">
-                        Search
-                      </Button>
-                    </InputAdornment>
-                  )
+                    <>
+                      {pendingSearchTerm && (
+                        <IconButton size="small" onClick={handleClearSearch}>
+                          <ClearIcon />
+                        </IconButton>
+                      )}
+                      <IconButton type="submit" edge="end" color="primary" disabled={isSearching || loading}>
+                        {isSearching ? <CircularProgress size={24} /> : <SearchIcon />}
+                      </IconButton>
+                    </>
+                  ),
                 }}
               />
-            </form>
-          </Grid>
-          
-          <Grid item xs={12} md={4}>
-            <Box display="flex" justifyContent="flex-end" gap={1}>
-              <Button 
-                startIcon={<FilterAltIcon />} 
-                variant="outlined"
-                onClick={() => setShowStats(!showStats)}
-              >
-                {showStats ? 'Hide Filters' : 'Show Filters'}
-              </Button>
-              
-              <Button 
-                startIcon={<SortIcon />} 
-                variant="outlined"
-                onClick={() => handleSortChange(sortOrder === 'dateDesc' ? 'dateAsc' : 'dateDesc')}
-              >
-                {sortOrder === 'dateDesc' ? 'Oldest First' : 'Newest First'}
-              </Button>
-            </Box>
-          </Grid>
-        </Grid>
-        
-        {showStats && (
-          <Box mt={3}>
-            <Divider sx={{ mb: 3 }} />
-            <Typography variant="h6" gutterBottom>
-              Filters
-            </Typography>
-            
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  fullWidth
-                  select
-                  name="party"
-                  label="Party"
-                  value={filters.party}
-                  onChange={handleFilterChange}
-                  size="small"
-                >
-                  <MenuItem value="">All Parties</MenuItem>
-                  <MenuItem value="Independence Party">Independence Party</MenuItem>
-                  <MenuItem value="Left-Green Movement">Left-Green Movement</MenuItem>
-                  <MenuItem value="Progressive Party">Progressive Party</MenuItem>
-                  <MenuItem value="Social Democratic Alliance">Social Democratic Alliance</MenuItem>
-                  <MenuItem value="Centre Party">Centre Party</MenuItem>
-                  <MenuItem value="Pirate Party">Pirate Party</MenuItem>
-                  <MenuItem value="Reform">Reform</MenuItem>
-                  <MenuItem value="People's Party">People's Party</MenuItem>
-                </TextField>
-              </Grid>
-              
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  fullWidth
-                  select
-                  name="vote"
-                  label="Vote Type"
-                  value={filters.vote}
-                  onChange={handleFilterChange}
-                  size="small"
-                >
-                  <MenuItem value="">All Votes</MenuItem>
-                  <MenuItem value="yes">Yes</MenuItem>
-                  <MenuItem value="no">No</MenuItem>
-                  <MenuItem value="abstain">Abstain</MenuItem>
-                  <MenuItem value="absent">Absent</MenuItem>
-                </TextField>
-              </Grid>
-              
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  fullWidth
-                  type="date"
-                  name="dateFrom"
-                  label="From Date"
-                  value={filters.dateFrom}
-                  onChange={handleFilterChange}
-                  InputLabelProps={{ shrink: true }}
-                  size="small"
-                />
-              </Grid>
-              
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  fullWidth
-                  type="date"
-                  name="dateTo"
-                  label="To Date"
-                  value={filters.dateTo}
-                  onChange={handleFilterChange}
-                  InputLabelProps={{ shrink: true }}
-                  size="small"
-                />
-              </Grid>
-              
-              <Grid item xs={12}>
-                <Box display="flex" justifyContent="flex-end">
-                  <Button 
-                    variant="outlined" 
-                    color="secondary" 
-                    onClick={resetFilters}
-                    size="small"
-                  >
-                    Reset Filters
-                  </Button>
-                </Box>
-              </Grid>
             </Grid>
-          </Box>
-        )}
+            
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button 
+                  variant="outlined" 
+                  startIcon={<SortIcon />}
+                  onClick={() => handleSortChange(sortOrder === 'dateDesc' ? 'dateAsc' : 'dateDesc')}
+                  disabled={loading}
+                >
+                  {sortOrder === 'dateDesc' ? 'Elsta fyrst' : 'Nýjasta fyrst'}
+                </Button>
+              </Box>
+            </Grid>
+          </Grid>
+        </form>
       </Paper>
+      
+      {/* Search Results Summary */}
+      {!loading && !error && votingRecords.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="body2" color="text.secondary">
+            {filters.searchQuery ? (
+              `${totalRecords} niðurstöður fyrir "${filters.searchQuery}"`
+            ) : (
+              `${totalRecords} atkvæðagreiðslur fundust`
+            )}
+          </Typography>
+        </Box>
+      )}
       
       {votingRecords.length === 0 ? (
         <Alert severity="info">
-          No voting records found matching your search criteria.
+          {filters.searchQuery ? (
+            <>
+              Engar atkvæðagreiðslur fundust fyrir leitina "{filters.searchQuery}".
+              <Button 
+                color="inherit" 
+                size="small" 
+                onClick={handleClearSearch}
+                sx={{ ml: 2 }}
+              >
+                Hreinsa leit
+              </Button>
+            </>
+          ) : (
+            'Engar atkvæðagreiðslur fundust sem passa við leitarskilyrðin þín.'
+          )}
         </Alert>
       ) : (
         <>
@@ -434,10 +421,10 @@ const VotingRecordsPage = () => {
                       <TableCell>
                         <Box>
                           <Typography variant="subtitle2">
-                            Þingmál #{record.billNumber}/{record.sessionNumber} • {record.stage}
+                            {record.billTitle}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            {record.billTitle}
+                            Þingmál #{record.billNumber}/{record.sessionNumber} • {record.stage}
                           </Typography>
                           <Link 
                             href={record.althingi_voting_id ? 
