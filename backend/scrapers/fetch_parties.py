@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 import os
 import sys
+import html
 
 # Setup Django - add parent directory to path
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -46,10 +47,10 @@ def fetch_parties(session_number=156):
                 # Get party details
                 party_id = party.get('id')
                 name_elem = party.find('heiti')
-                name = name_elem.text.strip() if name_elem is not None and name_elem.text else ''
+                name = html.unescape(name_elem.text.strip()) if name_elem is not None and name_elem.text else ''
                 
                 abbr_elem = party.find('.//stuttskammstöfun')
-                short_abbr = abbr_elem.text.strip() if abbr_elem is not None and abbr_elem.text else ''
+                short_abbr = html.unescape(abbr_elem.text.strip()) if abbr_elem is not None and abbr_elem.text else ''
                 
                 # Skip empty or placeholder parties
                 if not name or name == ' ' or short_abbr == '-':

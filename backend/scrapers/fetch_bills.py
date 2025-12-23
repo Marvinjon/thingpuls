@@ -11,6 +11,7 @@ import sys
 import django
 from django.utils.text import slugify
 from django.db import transaction
+import html
 
 # Setup Django
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -185,9 +186,9 @@ def fetch_bills(session_number=156):
                     bill_number += 1
                     continue
                 
-                title_text = title.text.strip()
-                bill_type_text = bill_type.text.strip() if bill_type is not None and bill_type.text else "Unknown"
-                status_text = status.text.strip() if status is not None and status.text else "Unknown"
+                title_text = html.unescape(title.text.strip())
+                bill_type_text = html.unescape(bill_type.text.strip()) if bill_type is not None and bill_type.text else "Unknown"
+                status_text = html.unescape(status.text.strip()) if status is not None and status.text else "Unknown"
                 
                 # Create a unique slug
                 base_slug = slugify(title_text)[:180]

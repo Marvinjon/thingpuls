@@ -10,6 +10,7 @@ import os
 import sys
 import django
 from django.db import transaction
+import html
 
 # Setup Django
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -42,11 +43,14 @@ def clean_text(text):
     text = re.sub(r'^Samkomulag um ráðningu[^.]*\.\s*', '', text)
     text = re.sub(r'^Skrá skal upplýsingar[^.]*\.\s*', '', text)
     
-    # Decode HTML entities and convert newlines
-    text = text.replace('&#10;', '\n').replace('<br>', '\n').replace('</br>', '\n')
-    
     # Remove HTML tags
     text = re.sub(r'<[^>]+>', '', text)
+    
+    # Decode HTML entities (including &ndash;, &mdash;, &#10;, etc.)
+    text = html.unescape(text)
+    
+    # Convert newlines
+    text = text.replace('\n', ' ')
     
     return text.strip()
 
