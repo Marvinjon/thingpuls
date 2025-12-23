@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   Container, Typography, Box, Paper, Chip, Divider, Avatar,
   Button, TextField, IconButton, Card, CardHeader, CardContent,
-  CardActions, Grid, CircularProgress, Alert, Menu, MenuItem,
+  CardActions, CircularProgress, Alert, Menu, MenuItem,
   Dialog, DialogTitle, DialogContent, DialogActions, Breadcrumbs
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -11,14 +11,12 @@ import ForumIcon from '@mui/icons-material/Forum';
 import ReplyIcon from '@mui/icons-material/Reply';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import FlagIcon from '@mui/icons-material/Flag';
-import ThumbUpIcon from '@mui/icons-material/ThumbUp';
-import ThumbUpOutlinedIcon from '@mui/icons-material/ThumbUpOutlined';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CloseIcon from '@mui/icons-material/Close';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import { useAuth } from '../../context/AuthContext';
-import api from '../../services/api';
+import { engagementService } from '../../services/api';
 
 const DiscussionThreadPage = () => {
   const { forumId, threadId } = useParams();
@@ -44,122 +42,23 @@ const DiscussionThreadPage = () => {
     const fetchThreadData = async () => {
       try {
         setLoading(true);
-        // This would be replaced with actual API calls
-        // const threadResponse = await api.get(`/forums/threads/${threadId}`);
-        // const postsResponse = await api.get(`/forums/threads/${threadId}/posts`);
-        // const forumResponse = await api.get(`/forums/categories/${forumId}`);
+        setError(null);
         
-        // Simulated data for development
-        const mockThread = {
-          id: parseInt(threadId),
-          title: "Impact of the new climate bill on rural communities",
-          author: {
-            id: 201,
-            name: "Jón Jónsson",
-            avatar: "https://randomuser.me/api/portraits/men/1.jpg",
-            joinDate: "2022-03-15",
-            posts: 87
-          },
-          createdAt: "2023-09-10T10:30:00Z",
-          views: 342,
-          category: {
-            id: parseInt(forumId),
-            name: "Environmental Policy"
-          }
-        };
+        // Fetch thread, posts, and forum data
+        const [threadResponse, postsResponse, forumResponse] = await Promise.all([
+          engagementService.getThreadById(threadId),
+          engagementService.getPosts({ thread: threadId, ordering: 'created_at' }),
+          engagementService.getForumById(forumId)
+        ]);
         
-        const mockPosts = [
-          {
-            id: 1001,
-            threadId: parseInt(threadId),
-            content: "The new climate bill introduces several measures that could significantly impact rural communities in Iceland. While the goal of reducing carbon emissions is commendable, I'm concerned about the potential economic burden on farmers and other rural businesses. What are your thoughts on how we can balance environmental goals with economic stability for rural areas?",
-            createdAt: "2023-09-10T10:30:00Z",
-            updatedAt: null,
-            isThreadStarter: true,
-            author: {
-              id: 201,
-              name: "Jón Jónsson",
-              avatar: "https://randomuser.me/api/portraits/men/1.jpg"
-            },
-            likes: 12,
-            likedByCurrentUser: false
-          },
-          {
-            id: 1002,
-            threadId: parseInt(threadId),
-            content: "I agree that we need to consider the economic impact. However, I think the bill offers several opportunities for rural communities to transition to more sustainable practices. The subsidies for renewable energy installation could be particularly beneficial for farms with high energy costs.",
-            createdAt: "2023-09-10T11:15:00Z",
-            updatedAt: null,
-            isThreadStarter: false,
-            author: {
-              id: 202,
-              name: "Anna Guðmundsdóttir",
-              avatar: "https://randomuser.me/api/portraits/women/2.jpg"
-            },
-            likes: 8,
-            likedByCurrentUser: true
-          },
-          {
-            id: 1003,
-            threadId: parseInt(threadId),
-            content: "As someone who works in agriculture, I'm concerned about the proposed carbon tax. While I support the overall goals, has there been any economic analysis on how this will affect small farmers specifically? The bill mentions transition assistance, but details are vague.",
-            createdAt: "2023-09-11T08:45:00Z",
-            updatedAt: null,
-            isThreadStarter: false,
-            author: {
-              id: 203,
-              name: "Gunnar Ólafsson",
-              avatar: "https://randomuser.me/api/portraits/men/3.jpg"
-            },
-            likes: 5,
-            likedByCurrentUser: false
-          },
-          {
-            id: 1004,
-            threadId: parseInt(threadId),
-            content: "I think we need to look at this from a long-term perspective. Climate change itself poses major threats to rural communities through changing weather patterns, increased flooding, etc. While there may be short-term costs, the alternative could be much worse for rural Iceland in the long run.",
-            createdAt: "2023-09-11T14:20:00Z",
-            updatedAt: null,
-            isThreadStarter: false,
-            author: {
-              id: 204,
-              name: "Helga Jónsdóttir",
-              avatar: "https://randomuser.me/api/portraits/women/4.jpg"
-            },
-            likes: 15,
-            likedByCurrentUser: false
-          },
-          {
-            id: 1005,
-            threadId: parseInt(threadId),
-            content: "Has anyone read the section on agricultural subsidies? Page 32 outlines some interesting proposals for subsidizing climate-friendly farming practices. This could actually be beneficial for forward-thinking farmers.",
-            createdAt: "2023-09-12T09:10:00Z",
-            updatedAt: "2023-09-12T09:45:00Z",
-            isThreadStarter: false,
-            author: {
-              id: 205,
-              name: "Eva Stefánsdóttir",
-              avatar: "https://randomuser.me/api/portraits/women/5.jpg"
-            },
-            likes: 7,
-            likedByCurrentUser: false
-          }
-        ];
-        
-        const mockForumInfo = {
-          id: parseInt(forumId),
-          name: "Environmental Policy",
-          description: "Discussions on climate policy and environmental protection"
-        };
-        
-        setThread(mockThread);
-        setPosts(mockPosts);
-        setForumInfo(mockForumInfo);
+        setThread(threadResponse.data);
+        setPosts(postsResponse.data.results || postsResponse.data);
+        setForumInfo(forumResponse.data);
         setLoading(false);
       } catch (err) {
-        setError("Failed to load discussion thread. Please try again later.");
+        console.error('Error fetching thread data:', err);
+        setError("Ekki tókst að hlaða inn umræðu. Vinsamlegast reyndu aftur síðar.");
         setLoading(false);
-        console.error(err);
       }
     };
 
@@ -176,6 +75,23 @@ const DiscussionThreadPage = () => {
       minute: '2-digit'
     });
   };
+  
+  const getUserDisplayName = (user) => {
+    if (!user) return 'Óþekktur';
+    if (user.first_name && user.last_name) {
+      return `${user.first_name} ${user.last_name}`;
+    }
+    return user.email?.split('@')[0] || 'Notandi';
+  };
+  
+  const getUserInitials = (user) => {
+    if (!user) return '?';
+    if (user.first_name && user.last_name) {
+      return `${user.first_name[0]}${user.last_name[0]}`.toUpperCase();
+    }
+    const email = user.email || '';
+    return email[0]?.toUpperCase() || '?';
+  };
 
   const handleReplySubmit = async (e) => {
     e.preventDefault();
@@ -185,27 +101,12 @@ const DiscussionThreadPage = () => {
     }
     
     try {
-      // This would be replaced with an actual API call
-      // await api.post(`/forums/threads/${threadId}/posts`, { content: replyContent });
+      const response = await engagementService.createPost({
+        thread: threadId,
+        content: replyContent
+      });
       
-      // For development, simulate adding a new post
-      const newPost = {
-        id: Math.floor(Math.random() * 10000),
-        threadId: parseInt(threadId),
-        content: replyContent,
-        createdAt: new Date().toISOString(),
-        updatedAt: null,
-        isThreadStarter: false,
-        author: {
-          id: currentUser?.id || 999,
-          name: currentUser?.name || "Current User",
-          avatar: currentUser?.avatar || null
-        },
-        likes: 0,
-        likedByCurrentUser: false
-      };
-      
-      setPosts(prev => [...prev, newPost]);
+      setPosts(prev => [...prev, response.data]);
       setReplyContent('');
       
       // Scroll to the bottom after adding a new reply
@@ -215,7 +116,7 @@ const DiscussionThreadPage = () => {
       });
     } catch (err) {
       console.error("Error posting reply:", err);
-      alert("Failed to post reply. Please try again.");
+      setError(err.response?.data?.detail || "Ekki tókst að senda svar. Vinsamlegast reyndu aftur.");
     }
   };
 
@@ -235,11 +136,11 @@ const DiscussionThreadPage = () => {
   };
 
   const handleReportSubmit = () => {
-    // This would be replaced with an actual API call
+    // Report functionality would be implemented with a proper reporting system
     console.log("Report submitted for post:", selectedPost?.id, "Reason:", reportReason);
     setReportDialogOpen(false);
     setReportReason('');
-    alert("Thank you for your report. Our moderators will review it.");
+    alert("Takk fyrir tilkynninguna. Umsjónarmenn okkar munu fara yfir hana.");
   };
 
   const handleEditClick = () => {
@@ -248,17 +149,23 @@ const DiscussionThreadPage = () => {
     handlePostOptionsClose();
   };
 
-  const handleEditSubmit = () => {
-    // This would be replaced with an actual API call
-    // Update the post in the UI
-    setPosts(prev => 
-      prev.map(post => 
-        post.id === selectedPost.id 
-          ? { ...post, content: editContent, updatedAt: new Date().toISOString() } 
-          : post
-      )
-    );
-    setEditDialogOpen(false);
+  const handleEditSubmit = async () => {
+    try {
+      const response = await engagementService.updatePost(selectedPost.id, {
+        content: editContent
+      });
+      
+      // Update the post in the UI
+      setPosts(prev => 
+        prev.map(post => 
+          post.id === selectedPost.id ? response.data : post
+        )
+      );
+      setEditDialogOpen(false);
+    } catch (err) {
+      console.error("Error updating post:", err);
+      setError(err.response?.data?.detail || "Ekki tókst að uppfæra færslu. Vinsamlegast reyndu aftur.");
+    }
   };
 
   const handleDeleteClick = () => {
@@ -266,29 +173,18 @@ const DiscussionThreadPage = () => {
     handlePostOptionsClose();
   };
 
-  const handleDeleteConfirm = () => {
-    // This would be replaced with an actual API call
-    // Remove the post from the UI
-    setPosts(prev => prev.filter(post => post.id !== selectedPost.id));
-    setDeleteDialogOpen(false);
-  };
-
-  const handleLikeToggle = (postId) => {
-    // This would be replaced with an actual API call
-    setPosts(prev => 
-      prev.map(post => {
-        if (post.id === postId) {
-          const newLikedStatus = !post.likedByCurrentUser;
-          const likeDelta = newLikedStatus ? 1 : -1;
-          return {
-            ...post,
-            likes: post.likes + likeDelta,
-            likedByCurrentUser: newLikedStatus
-          };
-        }
-        return post;
-      })
-    );
+  const handleDeleteConfirm = async () => {
+    try {
+      await engagementService.deletePost(selectedPost.id);
+      
+      // Remove the post from the UI
+      setPosts(prev => prev.filter(post => post.id !== selectedPost.id));
+      setDeleteDialogOpen(false);
+    } catch (err) {
+      console.error("Error deleting post:", err);
+      setError(err.response?.data?.detail || "Ekki tókst að eyða færslu. Vinsamlegast reyndu aftur.");
+      setDeleteDialogOpen(false);
+    }
   };
 
   const scrollToReplyForm = () => {
@@ -321,7 +217,7 @@ const DiscussionThreadPage = () => {
   if (!thread) {
     return (
       <Container sx={{ mt: 4 }}>
-        <Alert severity="info">Thread not found</Alert>
+        <Alert severity="info">Umræða fannst ekki</Alert>
       </Container>
     );
   }
@@ -339,15 +235,15 @@ const DiscussionThreadPage = () => {
           style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center' }}
         >
           <ForumIcon fontSize="small" sx={{ mr: 0.5 }} />
-          Forums
+          Umræðuvettvangar
         </Link>
         <Link 
           to={`/engagement/forums/${forumId}`}
           style={{ textDecoration: 'none', color: 'inherit' }}
         >
-          {forumInfo?.name}
+          {forumInfo?.title}
         </Link>
-        <Typography color="text.primary">Thread</Typography>
+        <Typography color="text.primary">Umræða</Typography>
       </Breadcrumbs>
       
       {/* Thread Header */}
@@ -355,151 +251,179 @@ const DiscussionThreadPage = () => {
         <Box display="flex" alignItems="center" mb={2}>
           <Button 
             component={Link} 
-            to={`/engagement/forums/${forumId}`}
+            to="/engagement/forums"
             startIcon={<ArrowBackIcon />}
             sx={{ mr: 2 }}
           >
-            Back to {forumInfo?.name}
+            Til baka í umræðuvettvangi
           </Button>
           <Chip 
-            label={forumInfo?.name} 
+            label={forumInfo?.title} 
             color="primary" 
             variant="outlined" 
           />
+          {thread?.is_pinned && (
+            <Chip 
+              label="Fest" 
+              color="primary" 
+              sx={{ ml: 1 }}
+            />
+          )}
+          {thread?.is_locked && (
+            <Chip 
+              label="Læst" 
+              color="warning" 
+              sx={{ ml: 1 }}
+            />
+          )}
         </Box>
         
         <Typography variant="h4" component="h1" gutterBottom>
-          {thread.title}
+          {thread?.title}
         </Typography>
         
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <Box display="flex" alignItems="center">
             <Avatar 
-              src={thread.author.avatar} 
-              alt={thread.author.name}
+              src={thread?.created_by?.profile_image} 
+              alt={getUserDisplayName(thread?.created_by)}
               sx={{ mr: 1 }}
             >
-              {thread.author.name.charAt(0)}
+              {getUserInitials(thread?.created_by)}
             </Avatar>
             <Typography variant="body2">
-              Started by <Link to={`/profile/${thread.author.id}`} style={{ textDecoration: 'none' }}>
-                {thread.author.name}
-              </Link> on {formatDate(thread.createdAt)}
+              Byrjað af {getUserDisplayName(thread?.created_by)} þann {formatDate(thread?.created_at)}
             </Typography>
           </Box>
-          <Button 
-            variant="contained" 
-            startIcon={<ReplyIcon />}
-            onClick={scrollToReplyForm}
-          >
-            Reply to Thread
-          </Button>
+          {!thread?.is_locked && (
+            <Button 
+              variant="contained" 
+              startIcon={<ReplyIcon />}
+              onClick={scrollToReplyForm}
+            >
+              Svara umræðu
+            </Button>
+          )}
         </Box>
       </Paper>
       
       {/* Thread Posts */}
-      {posts.map((post, index) => (
-        <Card 
-          key={post.id} 
-          elevation={2} 
-          sx={{ mb: 3, border: post.isThreadStarter ? '1px solid' : 'none', borderColor: 'primary.main' }}
-        >
-          <CardHeader
-            avatar={
-              <Avatar src={post.author.avatar} alt={post.author.name}>
-                {post.author.name.charAt(0)}
-              </Avatar>
-            }
-            action={
-              <IconButton onClick={(e) => handlePostOptionsClick(e, post)}>
-                <MoreVertIcon />
-              </IconButton>
-            }
-            title={
-              <Link to={`/profile/${post.author.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                {post.author.name}
-              </Link>
-            }
-            subheader={
-              <>
-                <Typography variant="caption" display="block">
-                  Posted on {formatDate(post.createdAt)}
+      {posts.length === 0 ? (
+        <Paper elevation={2} sx={{ p: 3, textAlign: 'center', mb: 3 }}>
+          <Typography variant="body1" color="text.secondary">
+            Engar færslur ennþá. Vertu fyrstur til að svara!
+          </Typography>
+        </Paper>
+      ) : (
+        posts.map((post, index) => {
+          const isFirstPost = index === 0;
+          const isAuthor = currentUser && post.author?.id === currentUser.id;
+          
+          return (
+            <Card 
+              key={post.id} 
+              elevation={2} 
+              sx={{ mb: 3, border: isFirstPost ? '1px solid' : 'none', borderColor: 'primary.main' }}
+            >
+              <CardHeader
+                avatar={
+                  <Avatar src={post.author?.profile_image} alt={getUserDisplayName(post.author)}>
+                    {getUserInitials(post.author)}
+                  </Avatar>
+                }
+                action={
+                  <IconButton onClick={(e) => handlePostOptionsClick(e, post)}>
+                    <MoreVertIcon />
+                  </IconButton>
+                }
+                title={getUserDisplayName(post.author)}
+                subheader={
+                  <>
+                    <Typography variant="caption" display="block">
+                      Sett inn þann {formatDate(post.created_at)}
+                    </Typography>
+                    {post.is_edited && post.updated_at && (
+                      <Typography variant="caption" color="text.secondary">
+                        Breytt þann {formatDate(post.updated_at)}
+                      </Typography>
+                    )}
+                    {isFirstPost && (
+                      <Chip 
+                        size="small" 
+                        label="Thread Starter" 
+                        color="primary" 
+                        sx={{ mt: 0.5 }} 
+                      />
+                    )}
+                  </>
+                }
+              />
+              <Divider />
+              <CardContent>
+                <Typography variant="body1" paragraph>
+                  {post.content}
                 </Typography>
-                {post.updatedAt && (
-                  <Typography variant="caption" color="text.secondary">
-                    Edited on {formatDate(post.updatedAt)}
-                  </Typography>
-                )}
-                {post.isThreadStarter && (
-                  <Chip 
+              </CardContent>
+              <Divider />
+              <CardActions disableSpacing>
+                {!thread?.is_locked && (
+                  <Button 
                     size="small" 
-                    label="Thread Starter" 
-                    color="primary" 
-                    sx={{ mt: 0.5 }} 
-                  />
+                    startIcon={<ReplyIcon />}
+                    onClick={scrollToReplyForm}
+                  >
+                    Svara
+                  </Button>
                 )}
-              </>
-            }
-          />
-          <Divider />
-          <CardContent>
-            <Typography variant="body1" paragraph>
-              {post.content}
-            </Typography>
-          </CardContent>
-          <Divider />
-          <CardActions disableSpacing>
-            <Button 
-              size="small" 
-              startIcon={post.likedByCurrentUser ? <ThumbUpIcon /> : <ThumbUpOutlinedIcon />}
-              onClick={() => handleLikeToggle(post.id)}
-              color={post.likedByCurrentUser ? "primary" : "default"}
-            >
-              {post.likes} {post.likes === 1 ? 'Like' : 'Likes'}
-            </Button>
-            <Button 
-              size="small" 
-              startIcon={<ReplyIcon />}
-              onClick={scrollToReplyForm}
-            >
-              Reply
-            </Button>
-          </CardActions>
-        </Card>
-      ))}
+              </CardActions>
+            </Card>
+          );
+        })
+      )}
       
       {/* Reply Form */}
-      <Paper elevation={3} sx={{ p: 3, mt: 4 }} ref={replyFormRef}>
-        <Typography variant="h6" gutterBottom>
-          Reply to this discussion
-        </Typography>
-        
-        <form onSubmit={handleReplySubmit}>
-          <TextField
-            fullWidth
-            label="Your reply"
-            multiline
-            rows={6}
-            value={replyContent}
-            onChange={(e) => setReplyContent(e.target.value)}
-            placeholder="Type your reply here..."
-            variant="outlined"
-            required
-            sx={{ mb: 2 }}
-          />
+      {thread?.is_locked ? (
+        <Paper elevation={3} sx={{ p: 3, mt: 4, bgcolor: 'action.disabledBackground' }} ref={replyFormRef}>
+          <Typography variant="h6" gutterBottom>
+            Þessi umræða er læst
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Þessari umræðu hefur verið læst og ekki er hægt að bæta við nýjum svörum.
+          </Typography>
+        </Paper>
+      ) : (
+        <Paper elevation={3} sx={{ p: 3, mt: 4 }} ref={replyFormRef}>
+          <Typography variant="h6" gutterBottom>
+            Svara þessari umræðu
+          </Typography>
           
-          <Box display="flex" justifyContent="flex-end">
-            <Button 
-              type="submit" 
-              variant="contained" 
-              disabled={!replyContent.trim()}
-              startIcon={<ReplyIcon />}
-            >
-              Post Reply
-            </Button>
-          </Box>
-        </form>
-      </Paper>
+          <form onSubmit={handleReplySubmit}>
+            <TextField
+              fullWidth
+              label="Svar þitt"
+              multiline
+              rows={6}
+              value={replyContent}
+              onChange={(e) => setReplyContent(e.target.value)}
+              placeholder="Skrifaðu svar þitt hér..."
+              variant="outlined"
+              required
+              sx={{ mb: 2 }}
+            />
+            
+            <Box display="flex" justifyContent="flex-end">
+              <Button 
+                type="submit" 
+                variant="contained" 
+                disabled={!replyContent.trim()}
+                startIcon={<ReplyIcon />}
+              >
+                Senda svar
+              </Button>
+            </Box>
+          </form>
+        </Paper>
+      )}
       
       {/* Post Options Menu */}
       <Menu
@@ -510,18 +434,18 @@ const DiscussionThreadPage = () => {
       >
         <MenuItem onClick={handleReportClick}>
           <FlagIcon fontSize="small" sx={{ mr: 1 }} />
-          Report
+          Tilkynna
         </MenuItem>
         
-        {selectedPost && currentUser && selectedPost.author.id === currentUser.id && (
+        {selectedPost && currentUser && selectedPost.author?.id === currentUser.id && (
           <>
             <MenuItem onClick={handleEditClick}>
               <EditIcon fontSize="small" sx={{ mr: 1 }} />
-              Edit
+              Breyta
             </MenuItem>
             <MenuItem onClick={handleDeleteClick}>
               <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
-              Delete
+              Eyða
             </MenuItem>
           </>
         )}
@@ -535,9 +459,9 @@ const DiscussionThreadPage = () => {
         fullWidth
       >
         <DialogTitle>
-          Report Post
+          Tilkynna færslu
           <IconButton
-            aria-label="close"
+            aria-label="loka"
             onClick={() => setReportDialogOpen(false)}
             sx={{
               position: 'absolute',
@@ -550,7 +474,7 @@ const DiscussionThreadPage = () => {
         </DialogTitle>
         <DialogContent dividers>
           <Typography gutterBottom>
-            Please explain why you're reporting this post:
+            Vinsamlegast útskýrðu hvers vegna þú ert að tilkynna þessa færslu:
           </Typography>
           <TextField
             fullWidth
@@ -558,20 +482,20 @@ const DiscussionThreadPage = () => {
             rows={4}
             value={reportReason}
             onChange={(e) => setReportReason(e.target.value)}
-            placeholder="Explain the reason for your report..."
+            placeholder="Skýrðu ástæðuna fyrir tilkynningunni..."
             variant="outlined"
             required
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setReportDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setReportDialogOpen(false)}>Hætta við</Button>
           <Button 
             onClick={handleReportSubmit} 
             variant="contained"
             color="primary"
             disabled={!reportReason.trim()}
           >
-            Submit Report
+            Senda tilkynningu
           </Button>
         </DialogActions>
       </Dialog>
@@ -584,9 +508,9 @@ const DiscussionThreadPage = () => {
         fullWidth
       >
         <DialogTitle>
-          Edit Post
+          Breyta færslu
           <IconButton
-            aria-label="close"
+            aria-label="loka"
             onClick={() => setEditDialogOpen(false)}
             sx={{
               position: 'absolute',
@@ -609,14 +533,14 @@ const DiscussionThreadPage = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setEditDialogOpen(false)}>Hætta við</Button>
           <Button 
             onClick={handleEditSubmit} 
             variant="contained"
             color="primary"
             disabled={!editContent.trim()}
           >
-            Save Changes
+            Vista breytingar
           </Button>
         </DialogActions>
       </Dialog>
@@ -626,20 +550,20 @@ const DiscussionThreadPage = () => {
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
       >
-        <DialogTitle>Delete Post</DialogTitle>
+        <DialogTitle>Eyða færslu</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete this post? This action cannot be undone.
+            Ertu viss um að þú viljir eyða þessari færslu? Þessa aðgerð er ekki hægt að afturkalla.
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Hætta við</Button>
           <Button 
             onClick={handleDeleteConfirm} 
             color="error"
             variant="contained"
           >
-            Delete
+            Eyða
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,54 +1,52 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { 
-  Container, Typography, Box, Paper, Grid, Card, CardContent,
-  CardActionArea, Chip, Divider, List, ListItem, ListItemText,
+  Container, Typography, Box, Paper, Grid, Chip, Divider, List, ListItem, ListItemText,
   ListItemAvatar, Avatar, ListItemSecondaryAction, IconButton,
   TextField, InputAdornment, Button, CircularProgress, Alert,
   Dialog, DialogTitle, DialogContent, DialogActions, FormControl,
-  InputLabel, Select, MenuItem, FormHelperText
+  Breadcrumbs
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ForumIcon from '@mui/icons-material/Forum';
-import GroupIcon from '@mui/icons-material/Group';
 import MessageIcon from '@mui/icons-material/Message';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import PeopleIcon from '@mui/icons-material/People';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CloseIcon from '@mui/icons-material/Close';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import { useAuth } from '../../context/AuthContext';
 import { engagementService } from '../../services/api';
 
-const DiscussionForumsPage = () => {
+const ForumDetailPage = () => {
+  const { forumId } = useParams();
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [forumCategories, setForumCategories] = useState([]);
-  const [activeThreads, setActiveThreads] = useState([]);
+  const [forum, setForum] = useState(null);
+  const [threads, setThreads] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [newThreadDialogOpen, setNewThreadDialogOpen] = useState(false);
   const [newThread, setNewThread] = useState({
     title: '',
-    forum: '',
     content: ''
   });
   const [formErrors, setFormErrors] = useState({});
 
   useEffect(() => {
-    const fetchForumsData = async () => {
+    const fetchForumData = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        // Fetch forums and threads from the backend
-        const [forumsResponse, threadsResponse] = await Promise.all([
-          engagementService.getForums({ is_active: true }),
-          engagementService.getThreads({ ordering: '-last_activity' })
+        const [forumResponse, threadsResponse] = await Promise.all([
+          engagementService.getForumById(forumId),
+          engagementService.getThreads({ forum: forumId, ordering: '-last_activity' })
         ]);
         
-        setForumCategories(forumsResponse.data.results || forumsResponse.data);
-        setActiveThreads(threadsResponse.data.results || threadsResponse.data);
+        setForum(forumResponse.data);
+        setThreads(threadsResponse.data.results || threadsResponse.data);
         setLoading(false);
       } catch (err) {
         console.error('Error fetching forum data:', err);
@@ -57,8 +55,8 @@ const DiscussionForumsPage = () => {
       }
     };
 
-    fetchForumsData();
-  }, []);
+    fetchForumData();
+  }, [forumId]);
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -71,7 +69,6 @@ const DiscussionForumsPage = () => {
       [name]: value
     }));
     
-    // Clear error when field is edited
     if (formErrors[name]) {
       setFormErrors(prev => ({
         ...prev,
@@ -88,7 +85,6 @@ const DiscussionForumsPage = () => {
     setNewThreadDialogOpen(false);
     setNewThread({
       title: '',
-      forum: '',
       content: ''
     });
     setFormErrors({});
@@ -98,9 +94,6 @@ const DiscussionForumsPage = () => {
     const errors = {};
     if (!newThread.title.trim()) {
       errors.title = "Titill er nauðsynlegur";
-    }
-    if (!newThread.forum) {
-      errors.forum = "Vinsamlegast veldu umræðuvettvang";
     }
     if (!newThread.content.trim()) {
       errors.content = "Efni er nauðsynlegt";
@@ -118,13 +111,11 @@ const DiscussionForumsPage = () => {
     }
     
     try {
-      // Create the thread
       const threadResponse = await engagementService.createThread({
         title: newThread.title,
-        forum: newThread.forum
+        forum: forumId
       });
       
-      // Create the first post with the content
       await engagementService.createPost({
         thread: threadResponse.data.id,
         content: newThread.content
@@ -132,14 +123,13 @@ const DiscussionForumsPage = () => {
       
       closeNewThreadDialog();
       
-      // Refresh the threads list
-      const threadsResponse = await engagementService.getThreads({ ordering: '-last_activity' });
-      setActiveThreads(threadsResponse.data.results || threadsResponse.data);
+      const threadsResponse = await engagementService.getThreads({ forum: forumId, ordering: '-last_activity' });
+      setThreads(threadsResponse.data.results || threadsResponse.data);
     } catch (err) {
       console.error("Error creating thread:", err);
       setFormErrors(prev => ({
         ...prev,
-        submit: err.response?.data?.detail || "Failed to create thread. Please try again."
+        submit: err.response?.data?.detail || "Ekki tókst að búa til umræðu. Vinsamlegast reyndu aftur."
       }));
     }
   };
@@ -152,10 +142,10 @@ const DiscussionForumsPage = () => {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
     
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    if (diffMins < 1) return 'Núna';
+    if (diffMins < 60) return `fyrir ${diffMins} mín${diffMins > 1 ? 'útur' : 'útu'}`;
+    if (diffHours < 24) return `fyrir ${diffHours} klst${diffHours > 1 ? '.' : '.'}`;
+    if (diffDays < 7) return `fyrir ${diffDays} dag${diffDays > 1 ? 'a' : ''}`;
     
     return date.toLocaleDateString('en-GB', {
       day: 'numeric',
@@ -197,22 +187,69 @@ const DiscussionForumsPage = () => {
     );
   }
 
-  // Filter threads based on search query
-  const filteredThreads = activeThreads.filter(thread => {
+  if (!forum) {
+    return (
+      <Container sx={{ mt: 4 }}>
+        <Alert severity="info">Umræðuvettvangur fannst ekki</Alert>
+      </Container>
+    );
+  }
+
+  const filteredThreads = threads.filter(thread => {
     const query = searchQuery.toLowerCase();
     return thread.title?.toLowerCase().includes(query);
   });
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box mb={4}>
-        <Typography variant="h4" component="h1" gutterBottom>
+      {/* Breadcrumbs */}
+      <Breadcrumbs 
+        separator={<NavigateNextIcon fontSize="small" />} 
+        aria-label="breadcrumb"
+        sx={{ mb: 3 }}
+      >
+        <Link 
+          to="/engagement/forums"
+          style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center' }}
+        >
+          <ForumIcon fontSize="small" sx={{ mr: 0.5 }} />
           Umræðuvettvangar
-        </Typography>
-        <Typography variant="body1" color="text.secondary" paragraph>
-          Taktu þátt í umræðum um íslensk stjórnmál og þingstörf. 
-        </Typography>
-      </Box>
+        </Link>
+        <Typography color="text.primary">{forum.title}</Typography>
+      </Breadcrumbs>
+
+      {/* Forum Header */}
+      <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
+        <Box display="flex" alignItems="center" mb={2}>
+          <Button 
+            component={Link} 
+            to="/engagement/forums"
+            startIcon={<ArrowBackIcon />}
+            sx={{ mr: 2 }}
+          >
+            Til baka í umræðuvettvangi
+          </Button>
+        </Box>
+        
+        <Box display="flex" alignItems="center" mb={2}>
+          <ForumIcon color="primary" sx={{ mr: 2, fontSize: 40 }} />
+          <Box>
+            <Typography variant="h4" component="h1" gutterBottom>
+              {forum.title}
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              {forum.description}
+            </Typography>
+          </Box>
+        </Box>
+        
+        <Box display="flex" gap={2} mt={2}>
+          <Chip 
+            icon={<MessageIcon />} 
+            label={`${forum.thread_count || 0} umræður`} 
+          />
+        </Box>
+      </Paper>
       
       <Grid container spacing={3}>
         {/* Search and New Thread Button */}
@@ -248,109 +285,56 @@ const DiscussionForumsPage = () => {
           </Paper>
         </Grid>
         
-        {/* Forum Categories */}
+        {/* Threads List */}
         <Grid item xs={12}>
           <Typography variant="h5" component="h2" gutterBottom sx={{ mt: 2 }}>
-            Umræðuvettvangar
+            Umræður
           </Typography>
-          {forumCategories.length === 0 ? (
-            <Paper elevation={2} sx={{ p: 3, textAlign: 'center' }}>
-              <Typography variant="body1" color="text.secondary">
-                Engir umræðuvettvangar í boði ennþá. Athugaðu aftur síðar.
-              </Typography>
-            </Paper>
-          ) : (
-          <Grid container spacing={2}>
-              {forumCategories.map((forum) => (
-                <Grid item xs={12} sm={6} md={4} key={forum.id}>
-                <Card elevation={2} sx={{ height: '100%' }}>
-                  <CardActionArea 
-                    component={Link} 
-                      to={`/engagement/forums/${forum.id}`}
-                    sx={{ height: '100%' }}
-                  >
-                    <CardContent>
-                      <Box display="flex" alignItems="center" mb={1}>
-                        <ForumIcon color="primary" sx={{ mr: 1 }} />
-                        <Typography variant="h6" component="h3">
-                            {forum.title}
-                        </Typography>
-                      </Box>
-                      <Typography variant="body2" color="text.secondary" paragraph>
-                          {forum.description}
-                      </Typography>
-                      <Box display="flex" justifyContent="space-between">
-                        <Chip 
-                          size="small" 
-                          icon={<MessageIcon />} 
-                            label={`${forum.thread_count || 0} umræður`} 
-                        />
-                      </Box>
-                    </CardContent>
-                  </CardActionArea>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-          )}
-        </Grid>
-        
-        {/* Active Discussions */}
-        <Grid item xs={12}>
-          <Box sx={{ mt: 4, mb: 2 }}>
-            <Typography variant="h5" component="h2" gutterBottom>
-              Virkar umræður
-            </Typography>
-            {searchQuery && (
-              <Typography variant="body2" color="text.secondary">
-                {filteredThreads.length} niðurstöður fyrir "{searchQuery}"
-              </Typography>
-            )}
-          </Box>
           
           <Paper elevation={3}>
             {filteredThreads.length === 0 ? (
               <Box sx={{ p: 3, textAlign: 'center' }}>
                 <Typography variant="body1" color="text.secondary">
-                  Engar umræður fundust. Reyndu annað leitarorð eða{' '}
-                  <Button 
-                    variant="text" 
-                    color="primary" 
-                    onClick={openNewThreadDialog}
-                  >
-                    byrjaðu nýja umræðu
-                  </Button>
+                  {searchQuery ? `Engar umræður fundust fyrir "${searchQuery}"` : 'Engar umræður ennþá. Vertu fyrstur til að byrja!'}
                 </Typography>
+                {!searchQuery && (
+                  <Button 
+                    variant="contained" 
+                    onClick={openNewThreadDialog}
+                    sx={{ mt: 2 }}
+                  >
+                    Hefja nýja umræðu
+                  </Button>
+                )}
               </Box>
             ) : (
               <List>
                 {filteredThreads.map((thread, index) => {
-                  const forumInfo = forumCategories.find(f => f.id === thread.forum);
-                  const threadUrl = `/engagement/forums/${thread.forum}/threads/${thread.id}`;
+                  const threadUrl = `/engagement/forums/${forumId}/threads/${thread.id}`;
                   
                   return (
-                  <React.Fragment key={thread.id}>
-                    <ListItem 
-                      alignItems="flex-start" 
-                      component={Link}
+                    <React.Fragment key={thread.id}>
+                      <ListItem 
+                        alignItems="flex-start" 
+                        component={Link}
                         to={threadUrl}
-                      sx={{ 
-                        textDecoration: 'none', 
-                        color: 'inherit',
-                        '&:hover': { bgcolor: 'action.hover' }
-                      }}
-                    >
-                      <ListItemAvatar>
+                        sx={{ 
+                          textDecoration: 'none', 
+                          color: 'inherit',
+                          '&:hover': { bgcolor: 'action.hover' }
+                        }}
+                      >
+                        <ListItemAvatar>
                           <Avatar src={thread.created_by?.profile_image}>
                             {getUserInitials(thread.created_by)}
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={
+                          </Avatar>
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={
                             <Box display="flex" alignItems="center" gap={1}>
-                          <Typography variant="subtitle1" fontWeight="medium">
-                            {thread.title}
-                          </Typography>
+                              <Typography variant="subtitle1" fontWeight="medium">
+                                {thread.title}
+                              </Typography>
                               {thread.is_pinned && (
                                 <Chip size="small" label="Fest" color="primary" />
                               )}
@@ -358,62 +342,54 @@ const DiscussionForumsPage = () => {
                                 <Chip size="small" label="Læst" color="warning" />
                               )}
                             </Box>
-                        }
-                        secondary={
-                          <Box component="span">
-                            <Box sx={{ mb: 0.5 }}>
-                              <Typography 
-                                component="span" 
-                                variant="body2" 
-                                color="text.primary"
-                              >
+                          }
+                          secondary={
+                            <Box component="span">
+                              <Box sx={{ mb: 0.5 }}>
+                                <Typography 
+                                  component="span" 
+                                  variant="body2" 
+                                  color="text.primary"
+                                >
                                   {getUserDisplayName(thread.created_by)}
-                              </Typography>{' '}
-                              <Typography 
-                                component="span" 
-                                variant="body2" 
-                                color="text.secondary"
-                              >
-                                byrjaði þessa umræðu
-                              </Typography>
-                            </Box>
-                            <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
-                                {forumInfo && (
-                              <Chip 
-                                size="small"
-                                    label={forumInfo.title}
-                                color="primary"
-                                variant="outlined"
-                              />
-                                )}
-                              <Typography 
-                                variant="body2" 
-                                color="text.secondary"
-                                sx={{ display: 'flex', alignItems: 'center' }}
-                              >
-                                <MessageIcon fontSize="small" sx={{ mr: 0.5 }} />
+                                </Typography>{' '}
+                                <Typography 
+                                  component="span" 
+                                  variant="body2" 
+                                  color="text.secondary"
+                                >
+                                  byrjaði þessa umræðu
+                                </Typography>
+                              </Box>
+                              <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
+                                <Typography 
+                                  variant="body2" 
+                                  color="text.secondary"
+                                  sx={{ display: 'flex', alignItems: 'center' }}
+                                >
+                                  <MessageIcon fontSize="small" sx={{ mr: 0.5 }} />
                                   {thread.post_count || 0} færslur
-                              </Typography>
-                              <Typography 
-                                variant="body2" 
-                                color="text.secondary"
-                                sx={{ display: 'flex', alignItems: 'center' }}
-                              >
-                                <AccessTimeIcon fontSize="small" sx={{ mr: 0.5 }} />
+                                </Typography>
+                                <Typography 
+                                  variant="body2" 
+                                  color="text.secondary"
+                                  sx={{ display: 'flex', alignItems: 'center' }}
+                                >
+                                  <AccessTimeIcon fontSize="small" sx={{ mr: 0.5 }} />
                                   {formatDate(thread.last_activity || thread.created_at)}
-                              </Typography>
+                                </Typography>
+                              </Box>
                             </Box>
-                          </Box>
-                        }
-                      />
-                      <ListItemSecondaryAction>
+                          }
+                        />
+                        <ListItemSecondaryAction>
                           <IconButton edge="end" component={Link} to={threadUrl}>
-                          <ArrowForwardIcon />
-                        </IconButton>
-                      </ListItemSecondaryAction>
-                    </ListItem>
-                    {index < filteredThreads.length - 1 && <Divider component="li" />}
-                  </React.Fragment>
+                            <ArrowForwardIcon />
+                          </IconButton>
+                        </ListItemSecondaryAction>
+                      </ListItem>
+                      {index < filteredThreads.length - 1 && <Divider component="li" />}
+                    </React.Fragment>
                   );
                 })}
               </List>
@@ -457,31 +433,6 @@ const DiscussionForumsPage = () => {
               required
             />
             
-            <FormControl 
-              fullWidth 
-              margin="normal"
-              error={!!formErrors.forum}
-              required
-            >
-              <InputLabel id="forum-select-label">Umræðuvettvangur</InputLabel>
-              <Select
-                labelId="forum-select-label"
-                name="forum"
-                value={newThread.forum}
-                onChange={handleNewThreadChange}
-                label="Umræðuvettvangur"
-              >
-                {forumCategories.map((forum) => (
-                  <MenuItem key={forum.id} value={forum.id}>
-                    {forum.title}
-                  </MenuItem>
-                ))}
-              </Select>
-              {formErrors.forum && (
-                <FormHelperText>{formErrors.forum}</FormHelperText>
-              )}
-            </FormControl>
-            
             <TextField
               fullWidth
               margin="normal"
@@ -517,4 +468,5 @@ const DiscussionForumsPage = () => {
   );
 };
 
-export default DiscussionForumsPage; 
+export default ForumDetailPage;
+

@@ -10,6 +10,7 @@ import BillsPage from './pages/parliament/BillsPage';
 import BillDetailPage from './pages/parliament/BillDetailPage';
 import VotingRecordsPage from './pages/parliament/VotingRecordsPage';
 import DiscussionForumsPage from './pages/engagement/DiscussionForumsPage';
+import ForumDetailPage from './pages/engagement/ForumDetailPage';
 import DiscussionThreadPage from './pages/engagement/DiscussionThreadPage';
 import WhistleblowingPage from './pages/engagement/WhistleblowingPage';
 import DashboardPage from './pages/analytics/DashboardPage';
@@ -41,6 +42,14 @@ function App() {
           element={
             <ProtectedRoute>
               <DiscussionForumsPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/engagement/forums/:forumId" 
+          element={
+            <ProtectedRoute>
+              <ForumDetailPage />
             </ProtectedRoute>
           } 
         />

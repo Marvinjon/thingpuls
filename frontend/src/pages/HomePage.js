@@ -69,7 +69,7 @@ const HomePage = () => {
                   Þingmenn
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Aðgangur að ítarlegum upplýsingum um hvern þingmann, þar með talið atkvæðasögu, ræður og flutt frumvörp.
+                  Aðgangur að ítarlegum upplýsingum um hvern þingmann, þar með talið atkvæðasögu, ræður, flutt frumvörp og hagsmunaskráningu.
                 </Typography>
               </CardContent>
               <CardActions>
@@ -121,7 +121,7 @@ const HomePage = () => {
                   Kosningar þingmanna
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Taktu þátt í umræðum um frumvörp og stefnumál, og leggðu þitt af mörkum til lýðræðisins með þátttökutækjum okkar.
+                  Sjá hvernig þingmenn hafa kostið í kosningum.
                 </Typography>
               </CardContent>
               <CardActions>
@@ -131,7 +131,7 @@ const HomePage = () => {
                   to="/parliament/voting-records" 
                   fullWidth
                 >
-                  Taka Þátt í Umræðum
+                  Skoða kosningar
                 </Button>
               </CardActions>
             </Card>

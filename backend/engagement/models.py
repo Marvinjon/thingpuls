@@ -47,7 +47,7 @@ class DiscussionThread(models.Model):
     
     forum = models.ForeignKey(DiscussionForum, on_delete=models.CASCADE, related_name='threads')
     title = models.CharField(max_length=200)
-    slug = models.SlugField()
+    slug = models.SlugField(max_length=200)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_threads')
     created_at = models.DateTimeField(auto_now_add=True)
     is_pinned = models.BooleanField(default=False)
