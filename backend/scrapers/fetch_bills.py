@@ -210,6 +210,21 @@ def fetch_bills(session_number=156):
                         except (ValueError, IndexError):
                             pass
                 
+                # Extract vote date from the last voting record (final vote)
+                vote_date = None
+                voting_records = root.findall('.//atkvæðagreiðsla')
+                if voting_records:
+                    # Get the last voting record (final vote)
+                    last_vote = voting_records[-1]
+                    vote_time = last_vote.find('tími')
+                    if vote_time is not None and vote_time.text:
+                        try:
+                            # Extract date from datetime string (format: YYYY-MM-DDTHH:MM:SS)
+                            date_text = vote_time.text.split('T')[0]
+                            vote_date = datetime.strptime(date_text, '%Y-%m-%d').date()
+                        except (ValueError, IndexError):
+                            pass
+                
                 # Create or update the bill
                 with transaction.atomic():
                     bill, created = Bill.objects.update_or_create(
@@ -221,6 +236,7 @@ def fetch_bills(session_number=156):
                             'description': f"{bill_type_text} - {status_text}",
                             'status': map_bill_status(status_text),
                             'introduced_date': introduced_date or session.start_date,
+                            'vote_date': vote_date,  # Add vote date
                             'url': f'https://www.althingi.is/thingstorf/thingmalalistar-eftir-thingum/ferill/?ltg={session_number}&mnr={bill_number}'
                         }
                     )

@@ -34,7 +34,9 @@ const DashboardPage = () => {
   const [timeframe, setTimeframe] = useState('past-month');
   const [dashboardData, setDashboardData] = useState(null);
   const [votingPatterns, setVotingPatterns] = useState(null);
-  const [mpActivity, setMpActivity] = useState(null);
+  const [billPipeline, setBillPipeline] = useState(null);
+  const [partyCohesion, setPartyCohesion] = useState(null);
+  const [efficiencyTimeline, setEfficiencyTimeline] = useState(null);
   const [topicTrends, setTopicTrends] = useState(null);
 
   // Color scheme for charts
@@ -55,12 +57,14 @@ const DashboardPage = () => {
           recentActivity: data.recentActivity
         });
         setVotingPatterns(data.votingPatterns);
-        setMpActivity(data.mpActivity);
+        setBillPipeline(data.billPipeline);
+        setPartyCohesion(data.partyCohesion);
+        setEfficiencyTimeline(data.efficiencyTimeline);
         setTopicTrends(data.topicTrends);
         
         setError(null);
       } catch (err) {
-        setError("Failed to load dashboard data. Please try again later.");
+        setError("Ekki tókst að hlaða gögnum. Vinsamlegast reyndu aftur síðar.");
         console.error('Error fetching dashboard data:', err);
       } finally {
         setLoading(false);
@@ -95,20 +99,20 @@ const DashboardPage = () => {
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
         <Typography variant="h4" component="h1">
-          Parliamentary Analytics Dashboard
+          Tölfræði þingsins
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <FormControl variant="outlined" size="small">
-            <InputLabel>Timeframe</InputLabel>
+            <InputLabel>Tímabil</InputLabel>
             <Select
               value={timeframe}
               onChange={handleTimeframeChange}
-              label="Timeframe"
+              label="Tímabil"
             >
-              <MenuItem value="past-week">Past Week</MenuItem>
-              <MenuItem value="past-month">Past Month</MenuItem>
-              <MenuItem value="past-year">Past Year</MenuItem>
-              <MenuItem value="all-time">All Time</MenuItem>
+              <MenuItem value="past-week">Síðasta vika</MenuItem>
+              <MenuItem value="past-month">Síðasti mánuður</MenuItem>
+              <MenuItem value="past-year">Síðasta ár</MenuItem>
+              <MenuItem value="all-time">Allt tímabil</MenuItem>
             </Select>
           </FormControl>
         </Box>
@@ -122,7 +126,7 @@ const DashboardPage = () => {
               <Card>
                 <CardContent>
                   <Typography color="textSecondary" gutterBottom>
-                    Total Bills
+                    Fjöldi þingmála
                   </Typography>
                   <Typography variant="h3">
                     {dashboardData.parliamentaryActivity.totalBills}
@@ -140,13 +144,13 @@ const DashboardPage = () => {
               <Card>
                 <CardContent>
                   <Typography color="textSecondary" gutterBottom>
-                    Passed Bills
+                    Samþykkt mál
                   </Typography>
                   <Typography variant="h3">
                     {dashboardData.parliamentaryActivity.passedBills}
                   </Typography>
                   <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-                    {Math.round((dashboardData.parliamentaryActivity.passedBills / dashboardData.parliamentaryActivity.totalBills) * 100)}% success rate
+                    {Math.round((dashboardData.parliamentaryActivity.passedBills / dashboardData.parliamentaryActivity.totalBills) * 100)}% samþykkishlutfall
                   </Typography>
                 </CardContent>
               </Card>
@@ -156,13 +160,13 @@ const DashboardPage = () => {
               <Card>
                 <CardContent>
                   <Typography color="textSecondary" gutterBottom>
-                    Active MPs
+                    Virkir þingmenn
                   </Typography>
                   <Typography variant="h3">
                     {dashboardData.parliamentaryActivity.activeMembers}
                   </Typography>
                   <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-                    Across {dashboardData.parliamentaryActivity.totalParties} parties
+                    Í {dashboardData.parliamentaryActivity.totalParties} flokkum
                   </Typography>
                 </CardContent>
               </Card>
@@ -172,13 +176,13 @@ const DashboardPage = () => {
               <Card>
                 <CardContent>
                   <Typography color="textSecondary" gutterBottom>
-                    Total Votes Cast
+                    Meðalvinnsla mála
                   </Typography>
                   <Typography variant="h3">
-                    {dashboardData.parliamentaryActivity.totalVotes}
+                    {dashboardData.parliamentaryActivity.avgProcessingDays}
                   </Typography>
                   <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-                    In current session
+                    dagar að meðaltali
                   </Typography>
                 </CardContent>
               </Card>
@@ -190,7 +194,7 @@ const DashboardPage = () => {
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Voting Patterns by Party
+              Atkvæðamynstur eftir flokkum
             </Typography>
             {votingPatterns && (
               <ResponsiveContainer width="100%" height={300}>
@@ -199,7 +203,8 @@ const DashboardPage = () => {
                     party,
                     yes: votes.yes,
                     no: votes.no,
-                    abstain: votes.abstain
+                    abstain: votes.abstain,
+                    absent: votes.absent
                   }))}
                   margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
                 >
@@ -215,37 +220,132 @@ const DashboardPage = () => {
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey="yes" fill="#4caf50" stackId="a" />
-                  <Bar dataKey="no" fill="#f44336" stackId="a" />
-                  <Bar dataKey="abstain" fill="#ff9800" stackId="a" />
+                  <Bar dataKey="yes" fill="#4caf50" stackId="a" name="Já" />
+                  <Bar dataKey="no" fill="#f44336" stackId="a" name="Nei" />
+                  <Bar dataKey="abstain" fill="#ff9800" stackId="a" name="Sitja hjá" />
+                  <Bar dataKey="absent" fill="#9e9e9e" stackId="a" name="Fjarverandi" />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </Paper>
         </Grid>
 
-        {/* MP Activity Chart */}
+        {/* Bill Progress Pipeline Chart */}
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Top MP Activity
+              Staða þingmála
             </Typography>
-            {mpActivity && (
+            {billPipeline && (
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={mpActivity.labels.map((name, index) => ({
-                  name,
-                  votes: mpActivity.vote_counts[index],
-                  bills: mpActivity.bill_counts[index]
-                }))}>
+                <BarChart 
+                  data={Object.entries(billPipeline).map(([status, count]) => {
+                    const statusTranslations = {
+                      'introduced': 'Lagt fram',
+                      'in_committee': 'Í nefnd',
+                      'committee': 'Í nefnd',
+                      'passed': 'Samþykkt',
+                      'rejected': 'Hafnað',
+                      'withdrawn': 'Dregið til baka'
+                    };
+                    return {
+                      status: statusTranslations[status.toLowerCase()] || status.charAt(0).toUpperCase() + status.slice(1),
+                      count
+                    };
+                  })}
+                  layout="vertical"
+                  margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
+                  <XAxis type="number" />
+                  <YAxis dataKey="status" type="category" />
                   <Tooltip />
-                  <Legend />
-                  <Bar dataKey="votes" fill="#8884d8" name="Votes Cast" />
-                  <Bar dataKey="bills" fill="#82ca9d" name="Bills Sponsored" />
+                  <Bar dataKey="count" fill="#2196f3" name="Fjöldi mála" />
                 </BarChart>
               </ResponsiveContainer>
+            )}
+          </Paper>
+        </Grid>
+
+        {/* Party Cohesion Scores Chart */}
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Samheldni flokka
+            </Typography>
+            <Typography variant="body2" color="textSecondary" gutterBottom>
+              Hlutfall samstöðu innan flokka við atkvæðagreiðslur
+            </Typography>
+            {partyCohesion && (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart 
+                  data={Object.entries(partyCohesion).map(([party, score]) => ({
+                    party,
+                    score
+                  }))}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="party" 
+                    angle={-45} 
+                    textAnchor="end" 
+                    height={80} 
+                    interval={0}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <YAxis domain={[0, 100]} />
+                  <Tooltip formatter={(value) => `${value}%`} />
+                  <Bar dataKey="score" fill="#9c27b0" name="Samheldni %" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </Paper>
+        </Grid>
+
+        {/* Legislative Efficiency Timeline Chart */}
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Framleiðni þingsins
+            </Typography>
+            <Typography variant="body2" color="textSecondary" gutterBottom>
+              Samþykkt mál yfir tíma
+            </Typography>
+            {efficiencyTimeline && efficiencyTimeline.labels && efficiencyTimeline.labels.length > 0 && (
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart 
+                  data={efficiencyTimeline.labels.map((label, index) => ({
+                    month: label,
+                    bills: efficiencyTimeline.counts[index]
+                  }))}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                >
+                  <defs>
+                    <linearGradient id="colorBills" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#00bcd4" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#00bcd4" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Area 
+                    type="monotone" 
+                    dataKey="bills" 
+                    stroke="#00bcd4" 
+                    fillOpacity={1} 
+                    fill="url(#colorBills)" 
+                    name="Samþykkt mál"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+            {(!efficiencyTimeline || !efficiencyTimeline.labels || efficiencyTimeline.labels.length === 0) && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
+                <Typography color="textSecondary">Engin gögn tiltæk</Typography>
+              </Box>
             )}
           </Paper>
         </Grid>
@@ -254,7 +354,7 @@ const DashboardPage = () => {
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Bill Topics Distribution
+              Dreifing málaflokka
             </Typography>
             {topicTrends && (
               <ResponsiveContainer width="100%" height={300}>
@@ -287,7 +387,7 @@ const DashboardPage = () => {
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Recent Parliamentary Activity
+              Nýleg þingvinna
             </Typography>
             {dashboardData?.recentActivity && (
               <List>
@@ -298,12 +398,12 @@ const DashboardPage = () => {
                       secondary={
                         <>
                           <Typography component="span" variant="body2" color="textSecondary">
-                            {new Date(activity.date).toLocaleDateString()}
+                            {new Date(activity.date).toLocaleDateString('is-IS')}
                           </Typography>
                           <br />
                           <Chip 
                             size="small" 
-                            label={activity.type}
+                            label={activity.type === 'bill' ? 'Þingmál' : activity.type === 'vote' ? 'Atkvæðagreiðsla' : activity.type}
                             color={
                               activity.type === 'bill' ? 'primary' :
                               activity.type === 'vote' ? 'secondary' :

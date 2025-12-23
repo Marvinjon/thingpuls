@@ -50,6 +50,27 @@ class DashboardConfigurationViewSet(viewsets.ModelViewSet):
             active_members = MP.objects.filter(active=True).count()
             total_parties = PoliticalParty.objects.count()
             total_votes = Vote.objects.count()
+            
+            # Calculate average bill processing time
+            from django.db.models import F, ExpressionWrapper, fields
+            from datetime import timedelta
+            
+            resolved_bills = Bill.objects.filter(
+                vote_date__isnull=False,
+                introduced_date__isnull=False
+            ).exclude(status='introduced')
+            
+            if resolved_bills.count() > 0:
+                total_days = 0
+                count = 0
+                for bill in resolved_bills:
+                    days_diff = (bill.vote_date - bill.introduced_date).days
+                    if days_diff >= 0:  # Only count positive values
+                        total_days += days_diff
+                        count += 1
+                avg_processing_days = round(total_days / count) if count > 0 else 0
+            else:
+                avg_processing_days = 0
 
             # Get recent activity
             recent_bills = Bill.objects.order_by('-introduced_date')[:5]
@@ -98,16 +119,70 @@ class DashboardConfigurationViewSet(viewsets.ModelViewSet):
                     if vote_type in voting_patterns[party]:
                         voting_patterns[party][vote_type] = vote['count']
 
-            # Get MP activity
-            top_mps = MP.objects.filter(active=True).annotate(
-                vote_count=Count('voting_record'),
-                sponsored_count=Count('bills_sponsored')  # Changed from bills to bills_sponsored
-            ).order_by('-vote_count')[:10]
+            # Get Bill Progress Pipeline - distribution of bills by status
+            bill_statuses = Bill.objects.values('status').annotate(
+                count=Count('id')
+            ).order_by('status')
+            
+            bill_pipeline = {}
+            for status_item in bill_statuses:
+                bill_pipeline[status_item['status']] = status_item['count']
 
-            mp_activity = {
-                'labels': [f"{mp.first_name} {mp.last_name}" for mp in top_mps],
-                'vote_counts': [mp.vote_count for mp in top_mps],
-                'bill_counts': [mp.sponsored_count for mp in top_mps]
+            # Get Party Cohesion Scores - voting unity per party
+            party_cohesion = {}
+            parties = PoliticalParty.objects.all()
+            
+            for party in parties:
+                # Get all votes by this party's MPs
+                party_votes = Vote.objects.filter(mp__party=party)
+                
+                if party_votes.count() > 0:
+                    # Group votes by bill to calculate cohesion
+                    bills_voted = party_votes.values('bill_id').distinct()
+                    cohesion_scores = []
+                    
+                    for bill in bills_voted:
+                        bill_id = bill['bill_id']
+                        votes_on_bill = party_votes.filter(bill_id=bill_id)
+                        total_votes = votes_on_bill.count()
+                        
+                        if total_votes > 1:  # Need at least 2 votes to measure cohesion
+                            # Count the most common vote
+                            vote_counts = votes_on_bill.values('vote').annotate(
+                                count=Count('id')
+                            ).order_by('-count')
+                            
+                            if vote_counts:
+                                max_agreement = vote_counts[0]['count']
+                                cohesion = (max_agreement / total_votes) * 100
+                                cohesion_scores.append(cohesion)
+                    
+                    # Calculate average cohesion for the party
+                    if cohesion_scores:
+                        party_cohesion[party.name] = round(sum(cohesion_scores) / len(cohesion_scores), 1)
+                    else:
+                        party_cohesion[party.name] = 0
+                else:
+                    party_cohesion[party.name] = 0
+
+            # Get Legislative Efficiency Timeline - bills passed over time
+            from datetime import datetime, timedelta
+            from django.db.models.functions import TruncMonth
+            
+            # Get bills passed in the last 12 months, grouped by month
+            twelve_months_ago = timezone.now() - timedelta(days=365)
+            efficiency_timeline = Bill.objects.filter(
+                status='passed',
+                introduced_date__gte=twelve_months_ago
+            ).annotate(
+                month=TruncMonth('introduced_date')
+            ).values('month').annotate(
+                count=Count('id')
+            ).order_by('month')
+            
+            timeline_data = {
+                'labels': [item['month'].strftime('%b %Y') if item['month'] else 'Unknown' for item in efficiency_timeline],
+                'counts': [item['count'] for item in efficiency_timeline]
             }
 
             # Get topic trends
@@ -127,11 +202,14 @@ class DashboardConfigurationViewSet(viewsets.ModelViewSet):
                     'passedBills': passed_bills,
                     'activeMembers': active_members,
                     'totalParties': total_parties,
-                    'totalVotes': total_votes
+                    'totalVotes': total_votes,
+                    'avgProcessingDays': avg_processing_days
                 },
                 'recentActivity': recent_activity,
                 'votingPatterns': voting_patterns,
-                'mpActivity': mp_activity,
+                'billPipeline': bill_pipeline,
+                'partyCohesion': party_cohesion,
+                'efficiencyTimeline': timeline_data,
                 'topicTrends': topic_trends
             }
 
