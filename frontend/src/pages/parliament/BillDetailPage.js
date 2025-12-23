@@ -13,6 +13,8 @@ import PersonIcon from '@mui/icons-material/Person';
 import HowToVoteIcon from '@mui/icons-material/HowToVote';
 import DescriptionIcon from '@mui/icons-material/Description';
 import TimelineIcon from '@mui/icons-material/Timeline';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import LinkIcon from '@mui/icons-material/Link';
 import { parliamentService } from '../../services/api';
 
 const BillDetailPage = () => {
@@ -108,7 +110,7 @@ const BillDetailPage = () => {
           Til baka
         </Button>
       </Box>
-
+      
       {/* Main Layout - Two Columns */}
       <Grid container spacing={3}>
         {/* LEFT COLUMN - Main Content */}
@@ -117,37 +119,51 @@ const BillDetailPage = () => {
           <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
             <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
               <Typography variant="overline" color="text.secondary" fontSize="0.875rem">
-                Þingmál #{bill.althingi_id}
-              </Typography>
-              <Chip 
-                label={formatStatus(bill.status)} 
-                color={getStatusColor(bill.status)} 
+            Þingmál #{bill.althingi_id}
+          </Typography>
+          <Chip 
+            label={formatStatus(bill.status)} 
+            color={getStatusColor(bill.status)} 
                 size="medium"
                 sx={{ fontWeight: 600 }}
-              />
-            </Box>
-            
+          />
+        </Box>
+        
             <Typography variant="h4" component="h1" gutterBottom fontWeight={600}>
-              {bill.title}
-            </Typography>
+          {bill.title}
+        </Typography>
 
-            <Box display="flex" gap={1.5} mt={2} flexWrap="wrap">
-              <Chip 
-                icon={<AccessTimeIcon />} 
+            <Box display="flex" gap={1.5} mt={2} mb={2} flexWrap="wrap" alignItems="center">
+          <Chip 
+            icon={<AccessTimeIcon />} 
                 label={`Lagt fram: ${new Date(bill.introduced_date).toLocaleDateString('is-IS')}`} 
-                variant="outlined" 
+            variant="outlined" 
                 size="small"
-              />
-              {bill.topics?.map((topic) => (
-                <Chip 
-                  key={topic.id}
-                  label={topic.name} 
+          />
+          {bill.topics?.map((topic) => (
+            <Chip 
+              key={topic.id}
+              label={topic.name} 
                   variant="filled"
                   size="small"
                   sx={{ bgcolor: 'primary.lighter', color: 'primary.main' }}
-                />
-              ))}
-            </Box>
+            />
+          ))}
+        </Box>
+
+            {bill.url && (
+              <Button
+                href={bill.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="outlined"
+                startIcon={<OpenInNewIcon />}
+                size="small"
+                sx={{ fontWeight: 500 }}
+              >
+                Skoða á Alþingi.is
+              </Button>
+            )}
           </Paper>
 
           {/* Description Card */}
@@ -158,8 +174,8 @@ const BillDetailPage = () => {
                 <Typography variant="h6" fontWeight={600}>Samantekt</Typography>
               </Box>
               <Typography variant="body1" color="text.secondary" lineHeight={1.7}>
-                {bill.description || 'Engin lýsing í boði.'}
-              </Typography>
+          {bill.description || 'Engin lýsing í boði.'}
+        </Typography>
             </CardContent>
           </Card>
 
@@ -265,21 +281,21 @@ const BillDetailPage = () => {
                           </AccordionSummary>
                           <AccordionDetails sx={{ pt: 0 }}>
                             <Stack spacing={2}>
-                              {/* Yes Votes */}
-                              {votingSession.yes_votes?.length > 0 && (
+                        {/* Yes Votes */}
+                        {votingSession.yes_votes?.length > 0 && (
                                 <Box>
                                   <Typography variant="body2" color="success.main" fontWeight={600} mb={1}>
                                     Já ({votingSession.yes_count})
-                                  </Typography>
+                              </Typography>
                                   <Box display="flex" flexWrap="wrap" gap={1}>
-                                    {votingSession.yes_votes.map((mpVote) => (
+                                {votingSession.yes_votes.map((mpVote) => (
                                       <Tooltip key={mpVote.mp_id} title={`${mpVote.mp_name} - ${mpVote.party}`}>
                                         <Avatar 
-                                          component={RouterLink}
-                                          to={`/parliament/members/${mpVote.mp_slug}`}
+                                    component={RouterLink}
+                                    to={`/parliament/members/${mpVote.mp_slug}`}
                                           src={mpVote.image_url} 
                                           alt={mpVote.mp_name}
-                                          sx={{ 
+                                    sx={{ 
                                             width: 40, 
                                             height: 40,
                                             cursor: 'pointer',
@@ -289,29 +305,29 @@ const BillDetailPage = () => {
                                             transition: 'transform 0.2s'
                                           }}
                                         >
-                                          <PersonIcon />
-                                        </Avatar>
+                                        <PersonIcon />
+                                      </Avatar>
                                       </Tooltip>
                                     ))}
                                   </Box>
                                 </Box>
-                              )}
+                        )}
 
-                              {/* No Votes */}
-                              {votingSession.no_votes?.length > 0 && (
+                        {/* No Votes */}
+                        {votingSession.no_votes?.length > 0 && (
                                 <Box>
                                   <Typography variant="body2" color="error.main" fontWeight={600} mb={1}>
                                     Nei ({votingSession.no_count})
-                                  </Typography>
+                              </Typography>
                                   <Box display="flex" flexWrap="wrap" gap={1}>
-                                    {votingSession.no_votes.map((mpVote) => (
+                                {votingSession.no_votes.map((mpVote) => (
                                       <Tooltip key={mpVote.mp_id} title={`${mpVote.mp_name} - ${mpVote.party}`}>
                                         <Avatar 
-                                          component={RouterLink}
-                                          to={`/parliament/members/${mpVote.mp_slug}`}
+                                    component={RouterLink}
+                                    to={`/parliament/members/${mpVote.mp_slug}`}
                                           src={mpVote.image_url} 
                                           alt={mpVote.mp_name}
-                                          sx={{ 
+                                    sx={{ 
                                             width: 40, 
                                             height: 40,
                                             cursor: 'pointer',
@@ -321,29 +337,29 @@ const BillDetailPage = () => {
                                             transition: 'transform 0.2s'
                                           }}
                                         >
-                                          <PersonIcon />
-                                        </Avatar>
+                                        <PersonIcon />
+                                      </Avatar>
                                       </Tooltip>
                                     ))}
                                   </Box>
                                 </Box>
-                              )}
+                        )}
 
-                              {/* Abstain Votes */}
-                              {votingSession.abstain_votes?.length > 0 && (
+                        {/* Abstain Votes */}
+                        {votingSession.abstain_votes?.length > 0 && (
                                 <Box>
                                   <Typography variant="body2" color="warning.main" fontWeight={600} mb={1}>
                                     Sitja hjá ({votingSession.abstain_count})
-                                  </Typography>
+                              </Typography>
                                   <Box display="flex" flexWrap="wrap" gap={1}>
-                                    {votingSession.abstain_votes.map((mpVote) => (
+                                {votingSession.abstain_votes.map((mpVote) => (
                                       <Tooltip key={mpVote.mp_id} title={`${mpVote.mp_name} - ${mpVote.party}`}>
                                         <Avatar 
-                                          component={RouterLink}
-                                          to={`/parliament/members/${mpVote.mp_slug}`}
+                                    component={RouterLink}
+                                    to={`/parliament/members/${mpVote.mp_slug}`}
                                           src={mpVote.image_url} 
                                           alt={mpVote.mp_name}
-                                          sx={{ 
+                                    sx={{ 
                                             width: 40, 
                                             height: 40,
                                             cursor: 'pointer',
@@ -353,29 +369,29 @@ const BillDetailPage = () => {
                                             transition: 'transform 0.2s'
                                           }}
                                         >
-                                          <PersonIcon />
-                                        </Avatar>
+                                        <PersonIcon />
+                                      </Avatar>
                                       </Tooltip>
                                     ))}
                                   </Box>
                                 </Box>
-                              )}
+                        )}
 
-                              {/* Absent Votes */}
-                              {votingSession.absent_votes?.length > 0 && (
+                        {/* Absent Votes */}
+                        {votingSession.absent_votes?.length > 0 && (
                                 <Box>
                                   <Typography variant="body2" color="text.secondary" fontWeight={600} mb={1}>
-                                    Fjarverandi ({votingSession.absent_count})
-                                  </Typography>
+                                Fjarverandi ({votingSession.absent_count})
+                              </Typography>
                                   <Box display="flex" flexWrap="wrap" gap={1}>
-                                    {votingSession.absent_votes.map((mpVote) => (
+                                {votingSession.absent_votes.map((mpVote) => (
                                       <Tooltip key={mpVote.mp_id} title={`${mpVote.mp_name} - ${mpVote.party}`}>
                                         <Avatar 
-                                          component={RouterLink}
-                                          to={`/parliament/members/${mpVote.mp_slug}`}
+                                    component={RouterLink}
+                                    to={`/parliament/members/${mpVote.mp_slug}`}
                                           src={mpVote.image_url} 
                                           alt={mpVote.mp_name}
-                                          sx={{ 
+                                    sx={{ 
                                             width: 40, 
                                             height: 40,
                                             cursor: 'pointer',
@@ -384,25 +400,25 @@ const BillDetailPage = () => {
                                             transition: 'opacity 0.2s'
                                           }}
                                         >
-                                          <PersonIcon />
-                                        </Avatar>
+                                        <PersonIcon />
+                                      </Avatar>
                                       </Tooltip>
                                     ))}
                                   </Box>
                                 </Box>
                               )}
                             </Stack>
-                          </AccordionDetails>
-                        </Accordion>
+                            </AccordionDetails>
+                          </Accordion>
                       </Paper>
                     );
                   })}
                 </Stack>
-              ) : (
-                <Typography color="text.secondary">
-                  Engar atkvæðagreiðslur skráðar
-                </Typography>
-              )}
+                ) : (
+                  <Typography color="text.secondary">
+                    Engar atkvæðagreiðslur skráðar
+                  </Typography>
+                )}
             </CardContent>
           </Card>
 
@@ -429,7 +445,7 @@ const BillDetailPage = () => {
               </CardContent>
             </Card>
           )}
-        </Grid>
+          </Grid>
 
         {/* RIGHT COLUMN - Sidebar */}
         <Grid item xs={12} lg={4}>
@@ -520,8 +536,8 @@ const BillDetailPage = () => {
                       </Tooltip>
                     ))}
                   </Box>
-                </Box>
-              )}
+        </Box>
+      )}
 
               {bill.sponsors?.length === 0 && bill.cosponsors?.length === 0 && (
                 <Typography variant="body2" color="text.secondary">
