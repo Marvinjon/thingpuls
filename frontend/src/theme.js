@@ -8,12 +8,14 @@ const theme = createTheme({
     primary: {
       main: '#02529C', // Icelandic blue
       light: '#4F7CBC',
+      lighter: '#E3EBF5', // Very light blue for backgrounds
       dark: '#003270',
       contrastText: '#FFFFFF',
     },
     secondary: {
       main: '#DC1E35', // Icelandic red
       light: '#E35B6C',
+      lighter: '#FDEAED', // Very light red for backgrounds
       dark: '#A5001E',
       contrastText: '#FFFFFF',
     },
