@@ -284,129 +284,252 @@ const BillDetailPage = () => {
                         {/* Yes Votes */}
                         {votingSession.yes_votes?.length > 0 && (
                                 <Box>
-                                  <Typography variant="body2" color="success.main" fontWeight={600} mb={1}>
+                                  <Typography variant="body2" color="success.main" fontWeight={600} mb={1.5}>
                                     Já ({votingSession.yes_count})
                               </Typography>
-                                  <Box display="flex" flexWrap="wrap" gap={1}>
+                                  <Grid container spacing={1}>
                                 {votingSession.yes_votes.map((mpVote) => (
-                                      <Tooltip key={mpVote.mp_id} title={`${mpVote.mp_name} - ${mpVote.party}`}>
-                                        <Avatar 
+                                      <Grid item xs={12} sm={6} md={4} key={mpVote.mp_id}>
+                                        <Box
                                     component={RouterLink}
                                     to={`/parliament/members/${mpVote.mp_slug}`}
-                                          src={mpVote.image_url} 
-                                          alt={mpVote.mp_name}
                                     sx={{ 
-                                            width: 40, 
-                                            height: 40,
-                                            cursor: 'pointer',
-                                            border: '2px solid',
-                                            borderColor: 'success.main',
-                                            '&:hover': { transform: 'scale(1.1)' },
-                                            transition: 'transform 0.2s'
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1,
+                                            p: 1,
+                                            borderRadius: 1,
+                                            textDecoration: 'none',
+                                            color: 'inherit',
+                                            border: '1px solid',
+                                            borderColor: 'success.light',
+                                            bgcolor: 'success.lighter',
+                                            transition: 'all 0.2s',
+                                            '&:hover': {
+                                              borderColor: 'success.main',
+                                              bgcolor: 'success.light',
+                                              transform: 'translateY(-2px)',
+                                              boxShadow: 1
+                                            }
                                           }}
                                         >
+                                          <Avatar 
+                                            src={mpVote.image_url} 
+                                            alt={mpVote.mp_name}
+                                            sx={{ width: 36, height: 36 }}
+                                          >
                                         <PersonIcon />
                                       </Avatar>
-                                      </Tooltip>
+                                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                                            <Typography 
+                                              variant="body2" 
+                                              fontWeight={500}
+                                              noWrap
+                                            >
+                                              {mpVote.mp_name}
+                                            </Typography>
+                                            <Typography 
+                                              variant="caption" 
+                                              color="text.secondary"
+                                              noWrap
+                                            >
+                                              {mpVote.party}
+                                            </Typography>
+                                          </Box>
+                                        </Box>
+                                      </Grid>
                                     ))}
-                                  </Box>
+                                  </Grid>
                                 </Box>
                         )}
 
                         {/* No Votes */}
                         {votingSession.no_votes?.length > 0 && (
                                 <Box>
-                                  <Typography variant="body2" color="error.main" fontWeight={600} mb={1}>
+                                  <Typography variant="body2" color="error.main" fontWeight={600} mb={1.5}>
                                     Nei ({votingSession.no_count})
                               </Typography>
-                                  <Box display="flex" flexWrap="wrap" gap={1}>
+                                  <Grid container spacing={1}>
                                 {votingSession.no_votes.map((mpVote) => (
-                                      <Tooltip key={mpVote.mp_id} title={`${mpVote.mp_name} - ${mpVote.party}`}>
-                                        <Avatar 
+                                      <Grid item xs={12} sm={6} md={4} key={mpVote.mp_id}>
+                                        <Box
                                     component={RouterLink}
                                     to={`/parliament/members/${mpVote.mp_slug}`}
-                                          src={mpVote.image_url} 
-                                          alt={mpVote.mp_name}
                                     sx={{ 
-                                            width: 40, 
-                                            height: 40,
-                                            cursor: 'pointer',
-                                            border: '2px solid',
-                                            borderColor: 'error.main',
-                                            '&:hover': { transform: 'scale(1.1)' },
-                                            transition: 'transform 0.2s'
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1,
+                                            p: 1,
+                                            borderRadius: 1,
+                                            textDecoration: 'none',
+                                            color: 'inherit',
+                                            border: '1px solid',
+                                            borderColor: 'error.light',
+                                            bgcolor: 'secondary.lighter',
+                                            transition: 'all 0.2s',
+                                            '&:hover': {
+                                              borderColor: 'error.main',
+                                              bgcolor: 'error.lighter',
+                                              transform: 'translateY(-2px)',
+                                              boxShadow: 1
+                                            }
                                           }}
                                         >
+                                          <Avatar 
+                                            src={mpVote.image_url} 
+                                            alt={mpVote.mp_name}
+                                            sx={{ width: 36, height: 36 }}
+                                          >
                                         <PersonIcon />
                                       </Avatar>
-                                      </Tooltip>
+                                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                                            <Typography 
+                                              variant="body2" 
+                                              fontWeight={500}
+                                              noWrap
+                                            >
+                                              {mpVote.mp_name}
+                                            </Typography>
+                                            <Typography 
+                                              variant="caption" 
+                                              color="text.secondary"
+                                              noWrap
+                                            >
+                                              {mpVote.party}
+                                            </Typography>
+                                          </Box>
+                                        </Box>
+                                      </Grid>
                                     ))}
-                                  </Box>
+                                  </Grid>
                                 </Box>
                         )}
 
                         {/* Abstain Votes */}
                         {votingSession.abstain_votes?.length > 0 && (
                                 <Box>
-                                  <Typography variant="body2" color="warning.main" fontWeight={600} mb={1}>
+                                  <Typography variant="body2" color="warning.main" fontWeight={600} mb={1.5}>
                                     Sitja hjá ({votingSession.abstain_count})
                               </Typography>
-                                  <Box display="flex" flexWrap="wrap" gap={1}>
+                                  <Grid container spacing={1}>
                                 {votingSession.abstain_votes.map((mpVote) => (
-                                      <Tooltip key={mpVote.mp_id} title={`${mpVote.mp_name} - ${mpVote.party}`}>
-                                        <Avatar 
-                                    component={RouterLink}
-                                    to={`/parliament/members/${mpVote.mp_slug}`}
-                                          src={mpVote.image_url} 
-                                          alt={mpVote.mp_name}
-                                    sx={{ 
-                                            width: 40, 
-                                            height: 40,
-                                            cursor: 'pointer',
-                                            border: '2px solid',
-                                            borderColor: 'warning.main',
-                                            '&:hover': { transform: 'scale(1.1)' },
-                                            transition: 'transform 0.2s'
+                                      <Grid item xs={12} sm={6} md={4} key={mpVote.mp_id}>
+                                        <Box
+                                          component={RouterLink}
+                                          to={`/parliament/members/${mpVote.mp_slug}`}
+                                          sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1,
+                                            p: 1,
+                                            borderRadius: 1,
+                                            textDecoration: 'none',
+                                            color: 'inherit',
+                                            border: '1px solid',
+                                            borderColor: 'warning.light',
+                                            bgcolor: 'warning.lighter',
+                                            transition: 'all 0.2s',
+                                            '&:hover': {
+                                              borderColor: 'warning.main',
+                                              bgcolor: 'warning.light',
+                                              transform: 'translateY(-2px)',
+                                              boxShadow: 1
+                                            }
                                           }}
                                         >
-                                        <PersonIcon />
-                                      </Avatar>
-                                      </Tooltip>
+                                          <Avatar 
+                                            src={mpVote.image_url} 
+                                            alt={mpVote.mp_name}
+                                            sx={{ width: 36, height: 36 }}
+                                          >
+                                            <PersonIcon />
+                                          </Avatar>
+                                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                                            <Typography 
+                                              variant="body2" 
+                                              fontWeight={500}
+                                              noWrap
+                                            >
+                                              {mpVote.mp_name}
+                                            </Typography>
+                                            <Typography 
+                                              variant="caption" 
+                                              color="text.secondary"
+                                              noWrap
+                                            >
+                                              {mpVote.party}
+                                            </Typography>
+                                          </Box>
+                                        </Box>
+                                      </Grid>
                                     ))}
-                                  </Box>
+                                  </Grid>
                                 </Box>
                         )}
 
                         {/* Absent Votes */}
                         {votingSession.absent_votes?.length > 0 && (
                                 <Box>
-                                  <Typography variant="body2" color="text.secondary" fontWeight={600} mb={1}>
-                                Fjarverandi ({votingSession.absent_count})
+                                  <Typography variant="body2" color="text.secondary" fontWeight={600} mb={1.5}>
+                                    Fjarverandi ({votingSession.absent_count})
                               </Typography>
-                                  <Box display="flex" flexWrap="wrap" gap={1}>
+                                  <Grid container spacing={1}>
                                 {votingSession.absent_votes.map((mpVote) => (
-                                      <Tooltip key={mpVote.mp_id} title={`${mpVote.mp_name} - ${mpVote.party}`}>
-                                        <Avatar 
-                                    component={RouterLink}
-                                    to={`/parliament/members/${mpVote.mp_slug}`}
-                                          src={mpVote.image_url} 
-                                          alt={mpVote.mp_name}
-                                    sx={{ 
-                                            width: 40, 
-                                            height: 40,
-                                            cursor: 'pointer',
-                                            opacity: 0.5,
-                                            '&:hover': { opacity: 1 },
-                                            transition: 'opacity 0.2s'
+                                      <Grid item xs={12} sm={6} md={4} key={mpVote.mp_id}>
+                                        <Box
+                                          component={RouterLink}
+                                          to={`/parliament/members/${mpVote.mp_slug}`}
+                                          sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1,
+                                            p: 1,
+                                            borderRadius: 1,
+                                            textDecoration: 'none',
+                                            color: 'inherit',
+                                            border: '1px solid',
+                                            borderColor: 'grey.300',
+                                            bgcolor: 'grey.100',
+                                            opacity: 0.7,
+                                            transition: 'all 0.2s',
+                                            '&:hover': {
+                                              borderColor: 'grey.400',
+                                              bgcolor: 'grey.200',
+                                              opacity: 1,
+                                              transform: 'translateY(-2px)',
+                                              boxShadow: 1
+                                            }
                                           }}
                                         >
-                                        <PersonIcon />
-                                      </Avatar>
-                                      </Tooltip>
+                                          <Avatar 
+                                            src={mpVote.image_url} 
+                                            alt={mpVote.mp_name}
+                                            sx={{ width: 36, height: 36 }}
+                                          >
+                                            <PersonIcon />
+                                          </Avatar>
+                                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                                            <Typography 
+                                              variant="body2" 
+                                              fontWeight={500}
+                                              noWrap
+                                            >
+                                              {mpVote.mp_name}
+                                            </Typography>
+                                            <Typography 
+                                              variant="caption" 
+                                              color="text.secondary"
+                                              noWrap
+                                            >
+                                              {mpVote.party}
+                                            </Typography>
+                                          </Box>
+                                        </Box>
+                                      </Grid>
                                     ))}
-                                  </Box>
+                                  </Grid>
                                 </Box>
-                              )}
+                        )}
                             </Stack>
                             </AccordionDetails>
                           </Accordion>

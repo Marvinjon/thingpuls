@@ -29,15 +29,21 @@ const theme = createTheme({
     },
     success: {
       main: '#4CAF50',
+      light: '#81C784',
+      lighter: '#E8F5E9',
     },
     info: {
       main: '#4F7CBC',
     },
     error: {
       main: '#DC1E35',
+      light: '#E35B6C',
+      lighter: '#FDEAED',
     },
     warning: {
       main: '#FFA726',
+      light: '#FFB74D',
+      lighter: '#FFF3E0',
     },
   },
   typography: {
