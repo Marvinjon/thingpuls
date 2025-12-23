@@ -152,8 +152,18 @@ const BillDetailPage = () => {
                     </Typography>
                     <List>
                       {bill.sponsors.map((sponsor) => (
-                        <ListItem key={sponsor.id} disablePadding>
-                          <ListItemButton component={RouterLink} to={`/parliament/members/${sponsor.slug}`}>
+                        <ListItem 
+                          key={sponsor.id} 
+                          disablePadding
+                          component={RouterLink} 
+                          to={`/parliament/members/${sponsor.slug}`}
+                          sx={{ 
+                            textDecoration: 'none',
+                            color: 'inherit',
+                            '&:hover': { bgcolor: 'action.hover' }
+                          }}
+                        >
+                          <ListItemButton>
                             <ListItemAvatar>
                               <Avatar src={sponsor.image_url} alt={sponsor.full_name}>
                                 <PersonIcon />
@@ -162,6 +172,7 @@ const BillDetailPage = () => {
                             <ListItemText 
                               primary={sponsor.full_name}
                               secondary={sponsor.party?.name || 'Óháður þingmaður'}
+                              primaryTypographyProps={{ fontWeight: 500 }}
                             />
                           </ListItemButton>
                         </ListItem>
@@ -178,8 +189,18 @@ const BillDetailPage = () => {
                     </Typography>
                     <List>
                       {bill.cosponsors.map((cosponsor) => (
-                        <ListItem key={cosponsor.id} disablePadding>
-                          <ListItemButton component={RouterLink} to={`/parliament/members/${cosponsor.slug}`}>
+                        <ListItem 
+                          key={cosponsor.id} 
+                          disablePadding
+                          component={RouterLink} 
+                          to={`/parliament/members/${cosponsor.slug}`}
+                          sx={{ 
+                            textDecoration: 'none',
+                            color: 'inherit',
+                            '&:hover': { bgcolor: 'action.hover' }
+                          }}
+                        >
+                          <ListItemButton>
                             <ListItemAvatar>
                               <Avatar src={cosponsor.image_url} alt={cosponsor.full_name}>
                                 <PersonIcon />
@@ -188,6 +209,7 @@ const BillDetailPage = () => {
                             <ListItemText 
                               primary={cosponsor.full_name}
                               secondary={cosponsor.party?.name || 'Óháður þingmaður'}
+                              primaryTypographyProps={{ fontWeight: 500 }}
                             />
                           </ListItemButton>
                         </ListItem>
