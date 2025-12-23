@@ -41,7 +41,8 @@ const VotingRecordsPage = () => {
   const [pendingSearchTerm, setPendingSearchTerm] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [page, setPage] = useState(1);
-  const [rowsPerPage] = useState(10);
+  const [rowsPerPage] = useState(10);  // Bills per page
+  const [votesPerPage] = useState(200);  // Votes to fetch (to ensure enough bills)
   const [totalPages, setTotalPages] = useState(0);
   const [totalRecords, setTotalRecords] = useState(0);
   const [allVotes, setAllVotes] = useState({});  // Store all votes across pages
@@ -58,117 +59,90 @@ const VotingRecordsPage = () => {
       try {
         setLoading(true);
         
-        // Build query parameters
+        // NEW APPROACH: Fetch bills that have votes (vote_date is set)
+        // This is much more efficient than fetching individual votes
+        
         const params = {
-          limit: 100,  // Fetch more records at once
+          page: page,
+          limit: rowsPerPage,
+          has_votes: true,  // Only get bills with voting records
         };
         
-        if (filters.bill) params.bill = filters.bill;
-        if (filters.member) params.mp = filters.member;
-        if (filters.party) params.party = filters.party;
-        if (filters.vote) params.vote = filters.vote;
-        if (filters.dateFrom) params.date_from = filters.dateFrom;
-        if (filters.dateTo) params.date_to = filters.dateTo;
-        // Note: Search is handled client-side after grouping, not sent to backend
-        
-        // Sort order
-        if (sortOrder === 'dateAsc') params.ordering = 'vote_date';
-        else if (sortOrder === 'dateDesc') params.ordering = '-vote_date';
-        
-        // Fetch all pages of data
-        let allResults = [];
-        let nextUrl = null;
-        let firstResponse = await api.parliamentService.getVotes(params);
-        allResults = [...firstResponse.data.results];
-        nextUrl = firstResponse.data.next;
-
-        while (nextUrl) {
-          const response = await api.parliamentService.getVotes({ ...params, page: nextUrl.split('page=')[1].split('&')[0] });
-          allResults = [...allResults, ...response.data.results];
-          nextUrl = response.data.next;
-        }
-
-        // Process all votes
-        const groupedVotes = {};
-        
-        allResults.forEach(vote => {
-          if (!groupedVotes[vote.bill.id]) {
-            const billData = {
-              id: vote.bill.id,
-              billNumber: vote.bill.althingi_id || vote.bill.id,
-              sessionNumber: vote.session.session_number,
-              billTitle: vote.bill.title || 'Untitled Bill',
-              date: vote.vote_date,
-              stage: "Final Vote",
-              result: vote.bill.status ? 
-                     vote.bill.status.charAt(0).toUpperCase() + vote.bill.status.slice(1) : 
-                     'In Progress',
-              totalVotes: { for: 0, against: 0, abstentions: 0, absent: 0 },
-              memberVotes: []
-            };
-            groupedVotes[vote.bill.id] = billData;
-          }
-          
-          // Add this vote to the appropriate counter
-          if (vote.vote === 'yes') groupedVotes[vote.bill.id].totalVotes.for++;
-          else if (vote.vote === 'no') groupedVotes[vote.bill.id].totalVotes.against++;
-          else if (vote.vote === 'abstain') groupedVotes[vote.bill.id].totalVotes.abstentions++;
-          else if (vote.vote === 'absent') groupedVotes[vote.bill.id].totalVotes.absent++;
-          
-          // Add member vote - translate vote types to Icelandic
-          const voteTranslations = {
-            'yes': 'Já',
-            'no': 'Nei',
-            'abstain': 'Situr hjá',
-            'absent': 'Fjarverandi'
-          };
-          
-          groupedVotes[vote.bill.id].memberVotes.push({
-            memberId: vote.mp.id,
-            memberName: `${vote.mp.first_name} ${vote.mp.last_name}`,
-            party: vote.mp.party ? vote.mp.party.name : 'Óháður',
-            vote: voteTranslations[vote.vote] || vote.vote.charAt(0).toUpperCase() + vote.vote.slice(1)
-          });
-        });
-        
-        // Convert to array and sort by date
-        let processedData = Object.values(groupedVotes).sort((a, b) => {
-          if (sortOrder === 'dateDesc') {
-            return new Date(b.date) - new Date(a.date);
-          }
-          return new Date(a.date) - new Date(b.date);
-        });
-        
-        // Apply client-side search filtering
+        // Search in bill title
         if (filters.searchQuery && filters.searchQuery.trim()) {
-          const searchLower = filters.searchQuery.toLowerCase().trim();
-          processedData = processedData.filter(record => {
-            // Search in bill title
-            const titleMatch = record.billTitle.toLowerCase().includes(searchLower);
-            // Search in bill number
-            const numberMatch = record.billNumber.toString().includes(searchLower);
-            // Search in member names
-            const memberMatch = record.memberVotes.some(vote => 
-              vote.memberName.toLowerCase().includes(searchLower)
-            );
-            // Search in party names
-            const partyMatch = record.memberVotes.some(vote => 
-              vote.party.toLowerCase().includes(searchLower)
-            );
-            
-            return titleMatch || numberMatch || memberMatch || partyMatch;
-          });
+          params.search = filters.searchQuery.trim();
         }
         
-        // Calculate total pages based on filtered data
-        const totalItems = processedData.length;
-        setTotalRecords(totalItems);
-        setTotalPages(Math.ceil(totalItems / rowsPerPage));
+        // Filter by specific bill
+        if (filters.bill) {
+          params.id = filters.bill;
+        }
         
-        // Slice the data for current page
-        const startIndex = (page - 1) * rowsPerPage;
-        const endIndex = startIndex + rowsPerPage;
-        setVotingRecords(processedData.slice(startIndex, endIndex));
+        // Sort order - by vote_date (most recent first by default)
+        if (sortOrder === 'dateAsc') {
+          params.ordering = 'vote_date';
+        } else {
+          params.ordering = '-vote_date';
+        }
+        
+        // Fetch bills with votes
+        const response = await api.parliamentService.getBills(params);
+        const bills = response.data.results || [];
+        
+        // For each bill, fetch its vote counts
+        const billsWithVotes = await Promise.all(
+          bills.map(async (bill) => {
+            try {
+              // Fetch votes for this bill
+              const votesResponse = await api.parliamentService.getBillVotes(bill.id);
+              const votes = votesResponse.data.results || [];
+              
+              // Count votes
+              const voteCounts = { for: 0, against: 0, abstentions: 0, absent: 0 };
+              votes.forEach(vote => {
+                if (vote.vote === 'yes') voteCounts.for++;
+                else if (vote.vote === 'no') voteCounts.against++;
+                else if (vote.vote === 'abstain') voteCounts.abstentions++;
+                else if (vote.vote === 'absent') voteCounts.absent++;
+              });
+              
+              return {
+                id: bill.id,
+                billNumber: bill.althingi_id || bill.id,
+                sessionNumber: bill.session?.session_number || 'N/A',
+                billTitle: bill.title || 'Untitled Bill',
+                date: bill.vote_date || bill.introduced_date,
+                stage: "Final Vote",
+                result: bill.status ? 
+                       bill.status.charAt(0).toUpperCase() + bill.status.slice(1) : 
+                       'In Progress',
+                totalVotes: voteCounts,
+                memberVotes: []
+              };
+            } catch (err) {
+              console.error(`Error fetching votes for bill ${bill.id}:`, err);
+              // Return bill without vote counts if fetch fails
+              return {
+                id: bill.id,
+                billNumber: bill.althingi_id || bill.id,
+                sessionNumber: bill.session?.session_number || 'N/A',
+                billTitle: bill.title || 'Untitled Bill',
+                date: bill.vote_date || bill.introduced_date,
+                stage: "Final Vote",
+                result: bill.status ? 
+                       bill.status.charAt(0).toUpperCase() + bill.status.slice(1) : 
+                       'In Progress',
+                totalVotes: { for: 0, against: 0, abstentions: 0, absent: 0 },
+                memberVotes: []
+              };
+            }
+          })
+        );
+        
+        // Set the records and pagination info
+        setVotingRecords(billsWithVotes);
+        setTotalRecords(response.data.count || 0);
+        setTotalPages(Math.ceil((response.data.count || 0) / rowsPerPage));
         
         setLoading(false);
         setIsSearching(false);

@@ -2,7 +2,7 @@
 # Run all data scrapers in the correct order
 
 # Default session number
-SESSION=${1:-156}
+SESSION=${1:-157}
 
 echo "========================================="
 echo "Data Collection for Session $SESSION"
@@ -45,8 +45,8 @@ cd "$SCRIPT_DIR/.." || exit 1
 echo "Working directory: $(pwd)"
 echo ""
 
-# Check if virtual environment is activated
-if [[ "$VIRTUAL_ENV" == "" ]]; then
+# Check if virtual environment is activated (skip in Docker)
+if [[ "$VIRTUAL_ENV" == "" ]] && [[ ! -f "/.dockerenv" ]]; then
     echo -e "${RED}Warning: Virtual environment not activated!${NC}"
     echo "Please activate your virtual environment first:"
     echo "  source ../venv/bin/activate"

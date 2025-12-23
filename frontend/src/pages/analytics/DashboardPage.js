@@ -4,7 +4,7 @@ import {
   CardHeader, Tabs, Tab, Divider, Button, CircularProgress, 
   Alert, List, ListItem, ListItemText, Chip, IconButton, 
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  LinearProgress, Menu, MenuItem, Select, FormControl, InputLabel
+  LinearProgress
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -31,7 +31,6 @@ const DashboardPage = () => {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [timeframe, setTimeframe] = useState('past-month');
   const [dashboardData, setDashboardData] = useState(null);
   const [votingPatterns, setVotingPatterns] = useState(null);
   const [billPipeline, setBillPipeline] = useState(null);
@@ -72,11 +71,7 @@ const DashboardPage = () => {
     };
 
     fetchDashboardData();
-  }, [timeframe]);
-
-  const handleTimeframeChange = (event) => {
-    setTimeframe(event.target.value);
-  };
+  }, []);
 
   if (loading) {
     return (
@@ -97,25 +92,13 @@ const DashboardPage = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4" component="h1">
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
           Tölfræði þingsins
         </Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <FormControl variant="outlined" size="small">
-            <InputLabel>Tímabil</InputLabel>
-            <Select
-              value={timeframe}
-              onChange={handleTimeframeChange}
-              label="Tímabil"
-            >
-              <MenuItem value="past-week">Síðasta vika</MenuItem>
-              <MenuItem value="past-month">Síðasti mánuður</MenuItem>
-              <MenuItem value="past-year">Síðasta ár</MenuItem>
-              <MenuItem value="all-time">Allt tímabil</MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
+        <Typography variant="h6" color="text.secondary">
+          Gögn frá 157. þingi Alþingis
+        </Typography>
       </Box>
 
       <Grid container spacing={3}>

@@ -164,6 +164,17 @@ class BillViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['title', 'description']
     ordering_fields = ['introduced_date', 'last_update', 'vote_date']
     
+    def get_queryset(self):
+        """Filter queryset based on request parameters."""
+        queryset = super().get_queryset()
+        
+        # Filter for bills that have votes (vote_date is not null)
+        has_votes = self.request.query_params.get('has_votes', None)
+        if has_votes and has_votes.lower() in ['true', '1', 'yes']:
+            queryset = queryset.filter(vote_date__isnull=False)
+        
+        return queryset
+    
     def get_serializer_class(self):
         """Return appropriate serializer class."""
         if self.action == 'retrieve':

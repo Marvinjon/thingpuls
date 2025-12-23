@@ -15,12 +15,29 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
-    if (token) {
+    if (token && token !== 'null' && token !== 'undefined') {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => Promise.reject(error)
+);
+
+// Add response interceptor to handle authentication errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // If we get a 401 error, clear invalid tokens
+    if (error.response && error.response.status === 401) {
+      const token = localStorage.getItem('accessToken');
+      // Only clear tokens if we actually sent one
+      if (token && error.config.headers.Authorization) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+      }
+    }
+    return Promise.reject(error);
+  }
 );
 
 // Parliament API services

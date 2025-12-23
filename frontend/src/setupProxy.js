@@ -7,17 +7,12 @@ module.exports = function(app) {
   console.log('Setting up proxy to:', target);
   
   // Proxy API requests
-  // When specifying a context (e.g., '/api'), the middleware strips it by default
-  // We need to add it back using pathRewrite
   app.use(
     '/api',
     createProxyMiddleware({
       target: target,
       changeOrigin: true,
-      pathRewrite: (path) => {
-        // The path comes without /api, we need to add it back
-        return '/api' + path;
-      },
+      // Don't rewrite the path - it already has /api
     })
   );
   
