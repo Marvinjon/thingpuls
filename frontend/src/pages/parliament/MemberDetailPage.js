@@ -969,7 +969,9 @@ const MemberDetailPage = () => {
                           <Typography variant="subtitle1" color="primary" gutterBottom>
                             Stjórnarseta
                           </Typography>
-                          <Typography paragraph>{interests.board_positions}</Typography>
+                          <Typography paragraph sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {interests.board_positions}
+                          </Typography>
                           <Divider />
                         </Box>
                       )}
@@ -979,7 +981,9 @@ const MemberDetailPage = () => {
                           <Typography variant="subtitle1" color="primary" gutterBottom>
                             Launuð störf
                           </Typography>
-                          <Typography paragraph>{interests.paid_work}</Typography>
+                          <Typography paragraph sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {interests.paid_work}
+                          </Typography>
                           <Divider />
                         </Box>
                       )}
@@ -989,7 +993,9 @@ const MemberDetailPage = () => {
                           <Typography variant="subtitle1" color="primary" gutterBottom>
                             Atvinnurekstur
                           </Typography>
-                          <Typography paragraph>{interests.business_activities}</Typography>
+                          <Typography paragraph sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {interests.business_activities}
+                          </Typography>
                           <Divider />
                         </Box>
                       )}
@@ -999,7 +1005,9 @@ const MemberDetailPage = () => {
                           <Typography variant="subtitle1" color="primary" gutterBottom>
                             Eignarhlutir í fyrirtækjum
                           </Typography>
-                          <Typography paragraph>{interests.company_ownership}</Typography>
+                          <Typography paragraph sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {interests.company_ownership}
+                          </Typography>
                           <Divider />
                         </Box>
                       )}
@@ -1009,7 +1017,9 @@ const MemberDetailPage = () => {
                           <Typography variant="subtitle1" color="primary" gutterBottom>
                             Fjárhagslegur stuðningur
                           </Typography>
-                          <Typography paragraph>{interests.financial_support}</Typography>
+                          <Typography paragraph sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {interests.financial_support}
+                          </Typography>
                           <Divider />
                         </Box>
                       )}
@@ -1019,7 +1029,9 @@ const MemberDetailPage = () => {
                           <Typography variant="subtitle1" color="primary" gutterBottom>
                             Gjafir
                           </Typography>
-                          <Typography paragraph>{interests.gifts}</Typography>
+                          <Typography paragraph sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {interests.gifts}
+                          </Typography>
                           <Divider />
                         </Box>
                       )}
@@ -1029,7 +1041,9 @@ const MemberDetailPage = () => {
                           <Typography variant="subtitle1" color="primary" gutterBottom>
                             Ferðir og heimsóknir
                           </Typography>
-                          <Typography paragraph>{interests.trips}</Typography>
+                          <Typography paragraph sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {interests.trips}
+                          </Typography>
                           <Divider />
                         </Box>
                       )}
@@ -1039,7 +1053,9 @@ const MemberDetailPage = () => {
                           <Typography variant="subtitle1" color="primary" gutterBottom>
                             Eftirgjöf skulda
                           </Typography>
-                          <Typography paragraph>{interests.debt_forgiveness}</Typography>
+                          <Typography paragraph sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {interests.debt_forgiveness}
+                          </Typography>
                           <Divider />
                         </Box>
                       )}
@@ -1049,7 +1065,9 @@ const MemberDetailPage = () => {
                           <Typography variant="subtitle1" color="primary" gutterBottom>
                             Fasteignir
                           </Typography>
-                          <Typography paragraph>{interests.real_estate}</Typography>
+                          <Typography paragraph sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {interests.real_estate}
+                          </Typography>
                           <Divider />
                         </Box>
                       )}
@@ -1059,7 +1077,9 @@ const MemberDetailPage = () => {
                           <Typography variant="subtitle1" color="primary" gutterBottom>
                             Samkomulag við fyrrverandi vinnuveitendur
                           </Typography>
-                          <Typography paragraph>{interests.former_employer_agreements}</Typography>
+                          <Typography paragraph sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {interests.former_employer_agreements}
+                          </Typography>
                           <Divider />
                         </Box>
                       )}
@@ -1069,7 +1089,9 @@ const MemberDetailPage = () => {
                           <Typography variant="subtitle1" color="primary" gutterBottom>
                             Samkomulag um framtíðarstörf
                           </Typography>
-                          <Typography paragraph>{interests.future_employer_agreements}</Typography>
+                          <Typography paragraph sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {interests.future_employer_agreements}
+                          </Typography>
                           <Divider />
                         </Box>
                       )}
@@ -1079,7 +1101,9 @@ const MemberDetailPage = () => {
                           <Typography variant="subtitle1" color="primary" gutterBottom>
                             Önnur trúnaðarstörf
                           </Typography>
-                          <Typography paragraph>{interests.other_positions}</Typography>
+                          <Typography paragraph sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {interests.other_positions}
+                          </Typography>
                         </Box>
                       )}
                       

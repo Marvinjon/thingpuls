@@ -82,7 +82,12 @@ const BillsPage = () => {
         console.log('Bills response:', response.data);
         setBills(response.data.results || []);
         setTotalBills(response.data.count || 0);
-        setTotalPages(Math.ceil(response.data.count / 10)); // Assuming 10 items per page
+        
+        // Calculate total pages based on backend page size (20 items per page)
+        const PAGE_SIZE = 20; // Must match backend PAGE_SIZE setting
+        const totalCount = response.data.count || 0;
+        const calculatedPages = totalCount > 0 ? Math.ceil(totalCount / PAGE_SIZE) : 1;
+        setTotalPages(calculatedPages);
         
         // Extract unique years from bills if not already set
         if (years.length === 0 && response.data.results) {
@@ -127,7 +132,9 @@ const BillsPage = () => {
         const response = await parliamentService.getTopics();
         if (isMounted) {
           console.log('Topics response:', response.data);
-          setTopics(response.data || []);
+          // Backend returns paginated response with results array
+          const topicsData = response.data.results || response.data || [];
+          setTopics(topicsData);
         }
       } catch (err) {
         console.error('Error fetching topics:', err);
