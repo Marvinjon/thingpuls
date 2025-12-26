@@ -92,10 +92,10 @@ const HomePage = () => {
                   <DescriptionIcon sx={{ fontSize: 60, color: 'primary.main' }} />
                 </Box>
                 <Typography gutterBottom variant="h5" component="div" align="center">
-                  Frumvörp
+                  Þingmál
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Fylgstu með frumvörpum í gegnum þingið, með upplýsingum um flutningsmenn, breytingar og stöðu.
+                  Fylgstu með þingmálum, með upplýsingum um flutningsmenn, breytingar, atkvæðagreiðslur og stöðu.
                 </Typography>
               </CardContent>
               <CardActions>
@@ -105,7 +105,7 @@ const HomePage = () => {
                   to="/parliament/bills" 
                   fullWidth
                 >
-                  Skoða Frumvörp
+                  Skoða Þingmál
                 </Button>
               </CardActions>
             </Card>

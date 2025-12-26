@@ -267,13 +267,12 @@ const BillsPage = () => {
 
   return (
     <Container maxWidth="lg">
-      <Typography variant="h4" component="h1" gutterBottom sx={{ mt: 4 }}>
+      <Typography variant="h4" component="h1" gutterBottom sx={{ mt: 4, mb: 1 }}>
         Þingmál
       </Typography>
       
-      <Typography variant="body1" color="text.secondary" paragraph>
-        Skoðaðu, leitaðu og síaðu þingmál í Alþingi. 
-        Finndu ítarlegar upplýsingar um löggjöf, stöðu þeirra, flutningsmenn og atkvæðagreiðslur.
+      <Typography variant="body1" color="text.secondary" paragraph sx={{ mb: 3 }}>
+        Smelltu á þingmál til að sjá nánari upplýsingar
       </Typography>
       
       {/* Search and Filter Bar */}
@@ -405,13 +404,9 @@ const BillsPage = () => {
       
       {/* Search Results Summary */}
       {!loading && !error && bills.length > 0 && (
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{ mb: 2 }}>
           <Typography variant="body2" color="text.secondary">
-            {searchTerm ? (
-              `${bills.length} niðurstöður fyrir "${searchTerm}"`
-            ) : (
-              `${bills.length} þingmál fundust`
-            )}
+            Sýni {bills.length} af {totalBills} þingmálum
           </Typography>
         </Box>
       )}
@@ -452,73 +447,96 @@ const BillsPage = () => {
         <>
           <Grid container spacing={3}>
             {bills.map((bill) => (
-              <Grid item xs={12} key={bill.id}>
-                <Card>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                      <Typography variant="h6" component="h2">
-                        {bill.title}
-                      </Typography>
-                      <Chip 
-                        label={formatStatus(bill.status)}
-                        color={getStatusColor(bill.status)}
-                        size="small"
-                      />
-                    </Box>
-                    
-                    <Typography variant="body2" color="text.secondary" paragraph>
-                      {bill.description}
-                    </Typography>
-                    
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                      {bill.topics?.map((topic) => (
-                        <Chip
-                          key={topic.id}
-                          label={topic.name}
+              <Grid item xs={12} md={6} key={bill.id}>
+                <Box
+                  component={RouterLink}
+                  to={`/parliament/bills/${bill.id}`}
+                  sx={{
+                    textDecoration: 'none',
+                    display: 'block',
+                    height: '100%',
+                    cursor: 'pointer',
+                    padding: '3px',
+                    backgroundColor: '#e0e0e0',
+                    borderRadius: '12px',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: '0 8px 20px rgba(0, 0, 0, 0.15)',
+                      backgroundColor: '#d0d0d0'
+                    }
+                  }}
+                >
+                  <Card 
+                    sx={{ 
+                      height: '100%',
+                      borderRadius: '10px',
+                      backgroundColor: '#ffffff',
+                    }}
+                  >
+                    <CardContent sx={{ pb: 2 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                        <Typography variant="h6" component="h2" sx={{ fontSize: '1rem', fontWeight: 600, lineHeight: 1.3, pr: 1 }}>
+                          {bill.title}
+                        </Typography>
+                        <Chip 
+                          label={formatStatus(bill.status)}
+                          color={getStatusColor(bill.status)}
                           size="small"
-                          variant="outlined"
+                          sx={{ flexShrink: 0 }}
                         />
-                      ))}
-                    </Box>
-                  </CardContent>
-                  
-                  <CardActions>
-                    <Button 
-                      component={RouterLink}
-                      to={`/parliament/bills/${bill.id}`}
-                      size="small"
-                      color="primary"
-                    >
-                      Nánari upplýsingar
-                    </Button>
-                    {bill.url && (
-                      <Button
-                        href={bill.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        size="small"
-                        color="secondary"
+                      </Box>
+                      
+                      <Typography 
+                        variant="body2" 
+                        color="text.secondary" 
+                        sx={{ 
+                          mb: 1.5,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          fontSize: '0.875rem'
+                        }}
                       >
-                        Skoða á Alþingi.is
-                      </Button>
-                    )}
-                  </CardActions>
-                </Card>
+                        {bill.description || 'Engin lýsing tiltæk'}
+                      </Typography>
+                      
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                        {bill.topics?.slice(0, 2).map((topic) => (
+                          <Chip
+                            key={topic.id}
+                            label={topic.name}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontSize: '0.75rem', height: '24px' }}
+                          />
+                        ))}
+                        {bill.topics?.length > 2 && (
+                          <Chip
+                            label={`+${bill.topics.length - 2}`}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontSize: '0.75rem', height: '24px' }}
+                          />
+                        )}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Box>
               </Grid>
             ))}
           </Grid>
           
-          {/* Pagination with count */}
+          {/* Pagination */}
           {totalPages > 1 && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', my: 4 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Page {currentPage} of {totalPages} ({totalBills} total {totalBills === 1 ? 'bill' : 'bills'})
-              </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
               <Pagination
                 count={totalPages}
                 page={currentPage}
                 onChange={handlePageChange}
                 color="primary"
+                size="large"
               />
             </Box>
           )}
