@@ -156,6 +156,7 @@ class BillDetailSerializer(serializers.ModelSerializer):
                     'mp_name': vote.mp.full_name,
                     'mp_slug': vote.mp.slug,
                     'party': vote.mp.party.abbreviation if vote.mp.party else 'Óháður',
+                    'party_name': vote.mp.party.name if vote.mp.party else 'Óháður',
                     'party_color': vote.mp.party.color if vote.mp.party else '#808080',
                     'vote': vote.vote,
                     'image_url': vote.mp.image_url

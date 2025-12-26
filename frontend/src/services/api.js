@@ -128,6 +128,7 @@ export const analyticsService = {
   getVotingPatterns: (params) => api.get('/analytics/reports/voting_patterns/', { params }),
   getMPActivity: (params) => api.get('/analytics/reports/mp_activity/', { params }),
   getTopicTrends: (params) => api.get('/analytics/reports/topic_trends/', { params }),
+  getTopSpeakers: (params) => api.get('/analytics/reports/top_speakers/', { params }),
   
   // Data exports
   getExports: (params) => api.get('/analytics/exports/', { params }),

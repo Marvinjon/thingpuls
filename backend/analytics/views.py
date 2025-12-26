@@ -251,6 +251,12 @@ class AnalyticsReportViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'description']
     ordering_fields = ['created_at', 'updated_at']
     
+    def get_permissions(self):
+        """Allow public access to read-only analytics actions."""
+        if self.action in ['voting_patterns', 'mp_activity', 'topic_trends', 'top_speakers']:
+            return []
+        return super().get_permissions()
+    
     def get_queryset(self):
         """Return reports based on user permissions."""
         user = self.request.user
@@ -340,6 +346,38 @@ class AnalyticsReportViewSet(viewsets.ModelViewSet):
             'labels': [topic.name for topic in topics],
             'bill_counts': [topic.bill_count for topic in topics]
         }
+        
+        return Response(result)
+    
+    @action(detail=False, methods=['get'])
+    def top_speakers(self, request):
+        """Generate top speakers report - MPs who speak the most."""
+        limit = int(request.query_params.get('limit', 10))
+        
+        # Get top MPs by total speaking time
+        top_mps = MP.objects.filter(
+            active=True,
+            total_speaking_time__gt=0
+        ).select_related('party').order_by('-total_speaking_time')[:limit]
+        
+        # Format data for visualization
+        result = []
+        for mp in top_mps:
+            # Convert seconds to minutes for display
+            speaking_time_minutes = round(mp.total_speaking_time / 60, 1)
+            result.append({
+                'id': mp.id,
+                'name': mp.full_name,
+                'slug': mp.slug,
+                'party': mp.party.name if mp.party else 'Óháður',
+                'party_abbreviation': mp.party.abbreviation if mp.party else 'Óh.',
+                'party_color': mp.party.color if mp.party else '#808080',
+                'total_speaking_time': mp.total_speaking_time,
+                'speaking_time_minutes': speaking_time_minutes,
+                'speaking_time_hours': round(mp.total_speaking_time / 3600, 1),
+                'image_url': mp.image_url,
+                'speech_count': mp.speech_count
+            })
         
         return Response(result)
 

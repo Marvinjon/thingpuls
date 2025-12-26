@@ -333,7 +333,7 @@ const BillDetailPage = () => {
                                               color="text.secondary"
                                               noWrap
                                             >
-                                              {mpVote.party}
+                                              {mpVote.party_name || mpVote.party}
                                             </Typography>
                                           </Box>
                                         </Box>
@@ -395,7 +395,7 @@ const BillDetailPage = () => {
                                               color="text.secondary"
                                               noWrap
                                             >
-                                              {mpVote.party}
+                                              {mpVote.party_name || mpVote.party}
                                             </Typography>
                                           </Box>
                                         </Box>
@@ -457,7 +457,7 @@ const BillDetailPage = () => {
                                               color="text.secondary"
                                               noWrap
                                             >
-                                              {mpVote.party}
+                                              {mpVote.party_name || mpVote.party}
                                             </Typography>
                                           </Box>
                                         </Box>
@@ -521,7 +521,7 @@ const BillDetailPage = () => {
                                               color="text.secondary"
                                               noWrap
                                             >
-                                              {mpVote.party}
+                                              {mpVote.party_name || mpVote.party}
                                             </Typography>
                                           </Box>
                                         </Box>
