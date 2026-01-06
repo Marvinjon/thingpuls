@@ -39,7 +39,7 @@ def parse_date(date_string):
         return None
 
 
-def fetch_mps(session_number=156):
+def fetch_mps(session_number):
     """Fetch MPs from Alþingi XML API"""
     print(f'Fetching MPs for session {session_number}...')
     
@@ -242,7 +242,13 @@ def fetch_mps(session_number=156):
 
 
 if __name__ == '__main__':
-    # Get session number from command line or use default
-    session = int(sys.argv[1]) if len(sys.argv) > 1 else 156
+    # Get session number from command line (required)
+    if len(sys.argv) < 2:
+        print('Error: Session number is required')
+        print('Usage: python fetch_mps.py <session_number>')
+        print('Example: python fetch_mps.py 157')
+        sys.exit(1)
+    
+    session = int(sys.argv[1])
     fetch_mps(session)
 

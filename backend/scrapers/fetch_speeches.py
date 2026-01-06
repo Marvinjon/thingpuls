@@ -37,7 +37,7 @@ def parse_date(date_string):
         return None
 
 
-def fetch_mp_speeches(mp_id, session_number=156):
+def fetch_mp_speeches(mp_id, session_number):
     """Fetch speeches for a specific MP from Alþingi XML API"""
     print(f'\nFetching speeches for MP ID {mp_id}...')
     
@@ -229,7 +229,7 @@ def fetch_mp_speeches(mp_id, session_number=156):
         print(f'Unexpected error: {str(e)}')
 
 
-def fetch_all_mp_speeches(session_number=156):
+def fetch_all_mp_speeches(session_number):
     """Fetch speeches for all active MPs"""
     print(f'Fetching speeches for all active MPs in session {session_number}...')
     
@@ -247,8 +247,15 @@ def fetch_all_mp_speeches(session_number=156):
 
 
 if __name__ == '__main__':
-    # Get session number from command line or use default
-    session = int(sys.argv[1]) if len(sys.argv) > 1 else 156
+    # Get session number from command line (required)
+    if len(sys.argv) < 2:
+        print('Error: Session number is required')
+        print('Usage: python fetch_speeches.py <session_number> [mp_id]')
+        print('Example: python fetch_speeches.py 157')
+        print('Example: python fetch_speeches.py 157 1234')
+        sys.exit(1)
+    
+    session = int(sys.argv[1])
     
     # Check if a specific MP ID is provided
     if len(sys.argv) > 2:

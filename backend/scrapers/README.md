@@ -25,10 +25,10 @@ venv\Scripts\activate  # On Windows
 ```bash
 # Make sure venv is activated, then:
 cd backend
-./scrapers/run_all.sh 156
+./scrapers/run_all.sh 157
 ```
 
-This runs all scrapers in the correct order for session 156.
+This runs all scrapers in the correct order for session 157 (2025-2026).
 
 ## Available Scripts
 
@@ -50,11 +50,11 @@ All in `backend/scrapers/`:
 # From the backend directory (with venv activated)
 cd backend
 
-# Fetch parties for session 156 (default)
-python scrapers/fetch_parties.py 156
+# Fetch parties for session 157 (current session)
+python scrapers/fetch_parties.py 157
 
-# Fetch parties for a specific session
-python scrapers/fetch_parties.py 155
+# Or for a different session
+python scrapers/fetch_parties.py 156
 ```
 
 ### 1. Fetch Political Parties
@@ -138,22 +138,22 @@ For a fresh database, run in this order:
 cd backend
 
 # 1. Fetch parties (required for MPs)
-python scrapers/fetch_parties.py 156
+python scrapers/fetch_parties.py 157
 
 # 2. Fetch MPs (required for bills, speeches, votes, interests)
-python scrapers/fetch_mps.py 156
+python scrapers/fetch_mps.py 157
 
 # 3. Fetch bills (required for votes and speeches)
-python scrapers/fetch_bills.py 156
+python scrapers/fetch_bills.py 157
 
 # 4. Assign topics to bills
 python scrapers/assign_topics.py
 
 # 5. Fetch voting records
-python scrapers/fetch_voting_records.py 156
+python scrapers/fetch_voting_records.py 157
 
 # 6. Fetch speeches
-python scrapers/fetch_speeches.py 156
+python scrapers/fetch_speeches.py 157
 
 # 7. Fetch MP interests
 python scrapers/fetch_interests.py
@@ -163,7 +163,7 @@ python scrapers/fetch_interests.py
 
 ```bash
 cd backend
-./scrapers/run_all.sh 156
+./scrapers/run_all.sh 157
 ```
 
 ## Data Source
@@ -203,7 +203,7 @@ Each script provides:
 All errors are printed to stdout. You can redirect to a file:
 
 ```bash
-python scrapers/fetch_bills.py 156 > fetch_bills.log 2>&1
+python scrapers/fetch_bills.py 157 > fetch_bills.log 2>&1
 ```
 
 ## Notes
@@ -212,7 +212,7 @@ python scrapers/fetch_bills.py 156 > fetch_bills.log 2>&1
 - Existing records will be updated, not duplicated
 - Scripts use transactions to ensure data consistency
 - Built-in delays prevent overwhelming the Alþingi API
-- Default session is 156 (current session as of 2024)
+- Session number must be specified (no default) - use 157 for 2025-2026 session
 
 ## Development
 

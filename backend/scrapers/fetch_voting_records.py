@@ -181,7 +181,7 @@ def fetch_bill_voting_records(session, bill_number, force=False):
         print(f'  Error: Unexpected error: {str(e)}')
 
 
-def fetch_all_voting_records(session_number=156, force=False):
+def fetch_all_voting_records(session_number, force=False):
     """Fetch voting records for all bills in a session"""
     print(f'Fetching voting records for session {session_number}...')
     
@@ -254,8 +254,15 @@ def fetch_all_voting_records(session_number=156, force=False):
 
 
 if __name__ == '__main__':
-    # Get session number from command line or use default
-    session = int(sys.argv[1]) if len(sys.argv) > 1 else 156
+    # Get session number from command line (required)
+    if len(sys.argv) < 2:
+        print('Error: Session number is required')
+        print('Usage: python fetch_voting_records.py <session_number> [bill_number]')
+        print('Example: python fetch_voting_records.py 157')
+        print('Example: python fetch_voting_records.py 157 1')
+        sys.exit(1)
+    
+    session = int(sys.argv[1])
     
     # Check if a specific bill number is provided
     if len(sys.argv) > 2:

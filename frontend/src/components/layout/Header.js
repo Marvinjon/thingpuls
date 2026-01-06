@@ -36,6 +36,7 @@ import LoginIcon from '@mui/icons-material/Login';
 import { useAuth } from '../../context/AuthContext';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import PersonIcon from '@mui/icons-material/Person';
+import logo from '../../assets/images/logo.svg';
 
 const Header = () => {
   const navigate = useNavigate();
@@ -77,9 +78,21 @@ const Header = () => {
   
   const drawer = (
     <Box sx={{ width: 250 }} role="presentation" onClick={handleDrawerToggle}>
-      <Typography variant="h6" sx={{ my: 2, ml: 2 }}>
-        Þingpúls
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', my: 2, ml: 2 }}>
+        <Box
+          component="img"
+          src={logo}
+          alt="Þingpúls logo"
+          sx={{
+            height: 32,
+            width: 32,
+            mr: 1.5,
+          }}
+        />
+        <Typography variant="h6">
+          Þingpúls
+        </Typography>
+      </Box>
       <Divider />
       <List>
         {navItems.map((item) => (
@@ -121,52 +134,69 @@ const Header = () => {
             </IconButton>
             
             {/* Logo/Title */}
-            <IconButton
+            <Box
               component={RouterLink}
               to="/"
               sx={{
                 mr: 2,
                 display: { xs: 'none', md: 'flex' },
-                fontFamily: 'monospace',
-                fontWeight: 700,
-                color: 'inherit',
+                alignItems: 'center',
                 textDecoration: 'none',
+                color: 'inherit',
               }}
             >
-              <AccountBalanceIcon />
-            </IconButton>
-            
-            <Typography
-              variant="h6"
-              noWrap
-              component={RouterLink}
-              to="/"
-              sx={{
-                mr: 2,
-                display: { xs: 'none', md: 'flex' },
-                fontFamily: 'monospace',
-                fontWeight: 700,
-                color: 'inherit',
-                textDecoration: 'none',
-              }}
-            >
-              ÞINGPÚLS
-            </Typography>
-            
-            {/* Mobile logo */}
-            <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
-              <Typography
-                variant="h5"
-                noWrap
-                component={RouterLink}
-                to="/"
+              <Box
+                component="img"
+                src={logo}
+                alt="Þingpúls logo"
                 sx={{
-                  display: 'flex',
-                  flexGrow: 1,
+                  height: 40,
+                  width: 40,
+                  mr: 1.5,
+                }}
+              />
+              <Typography
+                variant="h6"
+                noWrap
+                sx={{
                   fontFamily: 'monospace',
                   fontWeight: 700,
                   color: 'inherit',
-                  textDecoration: 'none',
+                }}
+              >
+                ÞINGPÚLS
+              </Typography>
+            </Box>
+            
+            {/* Mobile logo */}
+            <Box 
+              component={RouterLink}
+              to="/"
+              sx={{ 
+                flexGrow: 1, 
+                display: { xs: 'flex', md: 'none' },
+                alignItems: 'center',
+                textDecoration: 'none',
+                color: 'inherit',
+              }}
+            >
+              <Box
+                component="img"
+                src={logo}
+                alt="Þingpúls logo"
+                sx={{
+                  height: 32,
+                  width: 32,
+                  mr: 1,
+                }}
+              />
+              <Typography
+                variant="h5"
+                noWrap
+                sx={{
+                  fontFamily: 'monospace',
+                  fontWeight: 700,
+                  color: 'inherit',
                 }}
               >
                 ÞINGPÚLS

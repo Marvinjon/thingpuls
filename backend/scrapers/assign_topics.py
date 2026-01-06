@@ -1,11 +1,29 @@
 """
-Assign topics to bills based on keywords
-Simple script to assign relevant topics to bills
+Assign topics to bills using official Alþingi topic categories
+Fetches topics from the Alþingi XML API and assigns them to bills
+
+Usage:
+    # Assign topics for all bills
+    python assign_topics.py
+    
+    # Assign topics for a specific session (e.g., session 157)
+    python assign_topics.py --session 157
+    python assign_topics.py -s 157
+    
+    # Clear existing assignments before assigning
+    python assign_topics.py --clear
+    python assign_topics.py -c
+    
+    # Combine flags
+    python assign_topics.py --session 157 --clear
 """
 
 import os
 import sys
 import django
+import requests
+import xml.etree.ElementTree as ET
+from time import sleep
 
 # Setup Django
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -15,160 +33,257 @@ django.setup()
 from parliament.models import Bill, Topic
 
 
-# Icelandic keywords for each topic
-TOPIC_KEYWORDS = {
-    'Heilbrigðismál': [
-        'heilbrigðis', 'sjúkra', 'heilsu', 'lækn', 'sjúkrahús', 'heilbrigðisþjónust',
-        'lyfja', 'meðferð', 'hjúkrun', 'bráðamóttök'
-    ],
-    'Menntamál': [
-        'mennta', 'skóla', 'kennslu', 'náms', 'háskóla', 'framhaldsskól',
-        'grunnskól', 'fræðslu', 'nemend', 'kennara'
-    ],
-    'Umhverfismál': [
-        'umhverfis', 'loftslags', 'náttúru', 'mengunar', 'orkumál', 'sjálfbær',
-        'endurvinnslu', 'græn', 'vistkerfi', 'landgræðslu', 'skógrækt'
-    ],
-    'Efnahagsmál': [
-        'fjármála', 'efnahags', 'skatta', 'viðskipta', 'banka', 'fjárlög',
-        'verðbréf', 'gjald', 'tekju', 'kostnað', 'greiðslu'
-    ],
-    'Dómsmál': [
-        'dóm', 'rétt', 'laga', 'saka', 'réttindi', 'dómstól', 'löggjöf',
-        'refsing', 'fangelsi', 'lögregl'
-    ]
-}
+def fetch_all_topics():
+    """Fetch all topic categories from Alþingi XML API"""
+    print('Fetching topics from Alþingi API...')
+    
+    url = 'https://www.althingi.is/altext/xml/efnisflokkar/'
+    
+    try:
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        
+        root = ET.fromstring(response.content)
+        topics = []
+        
+        # Parse the XML structure
+        for yfirflokkur in root.findall('yfirflokkur'):
+            yfirflokkur_id = yfirflokkur.get('id')
+            yfirflokkur_heiti = yfirflokkur.find('heiti').text
+            
+            for efnisflokkur in yfirflokkur.findall('efnisflokkur'):
+                efnisflokkur_id = efnisflokkur.get('id')
+                heiti = efnisflokkur.find('heiti').text
+                lysing_elem = efnisflokkur.find('lýsing')
+                lysing = lysing_elem.text if lysing_elem is not None and lysing_elem.text else ''
+                
+                topics.append({
+                    'id': efnisflokkur_id,
+                    'name': heiti,
+                    'description': lysing,
+                    'parent_category': yfirflokkur_heiti,
+                    'parent_id': yfirflokkur_id
+                })
+        
+        print(f'  ✓ Found {len(topics)} topics')
+        return topics
+        
+    except requests.RequestException as e:
+        print(f'  ✗ Error fetching topics: {e}')
+        return []
 
 
-def create_default_topics():
-    """Create default topics if they don't exist"""
-    print('Creating/updating default topics...')
+def fetch_bills_for_topic(topic_id, session=None):
+    """Fetch all bills associated with a specific topic
     
-    default_topics = [
-        {
-            'name': 'Heilbrigðismál',
-            'description': 'Heilbrigðisþjónusta, læknisþjónusta og lýðheilsa',
-            'keywords': TOPIC_KEYWORDS['Heilbrigðismál']
-        },
-        {
-            'name': 'Menntamál',
-            'description': 'Menntun, skólar og fræðsla',
-            'keywords': TOPIC_KEYWORDS['Menntamál']
-        },
-        {
-            'name': 'Umhverfismál',
-            'description': 'Umhverfismál, loftslagsmál og náttúruvernd',
-            'keywords': TOPIC_KEYWORDS['Umhverfismál']
-        },
-        {
-            'name': 'Efnahagsmál',
-            'description': 'Efnahagsmál, fjármál og viðskipti',
-            'keywords': TOPIC_KEYWORDS['Efnahagsmál']
-        },
-        {
-            'name': 'Dómsmál',
-            'description': 'Dómsmál, lög og réttarkerfi',
-            'keywords': TOPIC_KEYWORDS['Dómsmál']
-        }
-    ]
+    Args:
+        topic_id: The topic ID to fetch bills for
+        session: Optional parliament session number (e.g., 157). If None, fetches current session.
     
-    for topic_data in default_topics:
+    Returns:
+        List of tuples (bill_number, session_number)
+    """
+    url = f'https://www.althingi.is/altext/xml/efnisflokkar/efnisflokkur/?efnisflokkur={topic_id}'
+    
+    # Add session parameter if specified
+    if session:
+        url += f'&lthing={session}'
+    
+    try:
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        
+        root = ET.fromstring(response.content)
+        bills = []
+        
+        # Find the málalisti (bill list) element
+        for yfirflokkur in root.findall('yfirflokkur'):
+            for efnisflokkur in yfirflokkur.findall('efnisflokkur'):
+                malalisti = efnisflokkur.find('málalisti')
+                if malalisti is not None:
+                    for mal in malalisti.findall('mál'):
+                        malsnumer = mal.get('málsnúmer')
+                        thingnumer = mal.get('þingnúmer')
+                        
+                        if malsnumer and thingnumer:
+                            # Store as tuple (bill_number, session_number)
+                            bills.append((int(malsnumer), int(thingnumer)))
+        
+        return bills
+        
+    except requests.RequestException as e:
+        print(f'  ✗ Error fetching bills for topic {topic_id}: {e}')
+        return []
+
+
+def create_or_update_topics(topics_data):
+    """Create or update topics in the database"""
+    print('\nCreating/updating topics in database...')
+    
+    created_count = 0
+    updated_count = 0
+    
+    for topic_data in topics_data:
+        # Create a full description including parent category
+        full_description = topic_data['description']
+        if topic_data['parent_category']:
+            full_description = f"{topic_data['parent_category']} - {full_description}" if full_description else topic_data['parent_category']
+        
         topic, created = Topic.objects.update_or_create(
             name=topic_data['name'],
             defaults={
-                'description': topic_data['description'],
-                'keywords': topic_data['keywords']
+                'description': full_description,
+                'keywords': []  # Not using keywords anymore
             }
         )
-        if created:
-            print(f'  ✓ Created topic: {topic.name}')
-        else:
-            print(f'  ✓ Updated topic: {topic.name}')
-
-
-def assign_topics_to_bill(bill, topics):
-    """Assign topics to a bill based on keywords in title and description"""
-    title_lower = bill.title.lower()
-    desc_lower = bill.description.lower() if bill.description else ''
-    
-    topics_before = set(bill.topics.all())
-    
-    for topic in topics:
-        keywords = topic.keywords if hasattr(topic, 'keywords') else []
         
-        # Check if any keyword matches the title or description
-        if any(keyword.lower() in title_lower or keyword.lower() in desc_lower for keyword in keywords):
-            bill.topics.add(topic)
+        if created:
+            created_count += 1
+            print(f'  ✓ Created: {topic.name}')
+        else:
+            updated_count += 1
+            print(f'  ✓ Updated: {topic.name}')
     
-    topics_after = set(bill.topics.all())
-    new_topics = topics_after - topics_before
-    
-    return len(new_topics)
+    print(f'\n  Created: {created_count}, Updated: {updated_count}')
 
 
-def assign_topics(clear_existing=False):
-    """Assign topics to all bills based on keywords"""
-    print('Starting topic assignment...\n')
+def assign_topics(clear_existing=False, session=None):
+    """Assign topics to bills using official Alþingi categorization
     
-    # Create default topics first
-    create_default_topics()
-    print()
+    Args:
+        clear_existing: If True, clears existing topic assignments before assigning
+        session: Optional parliament session number (e.g., 157). If None, processes all bills.
+    """
+    if session:
+        print(f'Starting topic assignment for session {session} from Alþingi API...\n')
+    else:
+        print('Starting topic assignment from Alþingi API...\n')
     
-    # Get all topics
-    topics = Topic.objects.all()
-    if not topics:
-        print('Error: No topics found in database')
+    # Fetch all topics from API
+    topics_data = fetch_all_topics()
+    if not topics_data:
+        print('Error: Could not fetch topics from API')
         return
     
-    # Get all bills
-    bills = Bill.objects.all()
-    total_bills = bills.count()
+    # Create/update topics in database
+    create_or_update_topics(topics_data)
     
-    if not bills:
-        print('No bills found in database')
-        return
-    
-    print(f'Found {total_bills} bills to process')
-    print(f'Using {topics.count()} topics\n')
+    # Filter bills by session if specified
+    if session:
+        bills_queryset = Bill.objects.filter(session__session_number=session)
+        session_bill_count = bills_queryset.count()
+        if session_bill_count == 0:
+            print(f'\n✗ No bills found for session {session} in database')
+            return
+        print(f'\n→ Filtering for session {session} ({session_bill_count} bills in database)')
+    else:
+        bills_queryset = Bill.objects.all()
     
     if clear_existing:
-        print('Clearing existing topic assignments...')
-        for bill in bills:
+        print('\nClearing existing topic assignments...')
+        for bill in bills_queryset:
             bill.topics.clear()
-        print('✓ Cleared existing assignments\n')
+        print('✓ Cleared existing assignments')
     
-    # Counter for processed bills
-    bills_processed = 0
-    topics_assigned = 0
+    # Process each topic and assign bills
+    print('\nAssigning topics to bills...\n')
     
-    # Assign topics to each bill
-    for bill in bills:
-        new_topics = assign_topics_to_bill(bill, topics)
-        topics_assigned += new_topics
-        bills_processed += 1
+    total_topics = len(topics_data)
+    topics_processed = 0
+    total_assignments = 0
+    bills_with_topics = set()
+    
+    for topic_data in topics_data:
+        topics_processed += 1
+        topic_id = topic_data['id']
+        topic_name = topic_data['name']
         
-        if new_topics > 0:
-            topic_names = ', '.join([t.name for t in bill.topics.all()])
-            print(f'✓ Bill {bill.althingi_id}: {bill.title[:60]}...')
-            print(f'  Topics: {topic_names}')
+        print(f'[{topics_processed}/{total_topics}] Processing: {topic_name} (ID: {topic_id})')
         
-        # Print progress every 50 bills
-        if bills_processed % 50 == 0:
-            print(f'\nProgress: {bills_processed}/{total_bills} bills processed...\n')
+        # Fetch bills for this topic (with optional session filter)
+        bill_data = fetch_bills_for_topic(topic_id, session)
+        
+        if not bill_data:
+            print(f'  → No bills found')
+            sleep(0.5)  # Rate limiting
+            continue
+        
+        print(f'  → Found {len(bill_data)} bills in API')
+        
+        # Get the topic object
+        try:
+            topic = Topic.objects.get(name=topic_name)
+        except Topic.DoesNotExist:
+            print(f'  ✗ Topic not found in database: {topic_name}')
+            continue
+        
+        # Assign topic to bills
+        assignments = 0
+        not_found = 0
+        
+        for bill_number, session_number in bill_data:
+            try:
+                # Query by both althingi_id and session number
+                bill = Bill.objects.get(
+                    althingi_id=bill_number,
+                    session__session_number=session_number
+                )
+                
+                bill.topics.add(topic)
+                assignments += 1
+                bills_with_topics.add(f"{session_number}-{bill_number}")
+            except Bill.DoesNotExist:
+                not_found += 1
+        
+        total_assignments += assignments
+        
+        if assignments > 0:
+            print(f'  ✓ Assigned to {assignments} bills', end='')
+            if not_found > 0:
+                print(f' ({not_found} bills not in database)')
+            else:
+                print()
+        else:
+            print(f'  → No matching bills in database')
+        
+        # Rate limiting
+        sleep(0.5)
+    
+    # Summary
+    total_bills = bills_queryset.count()
+    bills_with_any_topic = len(bills_with_topics)
     
     print(f'\n=== Summary ===')
-    print(f'Bills processed: {bills_processed}')
-    print(f'New topic assignments: {topics_assigned}')
-    print(f'Average topics per bill: {topics_assigned / bills_processed:.2f}')
+    if session:
+        print(f'Session: {session}')
+    print(f'Topics processed: {topics_processed}')
+    print(f'Total topic assignments: {total_assignments}')
+    print(f'Bills with at least one topic: {bills_with_any_topic}/{total_bills}')
+    if total_assignments > 0 and bills_with_any_topic > 0:
+        print(f'Average topics per bill (with topics): {total_assignments / bills_with_any_topic:.2f}')
 
 
 if __name__ == '__main__':
     # Check if --clear flag is provided
     clear_existing = '--clear' in sys.argv or '-c' in sys.argv
     
+    # Check for --session flag
+    session = None
+    for i, arg in enumerate(sys.argv):
+        if arg in ['--session', '-s'] and i + 1 < len(sys.argv):
+            try:
+                session = int(sys.argv[i + 1])
+            except ValueError:
+                print(f'Error: Invalid session number: {sys.argv[i + 1]}')
+                sys.exit(1)
+            break
+    
+    # Print configuration
     if clear_existing:
         print('Will clear existing topic assignments\n')
+    if session:
+        print(f'Processing only session {session}\n')
     
-    assign_topics(clear_existing)
+    assign_topics(clear_existing, session)
     print('\n✓ Topic assignment completed!')
 

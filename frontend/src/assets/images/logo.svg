@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Þingpúls logo icon">
+  <!-- Transparent background by default -->
+
+  <!-- Icon container (subtle badge shape) -->
+  <path d="M96 96c0-17.673 14.327-32 32-32h256c17.673 0 32 14.327 32 32v256c0 53.019-42.981 96-96 96H192c-53.019 0-96-42.981-96-96V96z"
+        fill="#F5F7FA"/>
+
+  <!-- Parliament roof -->
+  <path d="M146 196l110-70 110 70v18H146v-18z" fill="#02529C"/>
+  <path d="M156 196l100-64 100 64v6H156v-6z" fill="#003270" opacity="0.22"/>
+
+  <!-- Parliament body -->
+  <rect x="150" y="214" width="212" height="152" rx="16" fill="#02529C"/>
+
+  <!-- Columns (kept chunky for small-size legibility) -->
+  <g fill="#4F7CBC">
+    <rect x="176" y="240" width="28" height="104" rx="10"/>
+    <rect x="222" y="240" width="28" height="104" rx="10"/>
+    <rect x="262" y="240" width="28" height="104" rx="10"/>
+    <rect x="308" y="240" width="28" height="104" rx="10"/>
+  </g>
+
+  <!-- Base -->
+  <rect x="150" y="360" width="212" height="24" rx="12" fill="#003270"/>
+  <rect x="162" y="366" width="188" height="12" rx="6" fill="#4F7CBC" opacity="0.35"/>
+
+  <!-- Pulse line (accent red) -->
+  <!-- Designed to cross the building clearly at small sizes -->
+  <path d="M140 306H202l18-34 26 72 24-54 16 16H372"
+        fill="none"
+        stroke="#DC1E35"
+        stroke-width="16"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <!-- Subtle inner cut line to increase contrast on dark backgrounds -->
+  <path d="M140 306H202l18-34 26 72 24-54 16 16H372"
+        fill="none"
+        stroke="#FFFFFF"
+        stroke-width="6"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        opacity="0.55"/>
+</svg>
+

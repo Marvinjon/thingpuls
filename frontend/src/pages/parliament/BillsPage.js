@@ -70,7 +70,7 @@ const BillsPage = () => {
         page: page,
         search: search,
         status: status || undefined,
-        topic: topic || undefined,
+        topics: topic || undefined,  // Changed from 'topic' to 'topics' to match backend
         year: year || undefined,
         bill_type: billType || undefined,
         submitter_type: submitterType || undefined,

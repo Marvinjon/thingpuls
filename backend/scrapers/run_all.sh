@@ -1,8 +1,18 @@
 #!/bin/bash
 # Run all data scrapers in the correct order
 
-# Default session number
-SESSION=${1:-157}
+if [ -z "$1" ]; then
+    echo "========================================="
+    echo "Error: Session number is required"
+    echo "========================================="
+    echo ""
+    echo "Usage: ./run_all.sh <session_number>"
+    echo "Example: ./run_all.sh 157"
+    echo ""
+    exit 1
+fi
+
+SESSION=$1
 
 echo "========================================="
 echo "Data Collection for Session $SESSION"

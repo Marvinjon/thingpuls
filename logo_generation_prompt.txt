@@ -1,0 +1,28 @@
+Create a professional logo for "Þingpúls" (Icelandic Parliamentary Pulse), a web platform for tracking Icelandic parliament members, bills, voting records, and enabling citizen engagement through discussion forums. The logo should convey transparency, democracy, and civic participation.
+
+COLOR PALETTE (use these exact colors):
+- Primary Blue: #02529C (Icelandic blue - main color)
+- Primary Blue Light: #4F7CBC
+- Primary Blue Dark: #003270
+- Secondary Red: #DC1E35 (Icelandic red - accent color)
+- Secondary Red Light: #E35B6C
+- Secondary Red Dark: #A5001E
+- Background: #F5F7FA (light gray)
+- White: #FFFFFF
+
+DESIGN REQUIREMENTS:
+- Modern, clean, and professional design suitable for a government/political platform
+- Incorporate elements suggesting parliament, democracy, or civic engagement (optional: parliament building, voting, or pulse/heartbeat motif)
+- Use primary blue (#02529C) as the dominant color
+- Use secondary red (#DC1E35) sparingly as an accent
+- Ensure the logo works well on both light and dark backgrounds
+- Scalable design that works at small sizes (favicon) and large sizes
+- Text should include "ÞINGPÚLS" or just the icon can work standalone
+- Style: Contemporary, trustworthy, accessible, not overly political or partisan
+
+TECHNICAL SPECS:
+- Format: SVG or high-resolution PNG
+- Transparent background option
+- Square format for favicon compatibility
+- Horizontal layout option for header use
+

@@ -1,7 +1,14 @@
 #!/bin/bash
 # Run all scrapers inside Docker container
 
-SESSION=${1:-156}
+if [ -z "$1" ]; then
+    echo "Error: Session number is required"
+    echo "Usage: ./run_scrapers_docker.sh <session_number>"
+    echo "Example: ./run_scrapers_docker.sh 157"
+    exit 1
+fi
+
+SESSION=$1
 
 echo "Running scrapers inside Docker container for session $SESSION..."
 echo ""

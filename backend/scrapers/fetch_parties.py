@@ -24,7 +24,7 @@ django.setup()
 from parliament.models import PoliticalParty
 
 
-def fetch_parties(session_number=156):
+def fetch_parties(session_number):
     """Fetch political parties from Alþingi XML API"""
     print(f'Fetching political parties for session {session_number}...')
     
@@ -106,7 +106,13 @@ def fetch_parties(session_number=156):
 
 
 if __name__ == '__main__':
-    # Get session number from command line or use default
-    session = int(sys.argv[1]) if len(sys.argv) > 1 else 156
+    # Get session number from command line (required)
+    if len(sys.argv) < 2:
+        print('Error: Session number is required')
+        print('Usage: python fetch_parties.py <session_number>')
+        print('Example: python fetch_parties.py 157')
+        sys.exit(1)
+    
+    session = int(sys.argv[1])
     fetch_parties(session)
 
