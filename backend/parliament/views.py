@@ -160,7 +160,7 @@ class BillViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Bill.objects.all()
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['status', 'session', 'topics']
+    filterset_fields = ['status', 'session', 'topics', 'bill_type', 'submitter_type']
     search_fields = ['title', 'description']
     ordering_fields = ['introduced_date', 'last_update', 'vote_date']
     
@@ -180,6 +180,55 @@ class BillViewSet(viewsets.ReadOnlyModelViewSet):
         if self.action == 'retrieve':
             return BillDetailSerializer
         return BillListSerializer
+    
+    @action(detail=False, methods=['get'])
+    def statistics(self, request):
+        """Return bill statistics grouped by status."""
+        from django.db.models import Count
+        
+        # Get the active session or latest session
+        session_id = request.query_params.get('session', None)
+        if session_id:
+            queryset = Bill.objects.filter(session_id=session_id)
+        else:
+            # Get the latest session
+            latest_session = ParliamentSession.objects.filter(is_active=True).first()
+            if latest_session:
+                queryset = Bill.objects.filter(session=latest_session)
+            else:
+                queryset = Bill.objects.all()
+        
+        # Count bills by status
+        status_counts = queryset.values('status').annotate(count=Count('id')).order_by('status')
+        
+        # Format the results
+        stats = {
+            'awaiting_first_reading': 0,
+            'in_committee': 0,
+            'awaiting_second_reading': 0,
+            'awaiting_third_reading': 0,
+            'passed': 0,
+            'rejected': 0,
+            'withdrawn': 0,
+            'total': queryset.count()
+        }
+        
+        for item in status_counts:
+            stats[item['status']] = item['count']
+        
+        # Count bills by type
+        type_counts = queryset.values('bill_type').annotate(count=Count('id')).order_by('bill_type')
+        bill_types = {item['bill_type']: item['count'] for item in type_counts}
+        
+        # Count bills by submitter type
+        submitter_counts = queryset.values('submitter_type').annotate(count=Count('id')).order_by('submitter_type')
+        submitter_types = {item['submitter_type']: item['count'] for item in submitter_counts}
+        
+        return Response({
+            'status_counts': stats,
+            'bill_type_counts': bill_types,
+            'submitter_type_counts': submitter_types
+        })
     
     @action(detail=True, methods=['get'])
     def amendments(self, request, pk=None):

@@ -56,6 +56,7 @@ export const parliamentService = {
   getBillAmendments: (id) => api.get(`/parliament/bills/${id}/amendments/`),
   getBillSpeeches: (id) => api.get(`/parliament/bills/${id}/speeches/`),
   getBillVotes: (id) => api.get(`/parliament/bills/${id}/votes/`),
+  getBillStatistics: (params) => api.get('/parliament/bills/statistics/', { params }),
   
   // Other parliamentary data
   getParties: () => api.get('/parliament/parties/'),

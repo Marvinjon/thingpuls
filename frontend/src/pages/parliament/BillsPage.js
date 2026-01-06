@@ -48,12 +48,15 @@ const BillsPage = () => {
   const [status, setStatus] = useState('');
   const [topic, setTopic] = useState('');
   const [year, setYear] = useState('');
+  const [billType, setBillType] = useState('');
+  const [submitterType, setSubmitterType] = useState('');
   const [sortBy, setSortBy] = useState('latest');
   const [showFilters, setShowFilters] = useState(false);
   
   // State for filter options
   const [topics, setTopics] = useState([]);
   const [years, setYears] = useState([]);
+  const [statistics, setStatistics] = useState(null);
   
   // Fetch bills function that can be called directly
   const fetchBills = useCallback(async (page = 1, search = searchTerm) => {
@@ -69,6 +72,8 @@ const BillsPage = () => {
         status: status || undefined,
         topic: topic || undefined,
         year: year || undefined,
+        bill_type: billType || undefined,
+        submitter_type: submitterType || undefined,
         ordering: sortBy === 'latest' ? '-introduced_date' : 
                  sortBy === 'oldest' ? 'introduced_date' :
                  sortBy === 'title_asc' ? 'title' : '-title'
@@ -116,7 +121,7 @@ const BillsPage = () => {
     return () => {
       isMounted = false;
     };
-  }, [searchTerm, status, topic, year, sortBy]);
+  }, [searchTerm, status, topic, year, billType, submitterType, sortBy]);
   
   // Fetch bills when filters or pagination changes
   useEffect(() => {
@@ -145,6 +150,32 @@ const BillsPage = () => {
     };
     
     fetchTopics();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+  
+  // Fetch statistics on component mount
+  useEffect(() => {
+    let isMounted = true;
+    
+    const fetchStatistics = async () => {
+      try {
+        const response = await parliamentService.getBillStatistics();
+        if (isMounted) {
+          console.log('Statistics response:', response.data);
+          setStatistics(response.data);
+        }
+      } catch (err) {
+        console.error('Error fetching statistics:', err);
+        if (isMounted) {
+          setStatistics(null);
+        }
+      }
+    };
+    
+    fetchStatistics();
     
     return () => {
       isMounted = false;
@@ -202,6 +233,10 @@ const BillsPage = () => {
       setTopic(value);
     } else if (name === 'year') {
       setYear(value);
+    } else if (name === 'billType') {
+      setBillType(value);
+    } else if (name === 'submitterType') {
+      setSubmitterType(value);
     } else if (name === 'sortBy') {
       setSortBy(value);
     }
@@ -217,6 +252,8 @@ const BillsPage = () => {
     setStatus('');
     setTopic('');
     setYear('');
+    setBillType('');
+    setSubmitterType('');
     setSortBy('latest');
     setCurrentPage(1);
     
@@ -232,12 +269,12 @@ const BillsPage = () => {
   // Format status for display
   const formatStatus = (status) => {
     const statusMap = {
-      'introduced': 'Lagt fram',
+      'awaiting_first_reading': 'Bíða 1. umræðu',
       'in_committee': 'Í nefnd',
-      'in_debate': 'Í umræðu',
-      'amended': 'Breytt',
+      'awaiting_second_reading': 'Bíða 2. umræðu',
+      'awaiting_third_reading': 'Bíða 3. umræðu',
       'passed': 'Samþykkt',
-      'rejected': 'Hafnað',
+      'rejected': 'Fellt',
       'withdrawn': 'Dregið til baka'
     };
     return statusMap[status] || status;
@@ -246,10 +283,10 @@ const BillsPage = () => {
   // Get color for status chip
   const getStatusColor = (status) => {
     const colorMap = {
-      'introduced': 'info',
-      'in_committee': 'info',
-      'in_debate': 'warning',
-      'amended': 'warning',
+      'awaiting_first_reading': 'info',
+      'in_committee': 'warning',
+      'awaiting_second_reading': 'info',
+      'awaiting_third_reading': 'info',
       'passed': 'success',
       'rejected': 'error',
       'withdrawn': 'default'
@@ -274,6 +311,67 @@ const BillsPage = () => {
       <Typography variant="body1" color="text.secondary" paragraph sx={{ mb: 3 }}>
         Smelltu á þingmál til að sjá nánari upplýsingar
       </Typography>
+      
+      {/* Statistics Overview */}
+      {statistics && statistics.status_counts && (
+        <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+            Yfirlit
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={6} sm={4} md={2.4}>
+              <Box sx={{ textAlign: 'center', p: 1 }}>
+                <Typography variant="h4" color="success.main" sx={{ fontWeight: 'bold' }}>
+                  {statistics.status_counts.passed || 0}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Samþykkt
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={6} sm={4} md={2.4}>
+              <Box sx={{ textAlign: 'center', p: 1 }}>
+                <Typography variant="h4" color="info.main" sx={{ fontWeight: 'bold' }}>
+                  {statistics.status_counts.awaiting_first_reading || 0}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Bíða 1. umræðu
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={6} sm={4} md={2.4}>
+              <Box sx={{ textAlign: 'center', p: 1 }}>
+                <Typography variant="h4" color="warning.main" sx={{ fontWeight: 'bold' }}>
+                  {statistics.status_counts.in_committee || 0}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Í nefnd
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={6} sm={4} md={2.4}>
+              <Box sx={{ textAlign: 'center', p: 1 }}>
+                <Typography variant="h4" color="info.main" sx={{ fontWeight: 'bold' }}>
+                  {statistics.status_counts.awaiting_second_reading || 0}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Bíða 2. umræðu
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={6} sm={4} md={2.4}>
+              <Box sx={{ textAlign: 'center', p: 1 }}>
+                <Typography variant="h4" color="info.main" sx={{ fontWeight: 'bold' }}>
+                  {statistics.status_counts.awaiting_third_reading || 0}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Bíða 3. umræðu
+                </Typography>
+              </Box>
+            </Grid>
+          </Grid>
+        </Paper>
+      )}
       
       {/* Search and Filter Bar */}
       <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
@@ -321,7 +419,7 @@ const BillsPage = () => {
                   variant="contained" 
                   startIcon={<FilterListIcon />}
                   onClick={handleResetFilters}
-                  disabled={(!status && !topic && !year && !searchTerm) || loading}
+                  disabled={(!status && !topic && !year && !billType && !submitterType && !searchTerm) || loading}
                 >
                   Endurstilla
                 </Button>
@@ -333,7 +431,7 @@ const BillsPage = () => {
           {showFilters && (
             <Box sx={{ mt: 3 }}>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={4}>
+                <Grid item xs={12} sm={6} md={3}>
                   <FormControl fullWidth variant="outlined">
                     <InputLabel id="status-label">Staða</InputLabel>
                     <Select
@@ -345,17 +443,56 @@ const BillsPage = () => {
                       disabled={loading}
                     >
                       <MenuItem value="">Allar stöður</MenuItem>
-                      <MenuItem value="introduced">Lagt fram</MenuItem>
+                      <MenuItem value="awaiting_first_reading">Bíða 1. umræðu</MenuItem>
                       <MenuItem value="in_committee">Í nefnd</MenuItem>
-                      <MenuItem value="in_debate">Í umræðu</MenuItem>
+                      <MenuItem value="awaiting_second_reading">Bíða 2. umræðu</MenuItem>
+                      <MenuItem value="awaiting_third_reading">Bíða 3. umræðu</MenuItem>
                       <MenuItem value="passed">Samþykkt</MenuItem>
-                      <MenuItem value="rejected">Hafnað</MenuItem>
+                      <MenuItem value="rejected">Fellt</MenuItem>
                       <MenuItem value="withdrawn">Dregið til baka</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
                 
-                <Grid item xs={12} sm={4}>
+                <Grid item xs={12} sm={6} md={3}>
+                  <FormControl fullWidth variant="outlined">
+                    <InputLabel id="bill-type-label">Málstegund</InputLabel>
+                    <Select
+                      labelId="bill-type-label"
+                      name="billType"
+                      value={billType}
+                      onChange={handleFilterChange}
+                      label="Málstegund"
+                      disabled={loading}
+                    >
+                      <MenuItem value="">Allar tegundir</MenuItem>
+                      <MenuItem value="frumvarp">Frumvörp</MenuItem>
+                      <MenuItem value="thingsalyktun">Þingsályktunartillögur</MenuItem>
+                      <MenuItem value="fyrirspurn">Fyrirspurnir</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                <Grid item xs={12} sm={6} md={3}>
+                  <FormControl fullWidth variant="outlined">
+                    <InputLabel id="submitter-type-label">Flytjandi</InputLabel>
+                    <Select
+                      labelId="submitter-type-label"
+                      name="submitterType"
+                      value={submitterType}
+                      onChange={handleFilterChange}
+                      label="Flytjandi"
+                      disabled={loading}
+                    >
+                      <MenuItem value="">Allir flytjendur</MenuItem>
+                      <MenuItem value="government">Stjórnarfrumvörp</MenuItem>
+                      <MenuItem value="member">Þingmannafrumvörp</MenuItem>
+                      <MenuItem value="committee">Nefndafrumvörp</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                <Grid item xs={12} sm={6} md={3}>
                   <FormControl fullWidth variant="outlined">
                     <InputLabel id="topic-label">Málaflokkur</InputLabel>
                     <Select
@@ -370,27 +507,6 @@ const BillsPage = () => {
                       {topics.map((topic) => (
                         <MenuItem key={topic.id} value={topic.id}>
                           {topic.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                
-                <Grid item xs={12} sm={4}>
-                  <FormControl fullWidth variant="outlined">
-                    <InputLabel id="year-label">Ár</InputLabel>
-                    <Select
-                      labelId="year-label"
-                      name="year"
-                      value={year}
-                      onChange={handleFilterChange}
-                      label="Ár"
-                      disabled={loading}
-                    >
-                      <MenuItem value="">Öll ár</MenuItem>
-                      {years.map((year) => (
-                        <MenuItem key={year} value={year}>
-                          {year}
                         </MenuItem>
                       ))}
                     </Select>

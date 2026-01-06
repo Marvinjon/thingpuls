@@ -156,19 +156,34 @@ class Bill(models.Model):
     """Model for parliamentary bills."""
     
     STATUS_CHOICES = [
-        ('introduced', 'Introduced'),
-        ('in_committee', 'In Committee'),
-        ('in_debate', 'In Debate'),
-        ('passed', 'Passed'),
-        ('rejected', 'Rejected'),
-        ('withdrawn', 'Withdrawn')
+        ('awaiting_first_reading', 'Bíða 1. umræðu'),
+        ('in_committee', 'Í nefnd'),
+        ('awaiting_second_reading', 'Bíða 2. umræðu'),
+        ('awaiting_third_reading', 'Bíða 3. umræðu'),
+        ('passed', 'Samþykkt'),
+        ('rejected', 'Fellt'),
+        ('withdrawn', 'Dregið til baka')
+    ]
+    
+    BILL_TYPE_CHOICES = [
+        ('frumvarp', 'Frumvörp'),
+        ('thingsalyktun', 'Þingsályktunartillögur'),
+        ('fyrirspurn', 'Fyrirspurnir')
+    ]
+    
+    SUBMITTER_TYPE_CHOICES = [
+        ('government', 'Stjórnarfrumvörp'),
+        ('member', 'Þingmannafrumvörp'),
+        ('committee', 'Nefndafrumvörp')
     ]
     
     althingi_id = models.IntegerField()
     session = models.ForeignKey(ParliamentSession, on_delete=models.CASCADE, related_name='bills')
     title = models.CharField(max_length=500)
     description = models.TextField(blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='introduced')
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='awaiting_first_reading')
+    bill_type = models.CharField(max_length=20, choices=BILL_TYPE_CHOICES, default='frumvarp', blank=True)
+    submitter_type = models.CharField(max_length=20, choices=SUBMITTER_TYPE_CHOICES, blank=True)
     introduced_date = models.DateField()
     vote_date = models.DateField(null=True, blank=True)
     last_update = models.DateTimeField(auto_now=True)

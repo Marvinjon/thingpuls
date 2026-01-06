@@ -24,10 +24,14 @@ from parliament.models import Bill, MP, ParliamentSession
 def map_bill_status(status_text):
     """Map Alþingi bill status to our model's status choices"""
     status_map = {
-        'Bíður fyrri umræðu': 'introduced',
+        'Bíður fyrri umræðu': 'awaiting_first_reading',
+        'Bíða 1. umræðu': 'awaiting_first_reading',
         'Vísað til nefndar': 'in_committee',
         'Í nefnd': 'in_committee',
-        'Í umræðu': 'in_debate',
+        'Bíður síðari umræðu': 'awaiting_second_reading',
+        'Bíða 2. umræðu': 'awaiting_second_reading',
+        'Bíður þriðju umræðu': 'awaiting_third_reading',
+        'Bíða 3. umræðu': 'awaiting_third_reading',
         'Samþykkt': 'passed',
         'Fellt': 'rejected',
         'Dregið til baka': 'withdrawn'
@@ -37,7 +41,78 @@ def map_bill_status(status_text):
         if key in status_text:
             return value
     
-    return 'introduced'  # Default status
+    return 'awaiting_first_reading'  # Default status
+
+
+def map_bill_type(bill_type_text):
+    """
+    Map Alþingi bill type to our model's bill type choices.
+    
+    The <heiti> element inside <málstegund> contains values like:
+    - "Frumvarp til laga" -> frumvarp (bills)
+    - "Þingsályktunartillaga" -> thingsalyktun (resolutions)
+    - "Fyrirspurn" -> fyrirspurn (questions)
+    """
+    bill_type_lower = bill_type_text.lower()
+    
+    # Check for specific types first (order matters!)
+    # Check for resolutions first (þingsályktunartillaga)
+    if 'þingsályktun' in bill_type_lower or 'þingsályktunar' in bill_type_lower:
+        return 'thingsalyktun'
+    
+    # Check for questions (fyrirspurn)
+    if 'fyrirspurn' in bill_type_lower:
+        return 'fyrirspurn'
+    
+    # If it contains "frumvarp" or "laga", it's a bill
+    if 'frumvarp' in bill_type_lower or 'laga' in bill_type_lower:
+        return 'frumvarp'
+    
+    # Default to frumvarp if we can't determine
+    return 'frumvarp'
+
+
+def determine_submitter_type(bill_type_text, sponsors_count):
+    """
+    Determine submitter type based on bill type text.
+    
+    The málstegund field contains:
+    - "Stjórnarfrumvarp til laga" -> government
+    - "Þingmannafrumvarp til laga" -> member
+    - "Nefndarfrumvarp til laga" -> committee
+    """
+    bill_type_lower = bill_type_text.lower()
+    
+    # Check for specific submitter types
+    if 'stjórnar' in bill_type_lower:
+        return 'government'
+    elif 'nefndar' in bill_type_lower:
+        return 'committee'
+    elif 'þingmanna' in bill_type_lower or 'þingmanns' in bill_type_lower:
+        return 'member'
+    
+    # For other types (resolutions, questions), default to member
+    return 'member'
+
+
+def determine_submitter_type_from_skjalategund(skjalategund):
+    """
+    Determine submitter type from the þingskjal's skjalategund attribute.
+    
+    Examples:
+    - "stjórnarfrumvarp" -> government
+    - "frumvarp" -> member
+    - "nefndarfrumvarp" -> committee
+    """
+    skjalategund_lower = skjalategund.lower()
+    
+    if 'stjórnar' in skjalategund_lower:
+        return 'government'
+    elif 'nefndar' in skjalategund_lower:
+        return 'committee'
+    else:
+        # Default to member for regular bills, resolutions, and questions
+        return 'member'
 
 
 def process_bill_sponsors(bill_obj, root, session):
@@ -177,7 +252,7 @@ def fetch_bills(session_number=156):
                 
                 # Extract basic bill information
                 title = root.find(".//málsheiti")
-                bill_type = root.find(".//málstegund")
+                bill_type_elem = root.find(".//málstegund")
                 status = root.find(".//staðamáls")
                 
                 # Skip if no title
@@ -187,7 +262,14 @@ def fetch_bills(session_number=156):
                     continue
                 
                 title_text = html.unescape(title.text.strip())
-                bill_type_text = html.unescape(bill_type.text.strip()) if bill_type is not None and bill_type.text else "Unknown"
+                
+                # Extract bill type from the <heiti> child element of <málstegund>
+                bill_type_text = "Unknown"
+                if bill_type_elem is not None:
+                    heiti = bill_type_elem.find("heiti")
+                    if heiti is not None and heiti.text:
+                        bill_type_text = html.unescape(heiti.text.strip())
+                
                 status_text = html.unescape(status.text.strip()) if status is not None and status.text else "Unknown"
                 
                 # Create a unique slug
@@ -227,6 +309,15 @@ def fetch_bills(session_number=156):
                 
                 # Create or update the bill
                 with transaction.atomic():
+                    # Extract submitter type from the first þingskjal's skjalategund child element
+                    submitter_type = 'member'  # default
+                    first_thingskjal = root.find(".//þingskjal")
+                    if first_thingskjal is not None:
+                        skjalategund_elem = first_thingskjal.find("skjalategund")
+                        if skjalategund_elem is not None and skjalategund_elem.text:
+                            skjalategund = html.unescape(skjalategund_elem.text.strip())
+                            submitter_type = determine_submitter_type_from_skjalategund(skjalategund)
+                    
                     bill, created = Bill.objects.update_or_create(
                         althingi_id=bill_number,
                         session=session,
@@ -235,6 +326,8 @@ def fetch_bills(session_number=156):
                             'slug': slug,
                             'description': f"{bill_type_text} - {status_text}",
                             'status': map_bill_status(status_text),
+                            'bill_type': map_bill_type(bill_type_text),
+                            'submitter_type': submitter_type,
                             'introduced_date': introduced_date or session.start_date,
                             'vote_date': vote_date,  # Add vote date
                             'url': f'https://www.althingi.is/thingstorf/thingmalalistar-eftir-thingum/ferill/?ltg={session_number}&mnr={bill_number}'
