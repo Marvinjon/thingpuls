@@ -11,9 +11,16 @@ If you only changed frontend code (React components, styles, etc.):
 cd ~/thingpuls/politico_web
 git pull
 
-# Rebuild and restart frontend
-sudo docker compose -f docker-compose.prod.yml build frontend
+# Rebuild WITHOUT cache to ensure new code is included
+sudo docker compose -f docker-compose.prod.yml build --no-cache frontend
+
+# Recreate containers to use the new build
 sudo docker compose -f docker-compose.prod.yml up -d frontend nginx
+
+# If changes still don't appear, remove the volume and recreate:
+# sudo docker compose -f docker-compose.prod.yml down frontend nginx
+# sudo docker volume rm politico_web_frontend_build
+# sudo docker compose -f docker-compose.prod.yml up -d frontend nginx
 ```
 
 ## Full Update (Backend changes or both)
@@ -70,4 +77,22 @@ If changes don't appear:
 3. Check container logs: `sudo docker compose -f docker-compose.prod.yml logs frontend`
 4. Clear browser cache (Ctrl+Shift+R or Cmd+Shift+R)
 5. Check if nginx is serving the new build: `sudo docker compose -f docker-compose.prod.yml logs nginx`
+
+### If changes still don't appear after rebuilding
+
+If you've rebuilt without cache and still don't see changes, the build volume may contain old files. Remove it and recreate:
+
+```bash
+# Stop the frontend and nginx containers
+sudo docker compose -f docker-compose.prod.yml down frontend nginx
+
+# Remove the old build volume
+sudo docker volume rm politico_web_frontend_build
+
+# Rebuild frontend
+sudo docker compose -f docker-compose.prod.yml build --no-cache frontend
+
+# Start everything back up
+sudo docker compose -f docker-compose.prod.yml up -d frontend nginx
+```
 
