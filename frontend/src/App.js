@@ -6,6 +6,7 @@ import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import MemberPage from './pages/parliament/MemberPage';
 import MemberDetailPage from './pages/parliament/MemberDetailPage';
+import MemberSpeechesPage from './pages/parliament/MemberSpeechesPage';
 import BillsPage from './pages/parliament/BillsPage';
 import BillDetailPage from './pages/parliament/BillDetailPage';
 import VotingRecordsPage from './pages/parliament/VotingRecordsPage';
@@ -33,6 +34,7 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/parliament/members" element={<MemberPage />} />
         <Route path="/parliament/members/:id" element={<MemberDetailPage />} />
+        <Route path="/parliament/members/:id/speeches" element={<MemberSpeechesPage />} />
         <Route path="/parliament/bills" element={<BillsPage />} />
         <Route path="/parliament/bills/:id" element={<BillDetailPage />} />
         <Route path="/parliament/voting-records" element={<VotingRecordsPage />} />

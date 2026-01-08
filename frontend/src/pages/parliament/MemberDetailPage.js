@@ -65,7 +65,7 @@ const MemberDetailPage = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   // Tab content data
-  const [speeches, setSpeeches] = useState([]);
+  const [speeches, setSpeeches] = useState({ display: [], all: [] });
   const [bills, setBills] = useState([]);
   const [votingRecord, setVotingRecord] = useState([]);
   const [interests, setInterests] = useState(null);
@@ -73,6 +73,8 @@ const MemberDetailPage = () => {
   const [billsLoading, setBillsLoading] = useState(false);
   const [votingLoading, setVotingLoading] = useState(false);
   const [interestsLoading, setInterestsLoading] = useState(false);
+  const [speechesTotalCount, setSpeechesTotalCount] = useState(0);
+  const PAGE_SIZE = 6; // Latest speeches to show on detail page
   
   useEffect(() => {
     const fetchMpData = async () => {
@@ -96,7 +98,7 @@ const MemberDetailPage = () => {
     setActiveTab(newValue);
     
     // Load data based on the selected tab
-    if (newValue === 1 && speeches.length === 0) {
+    if (newValue === 1 && speeches.display.length === 0) {
       fetchSpeeches();
     } else if (newValue === 2 && bills.length === 0) {
       fetchBills();
@@ -110,12 +112,27 @@ const MemberDetailPage = () => {
   const fetchSpeeches = async () => {
     setSpeechesLoading(true);
     try {
-      const response = await parliamentService.getMemberSpeeches(id);
-      setSpeeches(response.data.results || []);
+      // Fetch a larger set to get accurate date counts, then limit display to PAGE_SIZE
+      // This ensures badge counts are correct even if a date has many speeches
+      const response = await parliamentService.getMemberSpeeches(id, { page: 1, page_size: 100 });
+      let allFetchedSpeeches = response.data.results || [];
+      
+      // Set total count for display
+      setSpeechesTotalCount(response.data.count || 0);
+      
+      // Limit to latest PAGE_SIZE speeches for display
+      const speechesToShow = allFetchedSpeeches.slice(0, PAGE_SIZE);
+      
+      // Store all fetched speeches for accurate date counts
+      // We'll use this to get correct counts per date in the display
+      setSpeeches({
+        display: speechesToShow,
+        all: allFetchedSpeeches
+      });
     } catch (err) {
       console.error('Error fetching speeches:', err);
       // Mock data for development
-      setSpeeches([
+      const mockSpeeches = [
         {
           id: 101,
           title: 'Response to climate change proposals',
@@ -132,7 +149,11 @@ const MemberDetailPage = () => {
           duration: 540,
           sentiment_score: 0.32
         }
-      ]);
+      ];
+      setSpeeches({
+        display: mockSpeeches,
+        all: mockSpeeches
+      });
     } finally {
       setSpeechesLoading(false);
     }
@@ -334,6 +355,54 @@ const MemberDetailPage = () => {
     }
   };
 
+
+  // Helper function to format date in Icelandic (full format with weekday)
+  const formatIcelandicDate = (dateString) => {
+    if (!dateString) return '';
+    
+    // Parse the date string (handles YYYY-MM-DD format)
+    const date = new Date(dateString + 'T00:00:00'); // Add time to avoid timezone issues
+    
+    // Icelandic month names
+    const months = [
+      'janúar', 'febrúar', 'mars', 'apríl', 'maí', 'júní',
+      'júlí', 'ágúst', 'september', 'október', 'nóvember', 'desember'
+    ];
+    
+    // Icelandic weekday names
+    const weekdays = [
+      'sunnudagur', 'mánudagur', 'þriðjudagur', 'miðvikudagur',
+      'fimmtudagur', 'föstudagur', 'laugardagur'
+    ];
+    
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    const weekday = weekdays[date.getDay()];
+    
+    // Format: "Mánudagur 15. janúar 2024"
+    return `${weekday.charAt(0).toUpperCase() + weekday.slice(1)} ${day}. ${month} ${year}`;
+  };
+
+  // Helper function to format date in Icelandic (short format without weekday)
+  const formatIcelandicDateShort = (dateString) => {
+    if (!dateString) return '';
+    
+    const date = new Date(dateString + 'T00:00:00');
+    
+    const months = [
+      'janúar', 'febrúar', 'mars', 'apríl', 'maí', 'júní',
+      'júlí', 'ágúst', 'september', 'október', 'nóvember', 'desember'
+    ];
+    
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    
+    // Format: "15. janúar 2024"
+    return `${day}. ${month} ${year}`;
+  };
+
   // Helper function to group speeches by date
   const groupSpeechesByDate = (speeches) => {
     const grouped = {};
@@ -506,7 +575,7 @@ const MemberDetailPage = () => {
                           Fyrst kjörin(n)
                         </Box>
                       }
-                      secondary={new Date(mp.first_elected).toLocaleDateString('is-IS')}
+                      secondary={formatIcelandicDateShort(mp.first_elected)}
                     />
                   </ListItem>
                 )}
@@ -519,7 +588,7 @@ const MemberDetailPage = () => {
                           Núverandi seta hófst
                         </Box>
                       }
-                      secondary={new Date(mp.current_position_started).toLocaleDateString('is-IS')}
+                      secondary={formatIcelandicDateShort(mp.current_position_started)}
                     />
                   </ListItem>
                 )}
@@ -715,41 +784,87 @@ const MemberDetailPage = () => {
               {/* Speeches Tab */}
               {activeTab === 1 && (
                 <Box>
-                  <Typography variant="h6" gutterBottom>
-                    Ræður á Alþingi
-                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6">
+                      Ræður á Alþingi
+                      {speechesTotalCount > 0 && (
+                        <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                          ({speechesTotalCount} heildar)
+                        </Typography>
+                      )}
+                    </Typography>
+                    {speechesTotalCount > PAGE_SIZE && (
+                      <Button
+                        variant="contained"
+                        component={RouterLink}
+                        to={`/parliament/members/${id}/speeches`}
+                      >
+                        Skoða allar ræður
+                      </Button>
+                    )}
+                  </Box>
                   
                   {speechesLoading ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
                       <CircularProgress />
                     </Box>
-                  ) : speeches.length > 0 ? (
+                  ) : speeches.display.length > 0 ? (
                     <Box>
-                      {groupSpeechesByDate(speeches).map(group => (
-                        <Box key={group.date} sx={{ mb: 4 }}>
-                          <Box sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            bgcolor: 'primary.light', 
-                            color: 'white', 
-                            p: 1, 
-                            borderRadius: '4px 4px 0 0' 
-                          }}>
-                            <TodayIcon sx={{ mr: 1 }} />
-                            <Typography variant="subtitle1" fontWeight="bold">
-                              {new Date(group.date).toLocaleDateString('is-IS', { 
-                                weekday: 'long', 
-                                year: 'numeric', 
-                                month: 'long', 
-                                day: 'numeric' 
-                              })}
-                            </Typography>
-                            <Badge 
-                              badgeContent={group.speeches.length} 
-                              color="error" 
-                              sx={{ ml: 2 }}
-                            />
-                          </Box>
+                      {(() => {
+                        // Group all speeches by date to get accurate counts
+                        const allGrouped = groupSpeechesByDate(speeches.all);
+                        // Group displayed speeches by date
+                        const displayGrouped = groupSpeechesByDate(speeches.display);
+                        
+                        // Create a map of date -> total count from all speeches
+                        const dateCountMap = {};
+                        allGrouped.forEach(group => {
+                          dateCountMap[group.date] = group.speeches.length;
+                        });
+                        
+                        return displayGrouped.map(group => {
+                          // Get the total count for this date from all speeches
+                          const totalCountForDate = dateCountMap[group.date] || group.speeches.length;
+                          
+                          return (
+                            <Box key={group.date} sx={{ mb: 4 }}>
+                              <Box sx={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                bgcolor: 'primary.light', 
+                                color: 'white', 
+                                p: 1, 
+                                borderRadius: '4px 4px 0 0',
+                                flexWrap: 'wrap',
+                                gap: 1
+                              }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                  <TodayIcon sx={{ mr: 1 }} />
+                                  <Typography variant="subtitle1" fontWeight="bold">
+                                    {formatIcelandicDate(group.date)}
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Box sx={{ 
+                                    bgcolor: 'error.main', 
+                                    color: 'white', 
+                                    borderRadius: '50%', 
+                                    minWidth: 24, 
+                                    height: 24, 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 'bold',
+                                    px: 0.5
+                                  }}>
+                                    {totalCountForDate}
+                                  </Box>
+                                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                                    {totalCountForDate === 1 ? 'ræða á þessum degi' : 'ræður á þessum degi'}
+                                  </Typography>
+                                </Box>
+                              </Box>
                           
                           {group.speeches.map((speech, index) => (
                             <Card 
@@ -778,11 +893,13 @@ const MemberDetailPage = () => {
                                       {speech.bill && (
                                         <Chip
                                           icon={<ArticleIcon />}
-                                          label={`Bill #${speech.althingi_bill_id || speech.bill.id}`}
+                                          label={speech.bill.title || `Bill #${speech.althingi_bill_id || speech.bill.id}`}
                                           size="small"
                                           component={RouterLink}
                                           to={`/parliament/bills/${speech.bill.id}`}
                                           clickable
+                                          sx={{ maxWidth: '100%' }}
+                                          title={speech.bill.title || `Bill #${speech.althingi_bill_id || speech.bill.id}`}
                                         />
                                       )}
                                     </Box>
@@ -870,11 +987,15 @@ const MemberDetailPage = () => {
                               </CardContent>
                             </Card>
                           ))}
-                        </Box>
-                      ))}
+                            </Box>
+                          );
+                        });
+                      })()}
                     </Box>
                   ) : (
-                    <Alert severity="info">Engar ræður fundust hjá þingmanni.</Alert>
+                    <Alert severity="info">
+                      Engar ræður fundust hjá þingmanni.
+                    </Alert>
                   )}
                 </Box>
               )}
@@ -897,7 +1018,7 @@ const MemberDetailPage = () => {
                             secondary={
                               <>
                                 <Typography component="span" variant="body2" color="text.primary">
-                                  {new Date(bill.introduced_date).toLocaleDateString()}
+                                  {formatIcelandicDateShort(bill.introduced_date)}
                                 </Typography>
                                 {' - '}
                                 <Chip
@@ -948,7 +1069,7 @@ const MemberDetailPage = () => {
                                 />
                               </TableCell>
                               <TableCell>
-                                {new Date(record.vote_date).toLocaleDateString()}
+                                {formatIcelandicDateShort(record.vote_date)}
                               </TableCell>
                             </TableRow>
                           ))}

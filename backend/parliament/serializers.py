@@ -98,6 +98,7 @@ class SpeechSerializer(serializers.ModelSerializer):
     """Serializer for speech objects."""
     
     mp = MPListSerializer(read_only=True)
+    bill = BillListSerializer(read_only=True)
     
     class Meta:
         model = Speech

@@ -45,7 +45,7 @@ export const parliamentService = {
   // Members of Parliament
   getMembers: (params) => api.get('/parliament/mps/', { params }),
   getMemberById: (id) => api.get(`/parliament/mps/${id}/`),
-  getMemberSpeeches: (id) => api.get(`/parliament/mps/${id}/speeches/`),
+  getMemberSpeeches: (id, params) => api.get(`/parliament/mps/${id}/speeches/`, { params }),
   getMemberBills: (id) => api.get(`/parliament/mps/${id}/bills/`),
   getMemberVotingRecord: (id) => api.get(`/parliament/mps/${id}/voting_record/`),
   getMemberInterests: (id) => api.get(`/parliament/mps/${id}/interests/`),
