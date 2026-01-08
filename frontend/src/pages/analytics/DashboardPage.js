@@ -241,11 +241,16 @@ const DashboardPage = () => {
                   data={Object.entries(billPipeline).map(([status, count]) => {
                     const statusTranslations = {
                       'introduced': 'Lagt fram',
+                      'awaiting_first_reading': 'Bíða 1. umræðu',
                       'in_committee': 'Í nefnd',
                       'committee': 'Í nefnd',
+                      'awaiting_second_reading': 'Bíða 2. umræðu',
+                      'awaiting_third_reading': 'Bíða 3. umræðu',
                       'passed': 'Samþykkt',
                       'rejected': 'Hafnað',
-                      'withdrawn': 'Dregið til baka'
+                      'withdrawn': 'Dregið til baka',
+                      'question_sent': 'Fyrirspurn send',
+                      'question_answered': 'Fyrirspurn svarað'
                     };
                     return {
                       status: statusTranslations[status.toLowerCase()] || status.charAt(0).toUpperCase() + status.slice(1),

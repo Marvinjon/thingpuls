@@ -207,7 +207,7 @@ const BillsPage = () => {
     // Clear any previous errors when changing page
     setError(null);
     setCurrentPage(value);
-    window.scrollTo(0, 0);
+    // Note: Not scrolling to top to maintain user's scroll position
   };
   
   // Handle input change in search field
@@ -295,7 +295,9 @@ const BillsPage = () => {
       'awaiting_third_reading': 'Bíða 3. umræðu',
       'passed': 'Samþykkt',
       'rejected': 'Fellt',
-      'withdrawn': 'Dregið til baka'
+      'withdrawn': 'Dregið til baka',
+      'question_sent': 'Fyrirspurn send',
+      'question_answered': 'Fyrirspurn svarað'
     };
     return statusMap[status] || status;
   };
@@ -309,7 +311,9 @@ const BillsPage = () => {
       'awaiting_third_reading': 'info',
       'passed': 'success',
       'rejected': 'error',
-      'withdrawn': 'default'
+      'withdrawn': 'default',
+      'question_sent': 'info',
+      'question_answered': 'success'
     };
     return colorMap[status] || 'default';
   };
@@ -470,6 +474,8 @@ const BillsPage = () => {
                       <MenuItem value="passed">Samþykkt</MenuItem>
                       <MenuItem value="rejected">Fellt</MenuItem>
                       <MenuItem value="withdrawn">Dregið til baka</MenuItem>
+                      <MenuItem value="question_sent">Fyrirspurn send</MenuItem>
+                      <MenuItem value="question_answered">Fyrirspurn svarað</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>

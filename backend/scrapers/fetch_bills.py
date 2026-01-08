@@ -23,7 +23,12 @@ from parliament.models import Bill, MP, ParliamentSession
 
 def map_bill_status(status_text):
     """Map Alþingi bill status to our model's status choices"""
+    # For fyrirspurn (questions), check for unanswered first (more specific)
+    if 'hefur ekki verið svarað' in status_text or 'ekki verið svarað' in status_text:
+        return 'question_sent'
+    
     status_map = {
+        # Regular bill statuses
         'Bíður fyrri umræðu': 'awaiting_first_reading',
         'Bíða 1. umræðu': 'awaiting_first_reading',
         'Vísað til nefndar': 'in_committee',
@@ -34,7 +39,11 @@ def map_bill_status(status_text):
         'Bíða 3. umræðu': 'awaiting_third_reading',
         'Samþykkt': 'passed',
         'Fellt': 'rejected',
-        'Dregið til baka': 'withdrawn'
+        'Dregið til baka': 'withdrawn',
+        # Fyrirspurn (written question) statuses
+        # "svarað" covers both "svarað skriflega" and "svarað munnlega"
+        'svarað': 'question_answered',
+        'Fyrirspurn': 'question_sent'  # Just the question sent (fallback)
     }
     
     for key, value in status_map.items():

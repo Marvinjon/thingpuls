@@ -162,7 +162,9 @@ class Bill(models.Model):
         ('awaiting_third_reading', 'Bíða 3. umræðu'),
         ('passed', 'Samþykkt'),
         ('rejected', 'Fellt'),
-        ('withdrawn', 'Dregið til baka')
+        ('withdrawn', 'Dregið til baka'),
+        ('question_sent', 'Fyrirspurn send'),
+        ('question_answered', 'Fyrirspurn svarað')
     ]
     
     BILL_TYPE_CHOICES = [

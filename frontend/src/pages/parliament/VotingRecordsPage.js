@@ -172,6 +172,7 @@ const VotingRecordsPage = () => {
 
   const handlePageChange = (event, newPage) => {
     setPage(newPage);
+    // Note: Not scrolling to maintain user's scroll position
   };
 
   const handleSortChange = (newSortOrder) => {
@@ -237,22 +238,6 @@ const VotingRecordsPage = () => {
         return 'default';
     }
   };
-
-  if (loading) {
-    return (
-      <Container sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-        <CircularProgress />
-      </Container>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container sx={{ mt: 4 }}>
-        <Alert severity="error">{error}</Alert>
-      </Container>
-    );
-  }
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -341,6 +326,20 @@ const VotingRecordsPage = () => {
         </form>
       </Paper>
       
+      {/* Loading State */}
+      {loading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+          <CircularProgress />
+        </Box>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
       {/* Search Results Summary */}
       {!loading && !error && votingRecords.length > 0 && (
         <Box sx={{ mb: 3 }}>
@@ -354,7 +353,7 @@ const VotingRecordsPage = () => {
         </Box>
       )}
       
-      {votingRecords.length === 0 ? (
+      {!loading && !error && votingRecords.length === 0 && (
         <Alert severity="info">
           {filters.searchQuery ? (
             <>
@@ -372,10 +371,13 @@ const VotingRecordsPage = () => {
             'Engar atkvæðagreiðslur fundust sem passa við leitarskilyrðin þín.'
           )}
         </Alert>
-      ) : (
+      )}
+
+      {/* Voting Records Table */}
+      {!loading && !error && votingRecords.length > 0 && (
         <>
           {/* Pagination - Top */}
-          {!loading && !error && totalPages > 1 && (
+          {totalPages > 1 && (
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 Síða {page} af {totalPages} ({totalRecords} niðurstöður)
@@ -389,8 +391,7 @@ const VotingRecordsPage = () => {
             </Box>
           )}
 
-          {!loading && !error && (
-            <TableContainer component={Paper}>
+          <TableContainer component={Paper}>
               <Table>
                 <TableHead>
                   <TableRow>
@@ -472,19 +473,21 @@ const VotingRecordsPage = () => {
                 </TableBody>
               </Table>
             </TableContainer>
-          )}
           
-          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2 }}>
-            <Typography variant="body2" color="text.secondary">
-              Síða {page} af {totalPages} ({totalRecords} niðurstöður)
-            </Typography>
-            <Pagination
-              count={totalPages}
-              page={page}
-              onChange={handlePageChange}
-              color="primary"
-            />
-          </Box>
+          {/* Pagination - Bottom */}
+          {totalPages > 1 && (
+            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Síða {page} af {totalPages} ({totalRecords} niðurstöður)
+              </Typography>
+              <Pagination
+                count={totalPages}
+                page={page}
+                onChange={handlePageChange}
+                color="primary"
+              />
+            </Box>
+          )}
         </>
       )}
     </Container>

@@ -243,7 +243,12 @@ const MemberDetailPage = () => {
       'in_debate': 'Í umræðu',
       'passed': 'Samþykkt',
       'rejected': 'Hafnað',
-      'withdrawn': 'Dregið til baka'
+      'withdrawn': 'Dregið til baka',
+      'awaiting_first_reading': 'Bíða 1. umræðu',
+      'awaiting_second_reading': 'Bíða 2. umræðu',
+      'awaiting_third_reading': 'Bíða 3. umræðu',
+      'question_sent': 'Fyrirspurn send',
+      'question_answered': 'Fyrirspurn svarað'
     };
     return statusMap[status] || status;
   };
@@ -279,7 +284,12 @@ const MemberDetailPage = () => {
       'amended': 'warning',
       'passed': 'success',
       'rejected': 'error',
-      'withdrawn': 'default'
+      'withdrawn': 'default',
+      'awaiting_first_reading': 'info',
+      'awaiting_second_reading': 'info',
+      'awaiting_third_reading': 'info',
+      'question_sent': 'info',
+      'question_answered': 'success'
     };
     return colorMap[status] || 'default';
   };

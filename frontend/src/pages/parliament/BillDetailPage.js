@@ -68,11 +68,13 @@ const BillDetailPage = () => {
   const getStatusColor = (status) => {
     switch (status.toLowerCase()) {
       case 'passed':
+      case 'question_answered':
         return 'success';
       case 'rejected':
         return 'error';
       case 'in_committee':
       case 'introduced':
+      case 'question_sent':
         return 'info';
       case 'in_debate':
       case 'amended':
@@ -92,7 +94,12 @@ const BillDetailPage = () => {
       'amended': 'Amended',
       'passed': 'Passed',
       'rejected': 'Rejected',
-      'withdrawn': 'Withdrawn'
+      'withdrawn': 'Withdrawn',
+      'awaiting_first_reading': 'Bíða 1. umræðu',
+      'awaiting_second_reading': 'Bíða 2. umræðu',
+      'awaiting_third_reading': 'Bíða 3. umræðu',
+      'question_sent': 'Fyrirspurn send',
+      'question_answered': 'Fyrirspurn svarað'
     };
     return statusMap[status] || status;
   };

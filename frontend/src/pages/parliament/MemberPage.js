@@ -137,6 +137,7 @@ const MemberPage = () => {
   
   const handlePageChange = (event, value) => {
     setPage(value);
+    // Note: Not scrolling to maintain user's scroll position
   };
 
   const handleResetFilters = () => {

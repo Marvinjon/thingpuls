@@ -210,6 +210,8 @@ class BillViewSet(viewsets.ReadOnlyModelViewSet):
             'passed': 0,
             'rejected': 0,
             'withdrawn': 0,
+            'question_sent': 0,
+            'question_answered': 0,
             'total': queryset.count()
         }
         
