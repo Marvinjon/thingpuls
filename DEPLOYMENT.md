@@ -34,7 +34,7 @@ Access the application:
 ## 📁 Project Structure
 
 ```
-politico_web/
+thingpuls/
 ├── backend/              # Django backend
 ├── frontend/             # React frontend
 ├── nginx/                # Nginx configuration (production)
@@ -103,7 +103,7 @@ The `start.sh` script provides convenient commands:
 ```bash
 # 1. Clone the repository
 git clone <your-repo>
-cd politico_web
+cd thingpuls
 
 # 2. Set up environment
 cp env.example .env
@@ -160,7 +160,7 @@ sudo apt install docker-compose-plugin
 2. **Clone and configure:**
 ```bash
 git clone <your-repo>
-cd politico_web
+cd thingpuls
 cp env.example .env
 # Edit .env with production settings
 ```

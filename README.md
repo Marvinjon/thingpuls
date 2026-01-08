@@ -13,7 +13,7 @@ A comprehensive web application for parliamentary data analysis and citizen enga
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd politico_web
+   cd thingpuls
    ```
 
 2. **Setup environment**
@@ -334,7 +334,7 @@ docker compose -f docker-compose.prod.yml down -v
 ## 📝 Project Structure
 
 ```
-politico_web/
+thingpuls/
 ├── backend/                    # Django backend
 │   ├── analytics/              # Analytics app
 │   ├── data_collection/        # Data collection app

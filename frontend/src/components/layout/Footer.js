@@ -1,7 +1,8 @@
 import React from 'react';
-import { Box, Container, Typography, Link, Grid, Divider, List, ListItem, ListItemButton, ListItemText, Button } from '@mui/material';
+import { Box, Container, Typography, Link, Grid, Divider, List, ListItem, ListItemButton, ListItemText, Button, IconButton } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import EmailIcon from '@mui/icons-material/Email';
+import GitHubIcon from '@mui/icons-material/GitHub';
 
 const Footer = () => {
   return (
@@ -110,9 +111,33 @@ const Footer = () => {
         </Grid>
         
         <Box sx={{ mt: 5, pb: 3, borderTop: 1, borderColor: 'rgba(255, 255, 255, 0.12)', pt: 3 }}>
-          <Typography variant="body2" color="white" sx={{ opacity: 0.7 }} align="center">
-            © {new Date().getFullYear()} Þingpúls. Allur réttur áskilinn.
-          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+            <Typography variant="body2" color="white" sx={{ opacity: 0.7 }} align="center">
+              © {new Date().getFullYear()} Þingpúls. Allur réttur áskilinn.
+            </Typography>
+            <Link
+              href="https://github.com/Marvinjon/thingpuls"
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                color: 'white',
+                opacity: 0.7,
+                textDecoration: 'none',
+                '&:hover': {
+                  opacity: 1,
+                  textDecoration: 'underline'
+                }
+              }}
+            >
+              <GitHubIcon sx={{ fontSize: 20 }} />
+              <Typography variant="body2">
+                View on GitHub
+              </Typography>
+            </Link>
+          </Box>
         </Box>
       </Container>
     </Box>
