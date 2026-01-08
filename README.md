@@ -1,8 +1,8 @@
 # Politico Web Application
 
-A comprehensive web application for parliamentary data analysis and citizen engagement.
+A comprehensive web application for parliamentary data analysis and citizen engagement in Iceland.
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Prerequisites
 - Docker and Docker Compose (v2+) installed
@@ -16,89 +16,112 @@ A comprehensive web application for parliamentary data analysis and citizen enga
    cd politico_web
    ```
 
-2. **Quick setup (recommended)**
-   ```bash
-   # Option 1: Using Makefile
-   make setup
-   
-   # Option 2: Using startup script
-   ./start.sh help
-   ```
-
-3. **Or manual setup**
+2. **Setup environment**
    ```bash
    cp env.example .env
    # Edit .env file with your settings
    nano .env
    ```
 
-## Development
+3. **Start development**
+   ```bash
+   docker compose up -d
+   ```
+
+That's it! 🎉
+
+## 🛠️ Development
 
 ### Start Development Environment
 ```bash
-# Option 1: Using Makefile (recommended)
-make dev
+# Quick start (recommended)
+docker compose up -d
 
-# Option 2: Using startup script
-./start.sh dev
+# With helper script
+./start.sh dev -d
 
-# Option 3: Direct docker compose
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up
-
-# Start without nginx (access frontend directly on port 3000)
-make dev-no-nginx
+# View logs
+docker compose logs -f
 ```
 
 ### Development URLs
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
 - **Django Admin**: http://localhost:8000/admin
-- **Database**: localhost:5432
+- **Database**: localhost:5433
 - **Redis**: localhost:6379
 
 ### Development Features
-- Hot reload for both frontend and backend
-- Debug mode enabled
-- Direct access to services
-- Volume mounts for live code changes
+- ✨ Hot reload for both frontend and backend
+- 🐛 Debug mode enabled
+- 🔌 Direct access to services
+- 💾 Volume mounts for live code changes
 
-## Production
+## 🌐 Production
 
-### Start Production Environment
+### Deploy Production Environment
 ```bash
-# Option 1: Using Makefile (recommended)
-make prod
+# Using docker compose
+docker compose -f docker-compose.prod.yml up -d --build
 
-# Option 2: Using startup script
+# Using helper script (recommended)
 ./start.sh prod
-
-# Option 3: Direct docker compose
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-
-# Build and start production
-make prod-build
 ```
 
 ### Production URLs
 - **Application**: http://localhost (via nginx)
-- **Backend API**: http://localhost/api/v1/
-- **Django Admin**: http://localhost/admin
+- **Admin Panel**: http://localhost/admin
 
 ### Production Features
-- Optimized builds
-- Nginx reverse proxy
-- Static file serving
-- Health checks
-- Auto-restart on failure
+- ⚡ Optimized builds
+- 🔒 Nginx reverse proxy
+- 📦 Static file serving
+- ❤️ Health checks
+- 🔄 Auto-restart on failure
+- 👥 Multiple Gunicorn workers
 
-## Environment Variables
+## 📋 Helper Script Commands
+
+The `start.sh` script provides convenient commands:
+
+```bash
+./start.sh help                    # Show all commands
+./start.sh dev [-d]                # Start development
+./start.sh prod                    # Start production
+./start.sh stop                    # Stop all services
+./start.sh status                  # Show service status
+./start.sh logs [service]          # View logs
+./start.sh django <command>        # Run Django command
+./start.sh scrapers <session>      # Run data scrapers
+./start.sh clean                   # Remove all containers
+```
+
+### Examples
+```bash
+# Start development in detached mode
+./start.sh dev -d
+
+# Run migrations
+./start.sh django migrate
+
+# Create admin user
+./start.sh django createsuperuser
+
+# Run scrapers for session 157
+./start.sh scrapers 157
+
+# View backend logs
+./start.sh logs backend
+```
+
+## 🔧 Environment Variables
 
 ### Required Variables
 ```bash
 # Django
 SECRET_KEY=your-secret-key-here
 DEBUG=False
-DJANGO_ENV=production
+ALLOWED_HOSTS=localhost,yourdomain.com
 
 # Database
 DB_NAME=politico_db
@@ -113,105 +136,106 @@ EMAIL_HOST_PASSWORD=your-app-password
 
 ### Optional Variables
 ```bash
-# Build targets
-BUILD_TARGET=production  # or development
-
-# Frontend
+# Frontend API URL
 REACT_APP_API_URL=http://localhost:8000
 
-# Docker commands (can be overridden)
-BACKEND_COMMAND=gunicorn --bind 0.0.0.0:8000 --workers 4 --timeout 120 politico.wsgi:application
-FRONTEND_COMMAND=npm start
+# Redis
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+# Celery
+CELERY_BROKER_URL=redis://redis:6379/0
 ```
 
-## Services
+See `env.example` for all available options.
+
+## 🏗️ Services
 
 ### Core Services
-- **db**: PostgreSQL database
-- **redis**: Redis for Celery
-- **backend**: Django API server
-- **frontend**: React development server
-- **nginx**: Reverse proxy and static file server
+- **db**: PostgreSQL 17 database
+- **redis**: Redis for caching and Celery
+- **backend**: Django REST API server
+- **frontend**: React application
+- **nginx**: Reverse proxy (production only)
 
 ### Background Services
 - **celery_worker**: Background task processing
 - **celery_beat**: Scheduled task scheduler
 
-## Simplified Commands
+## 📊 Data Collection
 
-This project includes simplified commands for easier management:
+### Running Scrapers
 
-### Using Makefile (Recommended)
+The application includes scrapers for collecting data from the Icelandic Parliament (Alþingi):
+
 ```bash
-make help          # Show all available commands
-make setup         # Initial setup
-make dev           # Start development
-make prod          # Start production
-make stop          # Stop all services
-make logs          # View logs
-make status        # Show service status
+# Run all scrapers for a session
+./start.sh scrapers 157
+
+# Or use the dedicated script
+./run_scrapers_docker.sh 157
 ```
 
-### Using Startup Script
+The scrapers collect:
+1. Political parties
+2. Members of Parliament (MPs)
+3. Bills and legislation
+4. Topics and categories
+5. Voting records
+6. Parliamentary speeches
+7. MP interests and declarations
+
+## 🔄 Common Workflows
+
+### Initial Setup
 ```bash
-./start.sh help    # Show all available commands
-./start.sh dev     # Start development
-./start.sh prod    # Start production
-./start.sh stop    # Stop all services
-./start.sh logs    # View logs
-./start.sh status  # Show service status
+# 1. Start services
+docker compose up -d
+
+# 2. Wait for services to be ready (check logs)
+docker compose logs -f backend
+
+# 3. Run migrations
+./start.sh django migrate
+
+# 4. Create admin user
+./start.sh django createsuperuser
+
+# 5. Load initial data (optional)
+./start.sh scrapers 157
 ```
 
-## Commands
-
-### Development Commands
+### Daily Development
 ```bash
-# Start development
-make dev
+# Start services
+docker compose up -d
 
-# Start without nginx
-make dev-no-nginx
+# Make code changes (hot reload active)
 
 # View logs
-make logs backend
+docker compose logs -f backend
+docker compose logs -f frontend
 
-# Run Django commands
-make migrate
-make createsuperuser
-
-# Run frontend commands
-docker compose exec frontend npm install
+# Stop when done
+docker compose down
 ```
 
-### Production Commands
+### Database Management
 ```bash
-# Start production
-make prod
+# Create backup
+docker compose exec db pg_dump -U politico_user politico_db > backup_$(date +%Y%m%d).sql
 
-# Stop production
-make stop
+# Restore backup
+docker compose exec -T db psql -U politico_user politico_db < backup_20240101.sql
 
-# View logs
-make logs
+# Run migrations
+./start.sh django migrate
 
-# Update production
-make prod-build
+# Create migrations
+./start.sh django makemigrations
 ```
 
-### Database Commands
-```bash
-# Create database backup
-make backup
-
-# Restore database
-make restore FILE=backup_file.sql
-
-# Reset database
-make clean
-make migrate
-```
-
-## Troubleshooting
+## 🐛 Troubleshooting
 
 ### Common Issues
 
@@ -221,70 +245,160 @@ make migrate
    lsof -i :3000
    lsof -i :8000
    lsof -i :80
+   
+   # Change ports in docker-compose.yml if needed
    ```
 
 2. **Database connection issues**
    ```bash
    # Check database health
-   docker-compose exec db pg_isready -U politico_user
+   docker compose exec db pg_isready -U politico_user
+   
+   # Restart database
+   docker compose restart db
    ```
 
 3. **Build issues**
    ```bash
    # Rebuild without cache
-   docker-compose build --no-cache
+   docker compose build --no-cache
+   docker compose up -d
    ```
 
 4. **Permission issues**
    ```bash
    # Fix volume permissions
-   sudo chown -R $USER:$USER .
+   sudo chown -R $USER:$USER backend/media backend/staticfiles
    ```
 
-### Logs
+### View Logs
 ```bash
-# View all logs
-docker-compose logs
+# All services
+docker compose logs -f
 
-# View specific service logs
-docker-compose logs backend
-docker-compose logs frontend
-docker-compose logs nginx
+# Specific service
+docker compose logs -f backend
+docker compose logs -f celery_worker
 
-# Follow logs in real-time
-docker-compose logs -f
+# Last 100 lines
+docker compose logs --tail=100 backend
 ```
 
-## Architecture
+### Reset Everything
+```bash
+# Stop and remove all containers and volumes
+./start.sh clean
 
-```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   Frontend  │    │   Backend   │    │   Database  │
-│  (React)    │◄──►│  (Django)   │◄──►│ (PostgreSQL)│
-└─────────────┘    └─────────────┘    └─────────────┘
-       │                   │                   │
-       │                   ▼                   │
-       │            ┌─────────────┐            │
-       │            │    Redis    │            │
-       │            │   (Celery)  │            │
-       │            └─────────────┘            │
-       │                   │                   │
-       ▼                   ▼                   ▼
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│    Nginx    │    │ Celery      │    │   Volumes   │
-│ (Reverse    │    │ Workers     │    │ (Static &   │
-│  Proxy)     │    │ & Beat      │    │   Media)    │
-└─────────────┘    └─────────────┘    └─────────────┘
+# Or manually
+docker compose down -v
+docker compose -f docker-compose.prod.yml down -v
 ```
 
-## Contributing
+## 🏛️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    PRODUCTION                            │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │              Nginx (Port 80/443)                 │   │
+│  │         Reverse Proxy & Static Files             │   │
+│  └─────┬──────────────────────────────────┬────────┘   │
+│        │                                    │            │
+│  ┌─────▼─────────┐                  ┌─────▼─────────┐  │
+│  │   Frontend    │                  │    Backend     │  │
+│  │   (React)     │                  │   (Django)     │  │
+│  │  (Built)      │                  │  (Gunicorn)    │  │
+│  └───────────────┘                  └────┬───────────┘  │
+│                                           │              │
+└───────────────────────────────────────────┼──────────────┘
+                                            │
+┌───────────────────────────────────────────┼──────────────┐
+│                   DEVELOPMENT             │              │
+│  ┌───────────────┐                  ┌────▼───────────┐  │
+│  │   Frontend    │                  │    Backend     │  │
+│  │   (React)     │◄────────────────►│   (Django)     │  │
+│  │  Port 3000    │                  │   Port 8000    │  │
+│  └───────────────┘                  └────┬───────────┘  │
+└───────────────────────────────────────────┼──────────────┘
+                                            │
+┌───────────────────────────────────────────┼──────────────┐
+│                 SHARED SERVICES           │              │
+│  ┌─────────────┐    ┌─────────────┐  ┌──▼──────────┐   │
+│  │ PostgreSQL  │◄───┤    Redis    │◄─┤   Celery    │   │
+│  │  (Database) │    │  (Cache &   │  │  (Workers   │   │
+│  │             │    │   Broker)   │  │  & Beat)    │   │
+│  └─────────────┘    └─────────────┘  └─────────────┘   │
+└─────────────────────────────────────────────────────────┘
+```
+
+## 📝 Project Structure
+
+```
+politico_web/
+├── backend/                    # Django backend
+│   ├── analytics/              # Analytics app
+│   ├── data_collection/        # Data collection app
+│   ├── engagement/             # User engagement features
+│   ├── parliament/             # Parliament data models
+│   ├── users/                  # User management
+│   ├── scrapers/               # Data scrapers
+│   └── politico/               # Main Django app
+├── frontend/                   # React frontend
+│   ├── src/
+│   │   ├── components/         # Reusable components
+│   │   ├── pages/              # Page components
+│   │   ├── context/            # React context
+│   │   └── services/           # API services
+│   └── public/                 # Static assets
+├── nginx/                      # Nginx configuration
+├── docker-compose.yml          # Development setup
+├── docker-compose.prod.yml     # Production setup
+├── start.sh                    # Helper script
+├── run_scrapers_docker.sh      # Scraper runner
+├── env.example                 # Environment template
+├── DEPLOYMENT.md               # Deployment guide
+└── README.md                   # This file
+```
+
+## 📚 Documentation
+
+- **[DEPLOYMENT.md](DEPLOYMENT.md)**: Comprehensive deployment guide
+- **[Backend README](backend/README.md)**: Backend-specific documentation
+- **[Frontend README](frontend/README.md)**: Frontend-specific documentation
+- **[Scrapers README](backend/scrapers/README.md)**: Data scraping documentation
+
+## 🔐 Security
+
+For production deployment:
+- ✅ Change all default passwords
+- ✅ Set strong `SECRET_KEY`
+- ✅ Set `DEBUG=False`
+- ✅ Configure `ALLOWED_HOSTS`
+- ✅ Enable HTTPS with SSL certificates
+- ✅ Regular database backups
+- ✅ Keep Docker images updated
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed security checklist.
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
-4. Test with Docker
-5. Submit a pull request
+4. Test with Docker (`docker compose up -d`)
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
 
-## License
+## 📄 License
 
-[Add your license information here] 
+[Add your license information here]
+
+## 🙏 Acknowledgments
+
+- Built for analyzing Icelandic Parliamentary data from [Alþingi](https://www.althingi.is/)
+- Uses the Alþingi XML API for data collection
+
+---
+
+**Need help?** Check the [DEPLOYMENT.md](DEPLOYMENT.md) guide or run `./start.sh help`

@@ -1,6 +1,4 @@
-*.pack
-*node_modules
-*.env
+# Python
 *.pyc
 *.pyo
 *.pyd
@@ -8,11 +6,84 @@
 *.pyz
 *.pywz
 *.pyzw
-*__pycache__
-/backend/data_collection/__pycache__
+__pycache__/
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+*/venv*/
+
+# Django
+*.log
+*.pot
 *.pyc
-*.pyc
-/backend/analytics/__pycache__
-*.pyc
-/venv
-*/venv*
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+/backend/staticfiles/
+/backend/media/
+/backend/logs/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.eslintcache
+/frontend/node_modules/
+/frontend/build/
+/frontend/.env.local
+/frontend/.env.development.local
+/frontend/.env.test.local
+/frontend/.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Docker
+*.tar
+*.gz
+
+# Database backups
+*.sql
+backup_*.sql
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+voting_details.xml
+
+# Build files
+*.pack
+
+# OS
+.DS_Store
+Thumbs.db

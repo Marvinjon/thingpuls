@@ -53,19 +53,23 @@ check_env() {
 # Function to start development environment
 start_dev() {
     print_status "Starting development environment..."
-    docker compose -f docker-compose.yml -f docker-compose.dev.yml up "$@"
+    docker compose up "$@"
 }
 
 # Function to start production environment
 start_prod() {
     print_status "Starting production environment..."
-    docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d "$@"
+    print_status "Building and starting services..."
+    docker compose -f docker-compose.prod.yml up -d --build
+    print_success "Production environment started!"
+    print_status "Application will be available at http://localhost"
 }
 
 # Function to stop all services
 stop_all() {
     print_status "Stopping all services..."
     docker compose down
+    docker compose -f docker-compose.prod.yml down 2>/dev/null || true
     print_success "All services stopped."
 }
 
@@ -81,59 +85,128 @@ show_logs() {
 
 # Function to run Django commands
 run_django() {
-    local command="$1"
-    if [ -z "$command" ]; then
+    if [ $# -eq 0 ]; then
         print_error "Please specify a Django command."
         exit 1
     fi
-    print_status "Running Django command: $command"
-    docker compose exec backend python manage.py "$command"
+    print_status "Running Django command: $*"
+    docker compose exec backend python manage.py "$@"
 }
 
 # Function to show status
 show_status() {
     print_status "Checking service status..."
+    echo ""
+    print_status "Development services:"
     docker compose ps
+    echo ""
+    print_status "Production services:"
+    docker compose -f docker-compose.prod.yml ps 2>/dev/null || echo "No production services running"
+}
+
+# Function to clean up
+clean() {
+    print_warning "This will remove all containers, volumes, and images."
+    read -p "Are you sure? (y/N) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        print_status "Cleaning up..."
+        docker compose down -v
+        docker compose -f docker-compose.prod.yml down -v 2>/dev/null || true
+        print_success "Cleanup complete."
+    else
+        print_status "Cleanup cancelled."
+    fi
+}
+
+# Function to run scrapers
+run_scrapers() {
+    if [ -z "$1" ]; then
+        print_error "Session number is required"
+        echo "Usage: $0 scrapers <session_number>"
+        echo "Example: $0 scrapers 157"
+        exit 1
+    fi
+    
+    SESSION=$1
+    print_status "Running scrapers for session $SESSION..."
+    
+    docker compose exec backend bash -c "
+    echo '1. Fetching Political Parties...'
+    python scrapers/fetch_parties.py $SESSION
+    echo ''
+    
+    echo '2. Fetching MPs...'
+    python scrapers/fetch_mps.py $SESSION
+    echo ''
+    
+    echo '3. Fetching Bills...'
+    python scrapers/fetch_bills.py $SESSION
+    echo ''
+    
+    echo '4. Assigning Topics...'
+    python scrapers/assign_topics.py
+    echo ''
+    
+    echo '5. Fetching Voting Records...'
+    python scrapers/fetch_voting_records.py $SESSION
+    echo ''
+    
+    echo '6. Fetching Speeches...'
+    python scrapers/fetch_speeches.py $SESSION
+    echo ''
+    
+    echo '7. Fetching MP Interests...'
+    python scrapers/fetch_interests.py
+    echo ''
+    
+    echo 'All done!'
+    "
+    
+    print_success "Scrapers completed!"
 }
 
 # Function to show help
 show_help() {
-    echo "Politico Web Application Startup Script"
+    echo "Politico Web Application - Deployment Ready"
     echo ""
     echo "Usage: $0 [COMMAND] [OPTIONS]"
     echo ""
     echo "Commands:"
-    echo "  dev [OPTIONS]     Start development environment"
-    echo "  prod [OPTIONS]    Start production environment"
-    echo "  stop              Stop all services"
-    echo "  logs [SERVICE]    Show logs (all services or specific service)"
-    echo "  status            Show service status"
-    echo "  django <CMD>      Run Django management command"
-    echo "  help              Show this help message"
+    echo "  dev [OPTIONS]         Start development environment (docker compose up)"
+    echo "  prod                  Start production environment (with nginx)"
+    echo "  stop                  Stop all services"
+    echo "  logs [SERVICE]        Show logs (all services or specific service)"
+    echo "  status                Show service status"
+    echo "  django <CMD>          Run Django management command"
+    echo "  scrapers <SESSION>    Run all scrapers for a specific session"
+    echo "  clean                 Remove all containers and volumes"
+    echo "  help                  Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0 dev                    # Start development with all services"
-    echo "  $0 dev --profile nginx    # Start development without nginx"
-    echo "  $0 prod                   # Start production environment"
-    echo "  $0 logs backend           # Show backend logs"
-    echo "  $0 django migrate         # Run Django migrations"
-    echo "  $0 django createsuperuser # Create Django superuser"
+    echo "  $0 dev                       # Start development (foreground)"
+    echo "  $0 dev -d                    # Start development (detached)"
+    echo "  $0 prod                      # Start production environment"
+    echo "  $0 logs backend              # Show backend logs"
+    echo "  $0 django migrate            # Run Django migrations"
+    echo "  $0 django createsuperuser    # Create Django superuser"
+    echo "  $0 scrapers 157              # Run scrapers for session 157"
     echo ""
-    echo "Development URLs:"
+    echo "Development URLs (docker compose up -d):"
     echo "  Frontend: http://localhost:3000"
     echo "  Backend:  http://localhost:8000"
     echo "  Admin:    http://localhost:8000/admin"
     echo ""
-    echo "Production URLs:"
+    echo "Production URLs (docker compose -f docker-compose.prod.yml up -d):"
     echo "  Application: http://localhost"
-    echo "  API:        http://localhost/api/v1/"
-    echo "  Admin:      http://localhost/admin"
+    echo "  Admin:       http://localhost/admin"
+    echo ""
 }
 
 # Main script logic
 main() {
-    local command="$1"
-    shift
+    local command="${1:-help}"
+    shift || true
 
     case "$command" in
         "dev")
@@ -144,7 +217,7 @@ main() {
         "prod")
             check_docker
             check_env
-            start_prod "$@"
+            start_prod
             ;;
         "stop")
             stop_all
@@ -158,7 +231,13 @@ main() {
         "django")
             run_django "$@"
             ;;
-        "help"|"--help"|"-h"|"")
+        "scrapers")
+            run_scrapers "$@"
+            ;;
+        "clean")
+            clean
+            ;;
+        "help"|"--help"|"-h")
             show_help
             ;;
         *)
@@ -171,4 +250,4 @@ main() {
 }
 
 # Run main function with all arguments
-main "$@" 
+main "$@"
