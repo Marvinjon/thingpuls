@@ -17,9 +17,9 @@ import GavelIcon from '@mui/icons-material/Gavel';
 import HowToVoteIcon from '@mui/icons-material/HowToVote';
 import EqualizerIcon from '@mui/icons-material/Equalizer';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { analyticsService } from '../../services/api';
+import { analyticsService, parliamentService } from '../../services/api';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   PieChart, Pie, Cell, ResponsiveContainer,
@@ -29,6 +29,7 @@ import {
 
 const DashboardPage = () => {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
@@ -38,6 +39,7 @@ const DashboardPage = () => {
   const [efficiencyTimeline, setEfficiencyTimeline] = useState(null);
   const [topicTrends, setTopicTrends] = useState(null);
   const [topSpeakers, setTopSpeakers] = useState(null);
+  const [topicsMap, setTopicsMap] = useState({}); // Map topic names to IDs
 
   // Color scheme for charts
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
@@ -65,6 +67,15 @@ const DashboardPage = () => {
         // Fetch top speakers
         const speakersResponse = await analyticsService.getTopSpeakers({ limit: 10 });
         setTopSpeakers(speakersResponse.data);
+        
+        // Fetch topics to create name-to-ID mapping
+        const topicsResponse = await parliamentService.getTopics();
+        const topicsData = topicsResponse.data.results || topicsResponse.data || [];
+        const nameToIdMap = {};
+        topicsData.forEach(topic => {
+          nameToIdMap[topic.name] = topic.id;
+        });
+        setTopicsMap(nameToIdMap);
         
         setError(null);
       } catch (err) {
@@ -344,6 +355,9 @@ const DashboardPage = () => {
             <Typography variant="h6" gutterBottom>
               Dreifing málaflokka
             </Typography>
+            <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 2, fontStyle: 'italic' }}>
+              Smelltu á málaflokk til að sjá tengd þingmál
+            </Typography>
             {topicTrends && (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
@@ -358,13 +372,30 @@ const DashboardPage = () => {
                     outerRadius={100}
                     fill="#8884d8"
                     dataKey="value"
+                    onClick={(data) => {
+                      const topicName = data.name;
+                      const topicId = topicsMap[topicName];
+                      if (topicId) {
+                        navigate(`/parliament/bills?topic=${topicId}`);
+                      }
+                    }}
+                    style={{ cursor: 'pointer' }}
                   >
                     {topicTrends.labels.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip />
-                  <Legend />
+                  <Legend 
+                    onClick={(data) => {
+                      const topicName = data.value;
+                      const topicId = topicsMap[topicName];
+                      if (topicId) {
+                        navigate(`/parliament/bills?topic=${topicId}`);
+                      }
+                    }}
+                    wrapperStyle={{ cursor: 'pointer' }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             )}

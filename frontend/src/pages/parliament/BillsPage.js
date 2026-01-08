@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useLocation } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -30,7 +30,14 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ClearIcon from '@mui/icons-material/Clear';
 import { parliamentService } from '../../services/api';
 
+// Helper function to get URL parameters
+function useQuery() {
+  return new URLSearchParams(useLocation().search);
+}
+
 const BillsPage = () => {
+  const location = useLocation();
+  const query = useQuery();
   // State for bills data
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +53,7 @@ const BillsPage = () => {
   const [pendingSearchTerm, setPendingSearchTerm] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [status, setStatus] = useState('');
-  const [topic, setTopic] = useState('');
+  const [topic, setTopic] = useState(query.get('topic') || '');
   const [year, setYear] = useState('');
   const [billType, setBillType] = useState('');
   const [submitterType, setSubmitterType] = useState('');
@@ -155,6 +162,19 @@ const BillsPage = () => {
       isMounted = false;
     };
   }, []);
+
+  // Apply topic filter from URL query parameter on mount and when URL changes
+  useEffect(() => {
+    const topicFromUrl = query.get('topic');
+    if (topicFromUrl && topicFromUrl !== topic) {
+      setTopic(topicFromUrl);
+      setShowFilters(true); // Show filters so user can see the applied filter
+    } else if (!topicFromUrl && topic) {
+      // Clear topic if it's removed from URL
+      setTopic('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
   
   // Fetch statistics on component mount
   useEffect(() => {
