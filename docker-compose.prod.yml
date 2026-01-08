@@ -110,7 +110,7 @@ services:
       - frontend_build:/app/build
     environment:
       - NODE_ENV=production
-      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost/api}
+      - REACT_APP_API_URL=${REACT_APP_API_URL}
     restart: unless-stopped
 
   # Nginx - Reverse proxy and static file server
