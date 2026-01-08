@@ -106,6 +106,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       target: production
+      args:
+        - REACT_APP_API_URL=${REACT_APP_API_URL}
     volumes:
       - frontend_build:/app/build
     environment:

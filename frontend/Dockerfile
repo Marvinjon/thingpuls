@@ -23,8 +23,9 @@ CMD ["npm", "start"]
 # Production build stage
 FROM base as production
 
+ARG REACT_APP_API_URL
 ENV NODE_ENV=production
-ENV REACT_APP_API_URL=http://localhost:8000
+ENV REACT_APP_API_URL=${REACT_APP_API_URL}
 
 # Build the application
 RUN npm run build
