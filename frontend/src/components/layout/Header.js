@@ -233,6 +233,13 @@ const Header = () => {
               >
                 Tölfræði
               </Button>
+              <Button
+                component={RouterLink}
+                to="/engagement/forums"
+                sx={{ my: 2, color: 'white', display: 'block' }}
+              >
+                Umræður
+              </Button>
             </Box>
             
             {/* User section */}

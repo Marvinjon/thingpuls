@@ -65,11 +65,18 @@ const HomePage = () => {
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    return date.toLocaleDateString('is-IS', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+    
+    // Icelandic month names
+    const months = [
+      'janúar', 'febrúar', 'mars', 'apríl', 'maí', 'júní',
+      'júlí', 'ágúst', 'september', 'október', 'nóvember', 'desember'
+    ];
+    
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    
+    return `${day}. ${month} ${year}`;
   };
 
   // Fetch latest bills
@@ -80,12 +87,12 @@ const HomePage = () => {
         setErrorBills(null);
         const response = await parliamentService.getBills({
           page: 1,
-          limit: 5,
+          limit: 6,
           ordering: '-introduced_date'
         });
         // Limit to 5 items as a safety measure
         const bills = response.data.results || [];
-        setLatestBills(bills.slice(0, 5));
+        setLatestBills(bills.slice(0, 6));
       } catch (err) {
         console.error('Error fetching latest bills:', err);
         setErrorBills('Ekki tókst að sækja nýjustu frumvörpin');
@@ -112,26 +119,33 @@ const HomePage = () => {
         // Limit to 5 items as a safety measure
         const bills = (response.data.results || []).slice(0, 5);
         
-        // For each bill, fetch vote counts (only for the 5 bills)
+        // For each bill, fetch full bill details with voting sessions (like BillDetailPage)
         const billsWithVotes = await Promise.all(
           bills.map(async (bill) => {
             try {
-              // Fetch votes with pagination to get all votes efficiently
-              const votesResponse = await parliamentService.getBillVotes(bill.id);
-              const votes = votesResponse.data.results || [];
+              // Fetch full bill details which includes votes grouped by session
+              const billResponse = await parliamentService.getBillById(bill.id);
+              const fullBill = billResponse.data;
               
-              // If paginated, we might need to fetch more pages, but for now just use first page
-              // This should be enough for most bills
-              const voteCounts = { for: 0, against: 0, abstentions: 0, absent: 0 };
-              votes.forEach(vote => {
-                if (vote.vote === 'yes') voteCounts.for++;
-                else if (vote.vote === 'no') voteCounts.against++;
-                else if (vote.vote === 'abstain') voteCounts.abstentions++;
-                else if (vote.vote === 'absent') voteCounts.absent++;
-              });
+              // Get the most recent voting session (first one, as they're sorted by date descending)
+              const latestVotingSession = fullBill.votes && fullBill.votes.length > 0 
+                ? fullBill.votes[0] 
+                : null;
+              
+              // Map voting session counts to the expected format
+              const voteCounts = latestVotingSession ? {
+                for: latestVotingSession.yes_count || 0,
+                against: latestVotingSession.no_count || 0,
+                abstentions: latestVotingSession.abstain_count || 0,
+                absent: latestVotingSession.absent_count || 0
+              } : { for: 0, against: 0, abstentions: 0, absent: 0 };
+              
+              // Use the voting session date if available, otherwise fall back to bill vote_date
+              const voteDate = latestVotingSession?.vote_date || bill.vote_date;
               
               return {
                 ...bill,
+                vote_date: voteDate,
                 voteCounts
               };
             } catch (err) {
@@ -206,7 +220,7 @@ const HomePage = () => {
                   Þingmenn
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Aðgangur að ítarlegum upplýsingum um hvern þingmann, þar með talið atkvæðasögu, ræður, flutt frumvörp og hagsmunaskráningu.
+                  Ítarlegar upplýsingar um hvern þingmann, þar með talið atkvæðasögu, ræður, flutt frumvörp og hagsmunaskráningu.
                 </Typography>
               </CardContent>
               <CardActions>
@@ -232,7 +246,7 @@ const HomePage = () => {
                   Þingmál
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Fylgstu með þingmálum, með upplýsingum um flutningsmenn, breytingar, atkvæðagreiðslur og stöðu.
+                  Fylgstu með þingmálum, með upplýsingum um flutningsmenn, atkvæðagreiðslur og stöðu.
                 </Typography>
               </CardContent>
               <CardActions>
@@ -258,7 +272,7 @@ const HomePage = () => {
                   Kosningar þingmanna
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Sjá hvernig þingmenn hafa kostið í kosningum.
+                  Sjá hvernig þingmenn hafa kosið í kosningum.
                 </Typography>
               </CardContent>
               <CardActions>
@@ -284,7 +298,7 @@ const HomePage = () => {
                   Þátttaka Almennings
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Taktu þátt í umræðum um frumvörp og stefnumál, og leggðu þitt af mörkum til lýðræðisins með þátttökutækjum okkar.
+                  Taktu þátt í umræðum um frumvörp og stefnumál, og leggðu þitt af mörkum.
                 </Typography>
               </CardContent>
               <CardActions>
@@ -470,7 +484,7 @@ const HomePage = () => {
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
                         {record.vote_date && (
                           <Typography variant="body2" color="text.secondary">
-                            Dagsetning: {formatDate(record.vote_date)}
+                            {formatDate(record.vote_date)}
                           </Typography>
                         )}
                         

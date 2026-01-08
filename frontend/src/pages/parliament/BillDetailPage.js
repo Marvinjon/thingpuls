@@ -104,6 +104,24 @@ const BillDetailPage = () => {
     return statusMap[status] || status;
   };
 
+  // Format date helper (Icelandic format)
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    
+    // Icelandic month names
+    const months = [
+      'janúar', 'febrúar', 'mars', 'apríl', 'maí', 'júní',
+      'júlí', 'ágúst', 'september', 'október', 'nóvember', 'desember'
+    ];
+    
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    
+    return `${day}. ${month} ${year}`;
+  };
+
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       {/* Back Button */}
@@ -143,7 +161,7 @@ const BillDetailPage = () => {
             <Box display="flex" gap={1.5} mt={2} mb={2} flexWrap="wrap" alignItems="center">
           <Chip 
             icon={<AccessTimeIcon />} 
-                label={`Lagt fram: ${new Date(bill.introduced_date).toLocaleDateString('is-IS')}`} 
+                label={`Lagt fram: ${formatDate(bill.introduced_date)}`} 
             variant="outlined" 
                 size="small"
           />
@@ -567,7 +585,7 @@ const BillDetailPage = () => {
                         {amendment.title}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        Lagt fram: {new Date(amendment.date).toLocaleDateString('is-IS')}
+                        Lagt fram: {formatDate(amendment.date)}
                       </Typography>
                     </Paper>
                   ))}
