@@ -7,7 +7,13 @@ from dotenv import load_dotenv
 from .base import *  # Import all base settings
 
 # Load environment variables (if available in production)
-load_dotenv(os.path.join(os.path.dirname(BASE_DIR), '.env.production'))
+# Try .env.production first, then fall back to .env
+env_prod_path = os.path.join(os.path.dirname(BASE_DIR), '.env.production')
+env_path = os.path.join(os.path.dirname(BASE_DIR), '.env')
+if os.path.exists(env_prod_path):
+    load_dotenv(env_prod_path)
+elif os.path.exists(env_path):
+    load_dotenv(env_path)
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY')
@@ -16,7 +22,9 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 # Restrict allowed hosts in production
-ALLOWED_HOSTS = ['localhost', 'thingpuls.mhmehf.is']
+# Allow localhost and the domain, plus any from environment variable
+allowed_hosts = os.environ.get('ALLOWED_HOSTS', 'localhost,thingpuls.mhmehf.is').split(',')
+ALLOWED_HOSTS = [host.strip() for host in allowed_hosts if host.strip()]
 
 # Static files configuration
 STATIC_URL = '/static/'
