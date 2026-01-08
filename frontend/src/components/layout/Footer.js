@@ -100,8 +100,8 @@ const Footer = () => {
                   backgroundColor: 'rgba(255, 255, 255, 0.08)'
                 }
               }}
-              component={RouterLink}
-              to="/contact"
+              component="a"
+              href="mailto:mhmehf@mhmehf.is"
               startIcon={<EmailIcon />}
             >
               Hafa samband

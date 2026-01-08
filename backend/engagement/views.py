@@ -86,8 +86,13 @@ class DiscussionThreadViewSet(viewsets.ModelViewSet):
         thread = self.get_object()
         forum = thread.forum
         
-        # Check if user is a moderator of the forum
-        if request.user not in forum.moderators.all() and not request.user.is_staff:
+        # Check if user is a moderator of the forum (if forum exists) or staff
+        if forum and request.user not in forum.moderators.all() and not request.user.is_staff:
+            return Response(
+                {"detail": "You do not have permission to pin/unpin threads."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        elif not forum and not request.user.is_staff:
             return Response(
                 {"detail": "You do not have permission to pin/unpin threads."},
                 status=status.HTTP_403_FORBIDDEN
@@ -103,8 +108,13 @@ class DiscussionThreadViewSet(viewsets.ModelViewSet):
         thread = self.get_object()
         forum = thread.forum
         
-        # Check if user is a moderator of the forum
-        if request.user not in forum.moderators.all() and not request.user.is_staff:
+        # Check if user is a moderator of the forum (if forum exists) or staff
+        if forum and request.user not in forum.moderators.all() and not request.user.is_staff:
+            return Response(
+                {"detail": "You do not have permission to lock/unlock threads."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        elif not forum and not request.user.is_staff:
             return Response(
                 {"detail": "You do not have permission to lock/unlock threads."},
                 status=status.HTTP_403_FORBIDDEN
@@ -136,8 +146,8 @@ class DiscussionPostViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Check if forum requires approval
-        if thread.forum.requires_approval:
+        # Check if forum requires approval (if forum exists)
+        if thread.forum and thread.forum.requires_approval:
             serializer.save(author=self.request.user, is_approved=False)
         else:
             serializer.save(author=self.request.user)

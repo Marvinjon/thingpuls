@@ -18,7 +18,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PeopleIcon from '@mui/icons-material/People';
 import CloseIcon from '@mui/icons-material/Close';
 import { useAuth } from '../../context/AuthContext';
-import { engagementService } from '../../services/api';
+import { engagementService, parliamentService } from '../../services/api';
 
 const DiscussionForumsPage = () => {
   const { currentUser } = useAuth();
@@ -30,10 +30,11 @@ const DiscussionForumsPage = () => {
   const [newThreadDialogOpen, setNewThreadDialogOpen] = useState(false);
   const [newThread, setNewThread] = useState({
     title: '',
-    forum: '',
+    topics: [],
     content: ''
   });
   const [formErrors, setFormErrors] = useState({});
+  const [topics, setTopics] = useState([]);
 
   useEffect(() => {
     const fetchForumsData = async () => {
@@ -41,14 +42,17 @@ const DiscussionForumsPage = () => {
         setLoading(true);
         setError(null);
         
-        // Fetch forums and threads from the backend
-        const [forumsResponse, threadsResponse] = await Promise.all([
+        // Fetch forums, threads, and topics from the backend
+        const [forumsResponse, threadsResponse, topicsResponse] = await Promise.all([
           engagementService.getForums({ is_active: true }),
-          engagementService.getThreads({ ordering: '-last_activity' })
+          engagementService.getThreads({ ordering: '-last_activity' }),
+          parliamentService.getTopics()
         ]);
         
         setForumCategories(forumsResponse.data.results || forumsResponse.data);
         setActiveThreads(threadsResponse.data.results || threadsResponse.data);
+        const topicsData = topicsResponse.data.results || topicsResponse.data || [];
+        setTopics(topicsData);
         setLoading(false);
       } catch (err) {
         console.error('Error fetching forum data:', err);
@@ -80,6 +84,14 @@ const DiscussionForumsPage = () => {
     }
   };
 
+  const handleTopicsChange = (event) => {
+    const value = event.target.value;
+    setNewThread(prev => ({
+      ...prev,
+      topics: typeof value === 'string' ? value.split(',') : value
+    }));
+  };
+
   const openNewThreadDialog = () => {
     setNewThreadDialogOpen(true);
   };
@@ -88,7 +100,7 @@ const DiscussionForumsPage = () => {
     setNewThreadDialogOpen(false);
     setNewThread({
       title: '',
-      forum: '',
+      topics: [],
       content: ''
     });
     setFormErrors({});
@@ -99,9 +111,7 @@ const DiscussionForumsPage = () => {
     if (!newThread.title.trim()) {
       errors.title = "Titill er nauðsynlegur";
     }
-    if (!newThread.forum) {
-      errors.forum = "Vinsamlegast veldu umræðuvettvang";
-    }
+    // Forum is now optional - no validation needed
     if (!newThread.content.trim()) {
       errors.content = "Efni er nauðsynlegt";
     } else if (newThread.content.trim().length < 10) {
@@ -118,11 +128,13 @@ const DiscussionForumsPage = () => {
     }
     
     try {
-      // Create the thread
-      const threadResponse = await engagementService.createThread({
+      // Create the thread with topics (no forum)
+      const threadData = {
         title: newThread.title,
-        forum: newThread.forum
-      });
+        topics: newThread.topics
+      };
+      
+      const threadResponse = await engagementService.createThread(threadData);
       
       // Create the first post with the content
       await engagementService.createPost({
@@ -326,18 +338,25 @@ const DiscussionForumsPage = () => {
               <List>
                 {filteredThreads.map((thread, index) => {
                   const forumInfo = forumCategories.find(f => f.id === thread.forum);
-                  const threadUrl = `/engagement/forums/${thread.forum}/threads/${thread.id}`;
+                  // For threads without forums, we'll need a different URL structure
+                  // For now, use a placeholder or handle it differently
+                  const threadUrl = thread.forum 
+                    ? `/engagement/forums/${thread.forum}/threads/${thread.id}`
+                    : `#`; // Placeholder for threads without forums
+                  
+                  const ListItemComponent = thread.forum ? Link : 'div';
                   
                   return (
                   <React.Fragment key={thread.id}>
                     <ListItem 
                       alignItems="flex-start" 
-                      component={Link}
-                        to={threadUrl}
+                      component={ListItemComponent}
+                      to={thread.forum ? threadUrl : undefined}
                       sx={{ 
                         textDecoration: 'none', 
                         color: 'inherit',
-                        '&:hover': { bgcolor: 'action.hover' }
+                        '&:hover': { bgcolor: 'action.hover' },
+                        cursor: thread.forum ? 'pointer' : 'default'
                       }}
                     >
                       <ListItemAvatar>
@@ -347,7 +366,7 @@ const DiscussionForumsPage = () => {
                       </ListItemAvatar>
                       <ListItemText
                         primary={
-                            <Box display="flex" alignItems="center" gap={1}>
+                            <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
                           <Typography variant="subtitle1" fontWeight="medium">
                             {thread.title}
                           </Typography>
@@ -356,6 +375,27 @@ const DiscussionForumsPage = () => {
                               )}
                               {thread.is_locked && (
                                 <Chip size="small" label="Læst" color="warning" />
+                              )}
+                              {thread.topics && thread.topics.length > 0 && (
+                                <Box display="flex" gap={0.5} flexWrap="wrap">
+                                  {thread.topics.slice(0, 3).map((topic) => (
+                                    <Chip 
+                                      key={topic.id} 
+                                      size="small" 
+                                      label={topic.name}
+                                      variant="outlined"
+                                      sx={{ fontSize: '0.7rem', height: '20px' }}
+                                    />
+                                  ))}
+                                  {thread.topics.length > 3 && (
+                                    <Chip 
+                                      size="small" 
+                                      label={`+${thread.topics.length - 3}`}
+                                      variant="outlined"
+                                      sx={{ fontSize: '0.7rem', height: '20px' }}
+                                    />
+                                  )}
+                                </Box>
                               )}
                             </Box>
                         }
@@ -367,7 +407,7 @@ const DiscussionForumsPage = () => {
                                 variant="body2" 
                                 color="text.primary"
                               >
-                                  {getUserDisplayName(thread.created_by)}
+                                {getUserDisplayName(thread.created_by)}
                               </Typography>{' '}
                               <Typography 
                                 component="span" 
@@ -406,11 +446,13 @@ const DiscussionForumsPage = () => {
                           </Box>
                         }
                       />
-                      <ListItemSecondaryAction>
+                      {thread.forum && (
+                        <ListItemSecondaryAction>
                           <IconButton edge="end" component={Link} to={threadUrl}>
-                          <ArrowForwardIcon />
-                        </IconButton>
-                      </ListItemSecondaryAction>
+                            <ArrowForwardIcon />
+                          </IconButton>
+                        </ListItemSecondaryAction>
+                      )}
                     </ListItem>
                     {index < filteredThreads.length - 1 && <Divider component="li" />}
                   </React.Fragment>
@@ -457,29 +499,28 @@ const DiscussionForumsPage = () => {
               required
             />
             
-            <FormControl 
-              fullWidth 
-              margin="normal"
-              error={!!formErrors.forum}
-              required
-            >
-              <InputLabel id="forum-select-label">Umræðuvettvangur</InputLabel>
+            <FormControl fullWidth margin="normal">
+              <InputLabel id="topics-select-label">Efnisflokkar</InputLabel>
               <Select
-                labelId="forum-select-label"
-                name="forum"
-                value={newThread.forum}
-                onChange={handleNewThreadChange}
-                label="Umræðuvettvangur"
+                labelId="topics-select-label"
+                multiple
+                value={newThread.topics}
+                onChange={handleTopicsChange}
+                label="Efnisflokkar"
+                renderValue={(selected) => {
+                  const selectedTopics = topics.filter(t => selected.includes(t.id));
+                  return selectedTopics.map(t => t.name).join(', ');
+                }}
               >
-                {forumCategories.map((forum) => (
-                  <MenuItem key={forum.id} value={forum.id}>
-                    {forum.title}
+                {topics.map((topic) => (
+                  <MenuItem key={topic.id} value={topic.id}>
+                    {topic.name}
                   </MenuItem>
                 ))}
               </Select>
-              {formErrors.forum && (
-                <FormHelperText>{formErrors.forum}</FormHelperText>
-              )}
+              <FormHelperText>
+                Veldu efnisflokka sem tengjast þessari umræðu (valfrjálst)
+              </FormHelperText>
             </FormControl>
             
             <TextField

@@ -45,7 +45,7 @@ class DiscussionForum(models.Model):
 class DiscussionThread(models.Model):
     """Model for discussion threads within forums."""
     
-    forum = models.ForeignKey(DiscussionForum, on_delete=models.CASCADE, related_name='threads')
+    forum = models.ForeignKey(DiscussionForum, on_delete=models.SET_NULL, null=True, blank=True, related_name='threads')
     title = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_threads')
@@ -53,6 +53,7 @@ class DiscussionThread(models.Model):
     is_pinned = models.BooleanField(default=False)
     is_locked = models.BooleanField(default=False)
     last_activity = models.DateTimeField(auto_now=True)
+    topics = models.ManyToManyField('parliament.Topic', related_name='discussion_threads', blank=True)
     
     class Meta:
         ordering = ['-is_pinned', '-last_activity']

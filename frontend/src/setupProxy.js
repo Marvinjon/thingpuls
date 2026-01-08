@@ -6,15 +6,36 @@ module.exports = function(app) {
   
   console.log('Setting up proxy to:', target);
   
-  // Proxy API requests
-  app.use(
-    '/api',
-    createProxyMiddleware({
-      target: target,
-      changeOrigin: true,
-      // Don't rewrite the path - it already has /api
-    })
-  );
+  // Proxy API requests - match all paths starting with /api
+  const apiProxy = createProxyMiddleware({
+    target: target,
+    changeOrigin: true,
+    timeout: 30000,
+    secure: false,
+    logLevel: 'debug',
+    onProxyReq: (proxyReq, req, res) => {
+      console.log(`[PROXY] ${req.method} ${req.url} -> ${target}${req.url}`);
+    },
+    onProxyRes: (proxyRes, req, res) => {
+      console.log(`[PROXY] Response: ${proxyRes.statusCode} for ${req.url}`);
+    },
+    onError: (err, req, res) => {
+      console.error('[PROXY ERROR]', err.message);
+      console.error('[PROXY ERROR] Request was:', req.method, req.url);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Proxy error', message: err.message });
+      }
+    },
+  });
+  
+  // Use a function matcher to ensure we catch all /api requests
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      console.log(`[PROXY MATCH] Intercepting: ${req.method} ${req.path}`);
+      return apiProxy(req, res, next);
+    }
+    next();
+  });
   
   // Proxy admin interface
   app.use(

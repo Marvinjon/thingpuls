@@ -16,6 +16,7 @@ from parliament.serializers import (
     MPListSerializer,
     TopicSerializer
 )
+from parliament.models import Topic
 
 User = get_user_model()
 
@@ -61,15 +62,23 @@ class DiscussionThreadListSerializer(serializers.ModelSerializer):
     
     created_by = UserBasicSerializer(read_only=True)
     post_count = serializers.SerializerMethodField()
+    topics = serializers.PrimaryKeyRelatedField(many=True, queryset=Topic.objects.all(), required=False, allow_empty=True)
     
     class Meta:
         model = DiscussionThread
         fields = ('id', 'forum', 'title', 'slug', 'created_by', 'created_at',
-                  'is_pinned', 'is_locked', 'last_activity', 'post_count')
+                  'is_pinned', 'is_locked', 'last_activity', 'post_count', 'topics')
     
     def get_post_count(self, obj):
         """Return the number of posts in the thread."""
         return obj.posts.count()
+    
+    def to_representation(self, instance):
+        """Override to include topic details in read operations."""
+        representation = super().to_representation(instance)
+        if instance.pk:
+            representation['topics'] = TopicSerializer(instance.topics.all(), many=True).data
+        return representation
 
 
 class DiscussionPostSerializer(serializers.ModelSerializer):
@@ -95,11 +104,12 @@ class DiscussionThreadDetailSerializer(serializers.ModelSerializer):
     created_by = UserBasicSerializer(read_only=True)
     forum = DiscussionForumListSerializer(read_only=True)
     posts = DiscussionPostSerializer(many=True, read_only=True)
+    topics = TopicSerializer(many=True, read_only=True)
     
     class Meta:
         model = DiscussionThread
         fields = ('id', 'forum', 'title', 'slug', 'created_by', 'created_at',
-                  'is_pinned', 'is_locked', 'last_activity', 'posts')
+                  'is_pinned', 'is_locked', 'last_activity', 'posts', 'topics')
 
 
 class WhistleblowingCreateSerializer(serializers.ModelSerializer):

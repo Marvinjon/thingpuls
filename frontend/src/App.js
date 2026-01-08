@@ -17,6 +17,9 @@ import DashboardPage from './pages/analytics/DashboardPage';
 import AnalyticsPage from './pages/analytics/AnalyticsPage';
 import ProfilePage from './pages/user/ProfilePage';
 import NotificationsPage from './pages/user/NotificationsPage';
+import AboutPage from './pages/AboutPage';
+import PrivacyPage from './pages/PrivacyPage';
+import TermsPage from './pages/TermsPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import NotFoundPage from './pages/NotFoundPage';
 
@@ -35,6 +38,9 @@ function App() {
         <Route path="/parliament/voting-records" element={<VotingRecordsPage />} />
         <Route path="/analytics/dashboard" element={<DashboardPage />} />
         <Route path="/analytics/reports" element={<AnalyticsPage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
         
         {/* Protected routes */}
         <Route 
