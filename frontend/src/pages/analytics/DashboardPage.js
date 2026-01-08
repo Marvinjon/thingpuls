@@ -266,6 +266,107 @@ const DashboardPage = () => {
           </Paper>
         </Grid>
 
+        {/* Top Speakers */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Þingmenn sem tala mest - Topp 10
+            </Typography>
+            <Typography variant="body2" color="textSecondary" gutterBottom sx={{ mb: 2 }}>
+              Þingmenn raðaðir eftir heildartíma ræðna
+            </Typography>
+            {topSpeakers && topSpeakers.length > 0 ? (
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>#</TableCell>
+                      <TableCell>Þingmaður</TableCell>
+                      <TableCell>Flokkur</TableCell>
+                      <TableCell align="right">Fjöldi ræðna</TableCell>
+                      <TableCell align="right">Heildartími (klukkustundir)</TableCell>
+                      <TableCell align="right">Heildartími (mínútur)</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {topSpeakers.map((mp, index) => (
+                      <TableRow 
+                        key={mp.id}
+                        component={Link}
+                        to={`/parliament/members/${mp.slug}`}
+                        sx={{
+                          textDecoration: 'none',
+                          cursor: 'pointer',
+                          '&:hover': {
+                            bgcolor: 'action.hover'
+                          }
+                        }}
+                      >
+                        <TableCell>
+                          <Typography variant="h6" fontWeight={600}>
+                            {index + 1}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Box display="flex" alignItems="center" gap={1.5}>
+                            <Box
+                              component="img"
+                              src={mp.image_url}
+                              alt={mp.name}
+                              sx={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: '50%',
+                                objectFit: 'cover'
+                              }}
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                            <Typography variant="body1" fontWeight={500}>
+                              {mp.name}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={mp.party}
+                            size="small"
+                            sx={{
+                              bgcolor: mp.party_color + '20',
+                              color: mp.party_color,
+                              fontWeight: 500
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography variant="body2">
+                            {mp.speech_count}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography variant="body1" fontWeight={600}>
+                            {mp.speaking_time_hours}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography variant="body2" color="textSecondary">
+                            {mp.speaking_time_minutes}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            ) : (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+                <Typography color="textSecondary">Engin gögn tiltæk</Typography>
+              </Box>
+            )}
+          </Paper>
+        </Grid>
+
         {/* Party Cohesion Scores Chart */}
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3 }}>
@@ -436,107 +537,6 @@ const DashboardPage = () => {
                   </ListItem>
                 ))}
               </List>
-            )}
-          </Paper>
-        </Grid>
-
-        {/* Top Speakers */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Þingmenn sem tala mest - Topp 10
-            </Typography>
-            <Typography variant="body2" color="textSecondary" gutterBottom sx={{ mb: 2 }}>
-              Þingmenn raðaðir eftir heildartíma ræðna
-            </Typography>
-            {topSpeakers && topSpeakers.length > 0 ? (
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>#</TableCell>
-                      <TableCell>Þingmaður</TableCell>
-                      <TableCell>Flokkur</TableCell>
-                      <TableCell align="right">Fjöldi ræðna</TableCell>
-                      <TableCell align="right">Heildartími (klukkustundir)</TableCell>
-                      <TableCell align="right">Heildartími (mínútur)</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {topSpeakers.map((mp, index) => (
-                      <TableRow 
-                        key={mp.id}
-                        component={Link}
-                        to={`/parliament/members/${mp.slug}`}
-                        sx={{
-                          textDecoration: 'none',
-                          cursor: 'pointer',
-                          '&:hover': {
-                            bgcolor: 'action.hover'
-                          }
-                        }}
-                      >
-                        <TableCell>
-                          <Typography variant="h6" fontWeight={600}>
-                            {index + 1}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Box display="flex" alignItems="center" gap={1.5}>
-                            <Box
-                              component="img"
-                              src={mp.image_url}
-                              alt={mp.name}
-                              sx={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: '50%',
-                                objectFit: 'cover'
-                              }}
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                              }}
-                            />
-                            <Typography variant="body1" fontWeight={500}>
-                              {mp.name}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={mp.party}
-                            size="small"
-                            sx={{
-                              bgcolor: mp.party_color + '20',
-                              color: mp.party_color,
-                              fontWeight: 500
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography variant="body2">
-                            {mp.speech_count}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography variant="body1" fontWeight={600}>
-                            {mp.speaking_time_hours}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography variant="body2" color="textSecondary">
-                            {mp.speaking_time_minutes}
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            ) : (
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
-                <Typography color="textSecondary">Engin gögn tiltæk</Typography>
-              </Box>
             )}
           </Paper>
         </Grid>

@@ -278,6 +278,21 @@ const MemberPage = () => {
         </Box>
       )}
 
+      {/* Pagination - Top */}
+      {!loading && !error && totalPages > 1 && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Síða {page} af {totalPages}
+          </Typography>
+          <Pagination 
+            count={totalPages} 
+            page={page} 
+            onChange={handlePageChange} 
+            color="primary" 
+          />
+        </Box>
+      )}
+
       {/* Loading State */}
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>

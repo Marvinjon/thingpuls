@@ -581,6 +581,19 @@ const BillsPage = () => {
       {/* Bills List - Only show if we have bills and no error and not loading */}
       {!loading && !error && bills.length > 0 && (
         <>
+          {/* Pagination - Top */}
+          {totalPages > 1 && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+              <Pagination
+                count={totalPages}
+                page={currentPage}
+                onChange={handlePageChange}
+                color="primary"
+                size="large"
+              />
+            </Box>
+          )}
+
           <Grid container spacing={3}>
             {bills.map((bill) => (
               <Grid item xs={12} md={6} key={bill.id}>

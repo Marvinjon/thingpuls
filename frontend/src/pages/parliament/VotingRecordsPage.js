@@ -374,6 +374,21 @@ const VotingRecordsPage = () => {
         </Alert>
       ) : (
         <>
+          {/* Pagination - Top */}
+          {!loading && !error && totalPages > 1 && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Síða {page} af {totalPages} ({totalRecords} niðurstöður)
+              </Typography>
+              <Pagination
+                count={totalPages}
+                page={page}
+                onChange={handlePageChange}
+                color="primary"
+              />
+            </Box>
+          )}
+
           {!loading && !error && (
             <TableContainer component={Paper}>
               <Table>
