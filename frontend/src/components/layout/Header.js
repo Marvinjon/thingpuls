@@ -70,9 +70,9 @@ const Header = () => {
     { text: 'Þingmál', icon: <DescriptionIcon />, path: '/parliament/bills' },
     { text: 'Atkvæðagreiðslur', icon: <HowToVoteIcon />, path: '/parliament/voting-records' },
     { text: 'Tölfræði', icon: <BarChartIcon />, path: '/analytics/dashboard' },
+    { text: 'Umræður', icon: <ForumIcon />, path: '/engagement/forums' },
     ...(currentUser ? [
-      { text: 'Umræður', icon: <ForumIcon />, path: '/engagement/forums' },
-      { text: 'Ábendingar', icon: <CampaignIcon />, path: '/engagement/whistleblowing' },
+      // { text: 'Ábendingar', icon: <CampaignIcon />, path: '/engagement/whistleblowing' },
     ] : [])
   ];
   
