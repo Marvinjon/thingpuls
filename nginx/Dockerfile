@@ -3,6 +3,7 @@ FROM nginx:alpine
 # Create directories and set permissions
 RUN mkdir -p /usr/share/nginx/html \
     && mkdir -p /usr/share/nginx/html/static \
+    && mkdir -p /usr/share/nginx/html/django_static \
     && mkdir -p /usr/share/nginx/html/media \
     && chown -R nginx:nginx /usr/share/nginx/html \
     && chmod -R 755 /usr/share/nginx/html
