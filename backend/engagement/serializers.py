@@ -62,16 +62,28 @@ class DiscussionThreadListSerializer(serializers.ModelSerializer):
     
     created_by = UserBasicSerializer(read_only=True)
     post_count = serializers.SerializerMethodField()
-    topics = serializers.PrimaryKeyRelatedField(many=True, queryset=Topic.objects.all(), required=False, allow_empty=True)
+    topics = serializers.PrimaryKeyRelatedField(many=True, queryset=Topic.objects.all(), required=False, allow_empty=True, allow_null=True)
     
     class Meta:
         model = DiscussionThread
         fields = ('id', 'forum', 'title', 'slug', 'created_by', 'created_at',
                   'is_pinned', 'is_locked', 'last_activity', 'post_count', 'topics')
+        read_only_fields = ('slug',)
     
     def get_post_count(self, obj):
         """Return the number of posts in the thread."""
         return obj.posts.count()
+    
+    def create(self, validated_data):
+        """Create a new thread and handle ManyToMany topics field."""
+        topics = validated_data.pop('topics', None)
+        # Ensure topics is a list (handle case where it might be None or empty)
+        if topics is None:
+            topics = []
+        thread = DiscussionThread.objects.create(**validated_data)
+        # Set topics (even if empty list, this is fine for ManyToMany)
+        thread.topics.set(topics)
+        return thread
     
     def to_representation(self, instance):
         """Override to include topic details in read operations."""
@@ -85,12 +97,50 @@ class DiscussionPostSerializer(serializers.ModelSerializer):
     """Serializer for discussion posts."""
     
     author = UserBasicSerializer(read_only=True)
+    score = serializers.SerializerMethodField()
+    user_vote = serializers.SerializerMethodField()
+    replies = serializers.SerializerMethodField()
+    reply_count = serializers.SerializerMethodField()
+    parent_author = serializers.SerializerMethodField()
     
     class Meta:
         model = DiscussionPost
-        fields = ('id', 'thread', 'author', 'content', 'created_at', 
-                  'updated_at', 'is_edited')
-        read_only_fields = ('is_edited', 'edit_history')
+        fields = ('id', 'thread', 'parent', 'author', 'content', 'created_at', 
+                  'updated_at', 'is_edited', 'upvotes', 'downvotes', 'score', 'user_vote',
+                  'replies', 'reply_count', 'parent_author')
+        read_only_fields = ('is_edited', 'edit_history', 'upvotes', 'downvotes')
+    
+    def get_score(self, obj):
+        """Calculate the net score (upvotes - downvotes)."""
+        return obj.get_score()
+    
+    def get_user_vote(self, obj):
+        """Get the current user's vote status."""
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            return obj.get_user_vote(request.user)
+        return None
+    
+    def get_replies(self, obj):
+        """Get nested replies for this post."""
+        # Limit depth to prevent infinite recursion
+        depth = self.context.get('depth', 0)
+        if depth > 10:  # Maximum nesting depth
+            return []
+        
+        replies = obj.replies.all().order_by('created_at')
+        context = {**self.context, 'depth': depth + 1}
+        return DiscussionPostSerializer(replies, many=True, context=context).data
+    
+    def get_reply_count(self, obj):
+        """Get the total number of replies (including nested)."""
+        return obj.replies.count()
+    
+    def get_parent_author(self, obj):
+        """Get the author of the parent post if this is a reply."""
+        if obj.parent:
+            return UserBasicSerializer(obj.parent.author).data
+        return None
     
     def create(self, validated_data):
         """Create a new post."""

@@ -15,6 +15,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CloseIcon from '@mui/icons-material/Close';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import ThumbUpIcon from '@mui/icons-material/ThumbUp';
+import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import { useAuth } from '../../context/AuthContext';
 import { engagementService } from '../../services/api';
 
@@ -29,7 +31,9 @@ const DiscussionThreadPage = () => {
   const [thread, setThread] = useState(null);
   const [posts, setPosts] = useState([]);
   const [forumInfo, setForumInfo] = useState(null);
-  const [replyContent, setReplyContent] = useState('');
+  const [replyContent, setReplyContent] = useState({}); // Track reply content per post: {postId: content}
+  const [replyToPost, setReplyToPost] = useState(null); // Track which post is being replied to
+  const [expandedReplies, setExpandedReplies] = useState(new Set()); // Track expanded reply threads
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedPost, setSelectedPost] = useState(null);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
@@ -44,16 +48,31 @@ const DiscussionThreadPage = () => {
         setLoading(true);
         setError(null);
         
-        // Fetch thread, posts, and forum data
-        const [threadResponse, postsResponse, forumResponse] = await Promise.all([
+        // Fetch thread and posts (fetch all posts, including nested ones)
+        const [threadResponse, postsResponse] = await Promise.all([
           engagementService.getThreadById(threadId),
-          engagementService.getPosts({ thread: threadId, ordering: 'created_at' }),
-          engagementService.getForumById(forumId)
+          engagementService.getPosts({ thread: threadId, ordering: 'created_at' })
         ]);
         
         setThread(threadResponse.data);
-        setPosts(postsResponse.data.results || postsResponse.data);
-        setForumInfo(forumResponse.data);
+        const postsData = postsResponse.data.results || postsResponse.data;
+        setPosts(postsData);
+        
+        // Auto-expand all posts with replies initially
+        const postsWithReplies = postsData.filter(post => post.replies && post.replies.length > 0);
+        setExpandedReplies(new Set(postsWithReplies.map(post => post.id)));
+        
+        // Only fetch forum if forumId exists
+        if (forumId) {
+          try {
+            const forumResponse = await engagementService.getForumById(forumId);
+            setForumInfo(forumResponse.data);
+          } catch (err) {
+            // Forum might not exist, that's okay
+            console.warn('Forum not found:', err);
+          }
+        }
+        
         setLoading(false);
       } catch (err) {
         console.error('Error fetching thread data:', err);
@@ -93,31 +112,106 @@ const DiscussionThreadPage = () => {
     return email[0]?.toUpperCase() || '?';
   };
 
-  const handleReplySubmit = async (e) => {
+  const handleReplySubmit = async (e, parentPostId = null) => {
     e.preventDefault();
     
-    if (!replyContent.trim()) {
+    const content = parentPostId ? replyContent[parentPostId] : replyContent['thread'];
+    if (!content || !content.trim()) {
       return;
     }
     
     try {
-      const response = await engagementService.createPost({
+      const postData = {
         thread: threadId,
-        content: replyContent
-      });
+        content: content.trim()
+      };
       
-      setPosts(prev => [...prev, response.data]);
-      setReplyContent('');
+      // If replying to a specific post, include the parent
+      if (parentPostId) {
+        postData.parent = parentPostId;
+      }
       
-      // Scroll to the bottom after adding a new reply
-      window.scrollTo({
-        top: document.body.scrollHeight,
-        behavior: 'smooth'
+      const response = await engagementService.createPost(postData);
+      
+      // Refresh posts to get the updated structure with nested replies
+      const postsResponse = await engagementService.getPosts({ thread: threadId, ordering: 'created_at' });
+      setPosts(postsResponse.data.results || postsResponse.data);
+      
+      // Clear the reply content for this post
+      setReplyContent(prev => {
+        const newContent = { ...prev };
+        if (parentPostId) {
+          delete newContent[parentPostId];
+        } else {
+          delete newContent['thread'];
+        }
+        return newContent;
       });
+      setReplyToPost(null);
+      
+      // Expand the parent post's replies if it was a nested reply
+      if (parentPostId) {
+        setExpandedReplies(prev => new Set([...prev, parentPostId]));
+      }
+      
+      // Scroll to the new reply
+      setTimeout(() => {
+        const newPostElement = document.getElementById(`post-${response.data.id}`);
+        if (newPostElement) {
+          newPostElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 100);
     } catch (err) {
       console.error("Error posting reply:", err);
       setError(err.response?.data?.detail || "Ekki tókst að senda svar. Vinsamlegast reyndu aftur.");
     }
+  };
+
+  const handleReplyClick = (post) => {
+    setReplyToPost(post);
+    // Initialize empty content for this post if not exists
+    setReplyContent(prev => ({
+      ...prev,
+      [post.id]: prev[post.id] || ''
+    }));
+    // Expand replies to show the form
+    setExpandedReplies(prev => new Set([...prev, post.id]));
+  };
+
+  const handleCancelReply = (postId = null) => {
+    if (postId) {
+      setReplyContent(prev => {
+        const newContent = { ...prev };
+        delete newContent[postId];
+        return newContent;
+      });
+    } else {
+      setReplyContent(prev => {
+        const newContent = { ...prev };
+        delete newContent['thread'];
+        return newContent;
+      });
+    }
+    setReplyToPost(null);
+  };
+
+  const handleReplyContentChange = (postId, value) => {
+    setReplyContent(prev => ({
+      ...prev,
+      [postId]: value
+    }));
+  };
+
+  const toggleReplies = (postId) => {
+    setExpandedReplies(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
   };
 
   const handlePostOptionsClick = (event, post) => {
@@ -187,6 +281,46 @@ const DiscussionThreadPage = () => {
     }
   };
 
+  const handleUpvote = async (postId) => {
+    if (!currentUser) {
+      alert("Þú verður að skrá þig inn til að kjósa.");
+      return;
+    }
+    
+    try {
+      const response = await engagementService.upvotePost(postId);
+      // Update the post in the UI
+      setPosts(prev => 
+        prev.map(post => 
+          post.id === postId ? response.data : post
+        )
+      );
+    } catch (err) {
+      console.error("Error upvoting post:", err);
+      setError(err.response?.data?.detail || "Ekki tókst að kjósa. Vinsamlegast reyndu aftur.");
+    }
+  };
+
+  const handleDownvote = async (postId) => {
+    if (!currentUser) {
+      alert("Þú verður að skrá þig inn til að kjósa.");
+      return;
+    }
+    
+    try {
+      const response = await engagementService.downvotePost(postId);
+      // Update the post in the UI
+      setPosts(prev => 
+        prev.map(post => 
+          post.id === postId ? response.data : post
+        )
+      );
+    } catch (err) {
+      console.error("Error downvoting post:", err);
+      setError(err.response?.data?.detail || "Ekki tókst að kjósa. Vinsamlegast reyndu aftur.");
+    }
+  };
+
   const scrollToReplyForm = () => {
     replyFormRef.current?.scrollIntoView({ behavior: 'smooth' });
     // Focus on the reply textarea
@@ -235,14 +369,16 @@ const DiscussionThreadPage = () => {
           style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center' }}
         >
           <ForumIcon fontSize="small" sx={{ mr: 0.5 }} />
-          Umræðuvettvangar
+          Umræður
         </Link>
-        <Link 
-          to={`/engagement/forums/${forumId}`}
-          style={{ textDecoration: 'none', color: 'inherit' }}
-        >
-          {forumInfo?.title}
-        </Link>
+        {forumInfo && forumId && (
+          <Link 
+            to={`/engagement/forums/${forumId}`}
+            style={{ textDecoration: 'none', color: 'inherit' }}
+          >
+            {forumInfo.title}
+          </Link>
+        )}
         <Typography color="text.primary">Umræða</Typography>
       </Breadcrumbs>
       
@@ -255,13 +391,8 @@ const DiscussionThreadPage = () => {
             startIcon={<ArrowBackIcon />}
             sx={{ mr: 2 }}
           >
-            Til baka í umræðuvettvangi
+            Til baka í allar umræður
           </Button>
-          <Chip 
-            label={forumInfo?.title} 
-            color="primary" 
-            variant="outlined" 
-          />
           {thread?.is_pinned && (
             <Chip 
               label="Fest" 
@@ -299,7 +430,10 @@ const DiscussionThreadPage = () => {
             <Button 
               variant="contained" 
               startIcon={<ReplyIcon />}
-              onClick={scrollToReplyForm}
+              onClick={() => {
+                setReplyToPost(null);
+                scrollToReplyForm();
+              }}
             >
               Svara umræðu
             </Button>
@@ -315,73 +449,194 @@ const DiscussionThreadPage = () => {
           </Typography>
         </Paper>
       ) : (
-        posts.map((post, index) => {
-          const isFirstPost = index === 0;
-          const isAuthor = currentUser && post.author?.id === currentUser.id;
+        (() => {
+          // Filter to only show top-level posts (no parent)
+          const topLevelPosts = posts.filter(post => !post.parent);
           
-          return (
-            <Card 
-              key={post.id} 
-              elevation={2} 
-              sx={{ mb: 3, border: isFirstPost ? '1px solid' : 'none', borderColor: 'primary.main' }}
-            >
-              <CardHeader
-                avatar={
-                  <Avatar src={post.author?.profile_image} alt={getUserDisplayName(post.author)}>
-                    {getUserInitials(post.author)}
-                  </Avatar>
-                }
-                action={
-                  <IconButton onClick={(e) => handlePostOptionsClick(e, post)}>
-                    <MoreVertIcon />
-                  </IconButton>
-                }
-                title={getUserDisplayName(post.author)}
-                subheader={
-                  <>
-                    <Typography variant="caption" display="block">
-                      Sett inn þann {formatDate(post.created_at)}
+          // Recursive component to render posts with nested replies
+          const renderPost = (post, depth = 0, isFirstPost = false) => {
+            const isAuthor = currentUser && post.author?.id === currentUser.id;
+            const hasReplies = post.replies && post.replies.length > 0;
+            const isExpanded = expandedReplies.has(post.id);
+            const marginLeft = depth * 4;
+            
+            return (
+              <Box key={post.id} id={`post-${post.id}`} sx={{ mb: 2, ml: `${marginLeft}px` }}>
+                <Card 
+                  elevation={depth === 0 ? 2 : 1} 
+                  sx={{ 
+                    mb: 1, 
+                    border: isFirstPost && depth === 0 ? '1px solid' : 'none', 
+                    borderColor: 'primary.main',
+                    borderLeft: depth > 0 ? '3px solid' : 'none',
+                    borderLeftColor: depth > 0 ? 'primary.light' : 'transparent'
+                  }}
+                >
+                  <CardHeader
+                    avatar={
+                      <Avatar src={post.author?.profile_image} alt={getUserDisplayName(post.author)}>
+                        {getUserInitials(post.author)}
+                      </Avatar>
+                    }
+                    action={
+                      <IconButton onClick={(e) => handlePostOptionsClick(e, post)}>
+                        <MoreVertIcon />
+                      </IconButton>
+                    }
+                    title={
+                      <Box display="flex" alignItems="center" gap={1}>
+                        {getUserDisplayName(post.author)}
+                        {post.parent_author && (
+                          <Typography variant="caption" color="text.secondary">
+                            → {getUserDisplayName(post.parent_author)}
+                          </Typography>
+                        )}
+                      </Box>
+                    }
+                    subheader={
+                      <>
+                        <Typography variant="caption" display="block">
+                          Sett inn þann {formatDate(post.created_at)}
+                        </Typography>
+                        {post.is_edited && post.updated_at && (
+                          <Typography variant="caption" color="text.secondary">
+                            Breytt þann {formatDate(post.updated_at)}
+                          </Typography>
+                        )}
+                        {isFirstPost && depth === 0 && (
+                          <Chip 
+                            size="small" 
+                            label="Thread Starter" 
+                            color="primary" 
+                            sx={{ mt: 0.5 }} 
+                          />
+                        )}
+                      </>
+                    }
+                  />
+                  <Divider />
+                  <CardContent>
+                    <Typography variant="body1" paragraph>
+                      {post.content}
                     </Typography>
-                    {post.is_edited && post.updated_at && (
-                      <Typography variant="caption" color="text.secondary">
-                        Breytt þann {formatDate(post.updated_at)}
-                      </Typography>
-                    )}
-                    {isFirstPost && (
-                      <Chip 
-                        size="small" 
-                        label="Thread Starter" 
-                        color="primary" 
-                        sx={{ mt: 0.5 }} 
-                      />
-                    )}
-                  </>
-                }
-              />
-              <Divider />
-              <CardContent>
-                <Typography variant="body1" paragraph>
-                  {post.content}
-                </Typography>
-              </CardContent>
-              <Divider />
-              <CardActions disableSpacing>
-                {!thread?.is_locked && (
-                  <Button 
-                    size="small" 
-                    startIcon={<ReplyIcon />}
-                    onClick={scrollToReplyForm}
-                  >
-                    Svara
-                  </Button>
+                  </CardContent>
+                  <Divider />
+                  <CardActions disableSpacing>
+                    <Box display="flex" alignItems="center" gap={1} sx={{ width: '100%' }}>
+                      {/* Voting Section */}
+                      <Box display="flex" alignItems="center" gap={0.5} sx={{ mr: 2 }}>
+                        <IconButton 
+                          size="small" 
+                          onClick={() => handleUpvote(post.id)}
+                          color={post.user_vote === 'upvote' ? 'primary' : 'default'}
+                          disabled={!currentUser}
+                        >
+                          <ThumbUpIcon fontSize="small" />
+                        </IconButton>
+                        <Typography variant="body2" sx={{ minWidth: '30px', textAlign: 'center' }}>
+                          {post.score !== undefined ? post.score : (post.upvotes || 0) - (post.downvotes || 0)}
+                        </Typography>
+                        <IconButton 
+                          size="small" 
+                          onClick={() => handleDownvote(post.id)}
+                          color={post.user_vote === 'downvote' ? 'error' : 'default'}
+                          disabled={!currentUser}
+                        >
+                          <ThumbDownIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                      
+                      {!thread?.is_locked && (
+                        <Button 
+                          size="small" 
+                          startIcon={<ReplyIcon />}
+                          onClick={() => handleReplyClick(post)}
+                        >
+                          Svara
+                        </Button>
+                      )}
+                      
+                      {hasReplies && (
+                        <Button 
+                          size="small"
+                          onClick={() => toggleReplies(post.id)}
+                          sx={{ ml: 'auto' }}
+                        >
+                          {isExpanded ? 'Fela' : 'Sýna'} {post.reply_count} svör
+                        </Button>
+                      )}
+                    </Box>
+                  </CardActions>
+                  
+                  {/* Inline Reply Form */}
+                  {replyToPost?.id === post.id && !thread?.is_locked && (
+                    <>
+                      <Divider />
+                      <Box sx={{ p: 2, bgcolor: 'action.hover' }}>
+                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Svara {getUserDisplayName(post.author)}
+                          </Typography>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => handleCancelReply(post.id)}
+                          >
+                            <CloseIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                        <form onSubmit={(e) => handleReplySubmit(e, post.id)}>
+                          <TextField
+                            fullWidth
+                            multiline
+                            rows={3}
+                            value={replyContent[post.id] || ''}
+                            onChange={(e) => handleReplyContentChange(post.id, e.target.value)}
+                            placeholder={`Skrifaðu svar til ${getUserDisplayName(post.author)}...`}
+                            variant="outlined"
+                            size="small"
+                            required
+                            sx={{ mb: 1 }}
+                            autoFocus
+                          />
+                          <Box display="flex" justifyContent="flex-end" gap={1}>
+                            <Button 
+                              size="small"
+                              onClick={() => handleCancelReply(post.id)}
+                              variant="outlined"
+                            >
+                              Hætta við
+                            </Button>
+                            <Button 
+                              type="submit" 
+                              size="small"
+                              variant="contained" 
+                              disabled={!replyContent[post.id]?.trim()}
+                              startIcon={<ReplyIcon />}
+                            >
+                              Senda
+                            </Button>
+                          </Box>
+                        </form>
+                      </Box>
+                    </>
+                  )}
+                </Card>
+                
+                {/* Render nested replies */}
+                {hasReplies && isExpanded && (
+                  <Box sx={{ mt: 1 }}>
+                    {post.replies.map((reply) => renderPost(reply, depth + 1, false))}
+                  </Box>
                 )}
-              </CardActions>
-            </Card>
-          );
-        })
+              </Box>
+            );
+          };
+          
+          return topLevelPosts.map((post, index) => renderPost(post, 0, index === 0));
+        })()
       )}
       
-      {/* Reply Form */}
+      {/* Reply Form - Only for top-level thread replies */}
       {thread?.is_locked ? (
         <Paper elevation={3} sx={{ p: 3, mt: 4, bgcolor: 'action.disabledBackground' }} ref={replyFormRef}>
           <Typography variant="h6" gutterBottom>
@@ -391,20 +646,22 @@ const DiscussionThreadPage = () => {
             Þessari umræðu hefur verið læst og ekki er hægt að bæta við nýjum svörum.
           </Typography>
         </Paper>
-      ) : (
+      ) : !replyToPost ? (
         <Paper elevation={3} sx={{ p: 3, mt: 4 }} ref={replyFormRef}>
-          <Typography variant="h6" gutterBottom>
-            Svara þessari umræðu
-          </Typography>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+            <Typography variant="h6">
+              Svara þessari umræðu
+            </Typography>
+          </Box>
           
-          <form onSubmit={handleReplySubmit}>
+          <form onSubmit={(e) => handleReplySubmit(e, null)}>
             <TextField
               fullWidth
               label="Svar þitt"
               multiline
               rows={6}
-              value={replyContent}
-              onChange={(e) => setReplyContent(e.target.value)}
+              value={replyContent['thread'] || ''}
+              onChange={(e) => handleReplyContentChange('thread', e.target.value)}
               placeholder="Skrifaðu svar þitt hér..."
               variant="outlined"
               required
@@ -415,7 +672,7 @@ const DiscussionThreadPage = () => {
               <Button 
                 type="submit" 
                 variant="contained" 
-                disabled={!replyContent.trim()}
+                disabled={!replyContent['thread']?.trim()}
                 startIcon={<ReplyIcon />}
               >
                 Senda svar
@@ -423,7 +680,7 @@ const DiscussionThreadPage = () => {
             </Box>
           </form>
         </Paper>
-      )}
+      ) : null}
       
       {/* Post Options Menu */}
       <Menu

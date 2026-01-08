@@ -70,6 +70,14 @@ function App() {
           } 
         />
         <Route 
+          path="/engagement/threads/:threadId" 
+          element={
+            <ProtectedRoute>
+              <DiscussionThreadPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
           path="/engagement/whistleblowing" 
           element={
             <ProtectedRoute>

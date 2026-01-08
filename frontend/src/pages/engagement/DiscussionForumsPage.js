@@ -127,13 +127,13 @@ const DiscussionForumsPage = () => {
       return;
     }
     
+    // Create the thread with topics (no forum)
+    const threadData = {
+      title: newThread.title,
+      topics: newThread.topics
+    };
+    
     try {
-      // Create the thread with topics (no forum)
-      const threadData = {
-        title: newThread.title,
-        topics: newThread.topics
-      };
-      
       const threadResponse = await engagementService.createThread(threadData);
       
       // Create the first post with the content
@@ -149,9 +149,15 @@ const DiscussionForumsPage = () => {
       setActiveThreads(threadsResponse.data.results || threadsResponse.data);
     } catch (err) {
       console.error("Error creating thread:", err);
+      console.error("Error response data:", err.response?.data);
+      console.error("Request data sent:", threadData);
+      const errorMessage = err.response?.data?.detail || 
+                          err.response?.data?.non_field_errors?.[0] ||
+                          (typeof err.response?.data === 'object' ? JSON.stringify(err.response.data) : err.response?.data) ||
+                          "Failed to create thread. Please try again.";
       setFormErrors(prev => ({
         ...prev,
-        submit: err.response?.data?.detail || "Failed to create thread. Please try again."
+        submit: errorMessage
       }));
     }
   };
@@ -219,7 +225,7 @@ const DiscussionForumsPage = () => {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box mb={4}>
         <Typography variant="h4" component="h1" gutterBottom>
-          Umræðuvettvangar
+          Umræður
         </Typography>
         <Typography variant="body1" color="text.secondary" paragraph>
           Taktu þátt í umræðum um íslensk stjórnmál og þingstörf. 
@@ -260,53 +266,6 @@ const DiscussionForumsPage = () => {
           </Paper>
         </Grid>
         
-        {/* Forum Categories */}
-        <Grid item xs={12}>
-          <Typography variant="h5" component="h2" gutterBottom sx={{ mt: 2 }}>
-            Umræðuvettvangar
-          </Typography>
-          {forumCategories.length === 0 ? (
-            <Paper elevation={2} sx={{ p: 3, textAlign: 'center' }}>
-              <Typography variant="body1" color="text.secondary">
-                Engir umræðuvettvangar í boði ennþá. Athugaðu aftur síðar.
-              </Typography>
-            </Paper>
-          ) : (
-          <Grid container spacing={2}>
-              {forumCategories.map((forum) => (
-                <Grid item xs={12} sm={6} md={4} key={forum.id}>
-                <Card elevation={2} sx={{ height: '100%' }}>
-                  <CardActionArea 
-                    component={Link} 
-                      to={`/engagement/forums/${forum.id}`}
-                    sx={{ height: '100%' }}
-                  >
-                    <CardContent>
-                      <Box display="flex" alignItems="center" mb={1}>
-                        <ForumIcon color="primary" sx={{ mr: 1 }} />
-                        <Typography variant="h6" component="h3">
-                            {forum.title}
-                        </Typography>
-                      </Box>
-                      <Typography variant="body2" color="text.secondary" paragraph>
-                          {forum.description}
-                      </Typography>
-                      <Box display="flex" justifyContent="space-between">
-                        <Chip 
-                          size="small" 
-                          icon={<MessageIcon />} 
-                            label={`${forum.thread_count || 0} umræður`} 
-                        />
-                      </Box>
-                    </CardContent>
-                  </CardActionArea>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-          )}
-        </Grid>
-        
         {/* Active Discussions */}
         <Grid item xs={12}>
           <Box sx={{ mt: 4, mb: 2 }}>
@@ -338,25 +297,22 @@ const DiscussionForumsPage = () => {
               <List>
                 {filteredThreads.map((thread, index) => {
                   const forumInfo = forumCategories.find(f => f.id === thread.forum);
-                  // For threads without forums, we'll need a different URL structure
-                  // For now, use a placeholder or handle it differently
+                  // Use different URL structure for threads with/without forums
                   const threadUrl = thread.forum 
                     ? `/engagement/forums/${thread.forum}/threads/${thread.id}`
-                    : `#`; // Placeholder for threads without forums
-                  
-                  const ListItemComponent = thread.forum ? Link : 'div';
+                    : `/engagement/threads/${thread.id}`;
                   
                   return (
                   <React.Fragment key={thread.id}>
                     <ListItem 
                       alignItems="flex-start" 
-                      component={ListItemComponent}
-                      to={thread.forum ? threadUrl : undefined}
+                      component={Link}
+                      to={threadUrl}
                       sx={{ 
                         textDecoration: 'none', 
                         color: 'inherit',
                         '&:hover': { bgcolor: 'action.hover' },
-                        cursor: thread.forum ? 'pointer' : 'default'
+                        cursor: 'pointer'
                       }}
                     >
                       <ListItemAvatar>

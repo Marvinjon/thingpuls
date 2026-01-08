@@ -92,6 +92,8 @@ export const engagementService = {
   createPost: (data) => api.post('/engagement/posts/', data),
   updatePost: (id, data) => api.patch(`/engagement/posts/${id}/`, data),
   deletePost: (id) => api.delete(`/engagement/posts/${id}/`),
+  upvotePost: (id) => api.post(`/engagement/posts/${id}/upvote/`),
+  downvotePost: (id) => api.post(`/engagement/posts/${id}/downvote/`),
   
   // Whistleblowing
   getWhistleblowingReports: (params) => api.get('/engagement/whistleblowing/', { params }),

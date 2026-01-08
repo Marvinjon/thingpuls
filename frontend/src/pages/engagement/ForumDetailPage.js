@@ -190,7 +190,7 @@ const ForumDetailPage = () => {
   if (!forum) {
     return (
       <Container sx={{ mt: 4 }}>
-        <Alert severity="info">Umræðuvettvangur fannst ekki</Alert>
+        <Alert severity="info">Umræða fannst ekki</Alert>
       </Container>
     );
   }
@@ -213,7 +213,7 @@ const ForumDetailPage = () => {
           style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center' }}
         >
           <ForumIcon fontSize="small" sx={{ mr: 0.5 }} />
-          Umræðuvettvangar
+          Umræður
         </Link>
         <Typography color="text.primary">{forum.title}</Typography>
       </Breadcrumbs>
@@ -227,7 +227,7 @@ const ForumDetailPage = () => {
             startIcon={<ArrowBackIcon />}
             sx={{ mr: 2 }}
           >
-            Til baka í umræðuvettvangi
+            Til baka í umræður
           </Button>
         </Box>
         

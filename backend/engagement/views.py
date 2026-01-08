@@ -128,11 +128,11 @@ class DiscussionThreadViewSet(viewsets.ModelViewSet):
 class DiscussionPostViewSet(viewsets.ModelViewSet):
     """ViewSet for discussion posts."""
     
-    queryset = DiscussionPost.objects.all()
+    queryset = DiscussionPost.objects.select_related('author', 'thread', 'parent', 'parent__author').prefetch_related('replies').all()
     serializer_class = DiscussionPostSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['thread', 'author', 'is_approved']
+    filterset_fields = ['thread', 'author', 'is_approved', 'parent']
     ordering_fields = ['created_at']
     
     def perform_create(self, serializer):
@@ -168,6 +168,70 @@ class DiscussionPostViewSet(viewsets.ModelViewSet):
         
         # Save with is_edited flag
         serializer.save(is_edited=True, edit_history=post.edit_history)
+    
+    @action(detail=True, methods=['post'])
+    def upvote(self, request, pk=None):
+        """Upvote a post."""
+        post = self.get_object()
+        user = request.user
+        user_id = str(user.id)
+        
+        # Initialize user_votes if it doesn't exist
+        if not post.user_votes:
+            post.user_votes = {}
+        
+        current_vote = post.user_votes.get(user_id)
+        
+        # Handle vote toggle
+        if current_vote == 'upvote':
+            # Remove upvote
+            post.user_votes[user_id] = None
+            post.upvotes = max(0, post.upvotes - 1)
+        elif current_vote == 'downvote':
+            # Switch from downvote to upvote
+            post.user_votes[user_id] = 'upvote'
+            post.downvotes = max(0, post.downvotes - 1)
+            post.upvotes += 1
+        else:
+            # Add upvote
+            post.user_votes[user_id] = 'upvote'
+            post.upvotes += 1
+        
+        post.save()
+        serializer = self.get_serializer(post)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'])
+    def downvote(self, request, pk=None):
+        """Downvote a post."""
+        post = self.get_object()
+        user = request.user
+        user_id = str(user.id)
+        
+        # Initialize user_votes if it doesn't exist
+        if not post.user_votes:
+            post.user_votes = {}
+        
+        current_vote = post.user_votes.get(user_id)
+        
+        # Handle vote toggle
+        if current_vote == 'downvote':
+            # Remove downvote
+            post.user_votes[user_id] = None
+            post.downvotes = max(0, post.downvotes - 1)
+        elif current_vote == 'upvote':
+            # Switch from upvote to downvote
+            post.user_votes[user_id] = 'downvote'
+            post.upvotes = max(0, post.upvotes - 1)
+            post.downvotes += 1
+        else:
+            # Add downvote
+            post.user_votes[user_id] = 'downvote'
+            post.downvotes += 1
+        
+        post.save()
+        serializer = self.get_serializer(post)
+        return Response(serializer.data)
 
 
 class WhistleblowingViewSet(viewsets.ModelViewSet):

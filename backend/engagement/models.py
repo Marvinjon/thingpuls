@@ -79,15 +79,33 @@ class DiscussionPost(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     is_approved = models.BooleanField(default=True)
     
+    # For nested replies
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
+    
     # For tracking edits
     is_edited = models.BooleanField(default=False)
     edit_history = models.JSONField(null=True, blank=True)
+    
+    # Voting system
+    upvotes = models.IntegerField(default=0)
+    downvotes = models.IntegerField(default=0)
+    user_votes = models.JSONField(default=dict, blank=True)  # Stores {user_id: 'upvote'|'downvote'|null}
     
     class Meta:
         ordering = ['created_at']
     
     def __str__(self):
         return f"Post by {self.author} in {self.thread.title}"
+    
+    def get_score(self):
+        """Calculate the net score (upvotes - downvotes)."""
+        return self.upvotes - self.downvotes
+    
+    def get_user_vote(self, user):
+        """Get the vote status for a specific user."""
+        if not user or not user.is_authenticated:
+            return None
+        return self.user_votes.get(str(user.id))
 
 
 class Whistleblowing(models.Model):
