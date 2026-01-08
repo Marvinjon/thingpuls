@@ -180,7 +180,54 @@ docker compose -f docker-compose.prod.yml exec backend python manage.py createsu
 docker compose -f docker-compose.prod.yml exec backend python manage.py collectstatic --noinput
 ```
 
-4. **Verify:**
+4. **Load Initial Data (Scrapers):**
+
+The database starts empty. You need to run the scrapers to populate it with parliamentary data:
+
+```bash
+# Run all scrapers for a specific session (e.g., session 157 for 2025-2026)
+# Replace 157 with the current session number
+docker compose -f docker-compose.prod.yml exec backend bash -c "
+echo '1. Fetching Political Parties...'
+python scrapers/fetch_parties.py 157
+echo ''
+
+echo '2. Fetching MPs...'
+python scrapers/fetch_mps.py 157
+echo ''
+
+echo '3. Fetching Bills...'
+python scrapers/fetch_bills.py 157
+echo ''
+
+echo '4. Assigning Topics...'
+python scrapers/assign_topics.py
+echo ''
+
+echo '5. Fetching Voting Records...'
+python scrapers/fetch_voting_records.py 157
+echo ''
+
+echo '6. Fetching Speeches...'
+python scrapers/fetch_speeches.py 157
+echo ''
+
+echo '7. Fetching MP Interests...'
+python scrapers/fetch_interests.py
+echo ''
+
+echo 'All done!'
+"
+```
+
+**Note:** Replace `157` with the current Alþingi session number. This process may take 10-30 minutes depending on the amount of data.
+
+**Alternative:** You can also use the helper script (if available):
+```bash
+./start.sh scrapers 157
+```
+
+5. **Verify:**
 ```bash
 # Check service status
 docker compose -f docker-compose.prod.yml ps
@@ -219,6 +266,56 @@ REACT_APP_API_URL=https://yourdomain.com/api
 ```
 
 ## 🔧 Maintenance
+
+### Running Scrapers (Data Collection)
+
+To update or populate the database with parliamentary data:
+
+```bash
+# Run all scrapers for a specific session
+# Production:
+docker compose -f docker-compose.prod.yml exec backend bash -c "
+python scrapers/fetch_parties.py 157 &&
+python scrapers/fetch_mps.py 157 &&
+python scrapers/fetch_bills.py 157 &&
+python scrapers/assign_topics.py &&
+python scrapers/fetch_voting_records.py 157 &&
+python scrapers/fetch_speeches.py 157 &&
+python scrapers/fetch_interests.py
+"
+
+# Development:
+docker compose exec backend bash -c "
+python scrapers/fetch_parties.py 157 &&
+python scrapers/fetch_mps.py 157 &&
+python scrapers/fetch_bills.py 157 &&
+python scrapers/assign_topics.py &&
+python scrapers/fetch_voting_records.py 157 &&
+python scrapers/fetch_speeches.py 157 &&
+python scrapers/fetch_interests.py
+"
+```
+
+**Individual Scrapers:**
+
+You can also run scrapers individually:
+
+```bash
+# Production
+docker compose -f docker-compose.prod.yml exec backend python scrapers/fetch_mps.py 157
+docker compose -f docker-compose.prod.yml exec backend python scrapers/fetch_bills.py 157
+
+# Development
+docker compose exec backend python scrapers/fetch_mps.py 157
+docker compose exec backend python scrapers/fetch_bills.py 157
+```
+
+**Check Current Session Number:**
+
+The session number corresponds to the Alþingi session. Common recent sessions:
+- Session 157: 2025-2026
+- Session 156: 2024-2025
+- Session 155: 2023-2024
 
 ### Database Backup
 ```bash
