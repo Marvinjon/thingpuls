@@ -76,10 +76,11 @@ class BillListSerializer(serializers.ModelSerializer):
     """Serializer for listing bill objects."""
     
     topics = TopicSerializer(many=True, read_only=True)
+    session = ParliamentSessionSerializer(read_only=True)
     
     class Meta:
         model = Bill
-        fields = ('id', 'title', 'slug', 'status', 'introduced_date', 'topics', 'url', 'description', 'althingi_id')
+        fields = ('id', 'title', 'slug', 'status', 'introduced_date', 'topics', 'url', 'description', 'althingi_id', 'session', 'vote_date')
 
 
 class VoteSerializer(serializers.ModelSerializer):

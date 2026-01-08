@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import {
   Typography,
@@ -10,14 +10,151 @@ import {
   Button,
   Container,
   Paper,
-  Divider
+  Divider,
+  Chip,
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import HowToVoteIcon from '@mui/icons-material/HowToVote';
 import PeopleIcon from '@mui/icons-material/People';
 import DescriptionIcon from '@mui/icons-material/Description';
 import ForumIcon from '@mui/icons-material/Forum';
+import { parliamentService } from '../services/api';
 
 const HomePage = () => {
+  const [latestBills, setLatestBills] = useState([]);
+  const [latestVotingRecords, setLatestVotingRecords] = useState([]);
+  const [loadingBills, setLoadingBills] = useState(true);
+  const [loadingVotes, setLoadingVotes] = useState(true);
+  const [errorBills, setErrorBills] = useState(null);
+  const [errorVotes, setErrorVotes] = useState(null);
+
+  // Format status helper
+  const formatStatus = (status) => {
+    const statusMap = {
+      'awaiting_first_reading': 'Bíða 1. umræðu',
+      'in_committee': 'Í nefnd',
+      'awaiting_second_reading': 'Bíða 2. umræðu',
+      'awaiting_third_reading': 'Bíða 3. umræðu',
+      'passed': 'Samþykkt',
+      'rejected': 'Fellt',
+      'withdrawn': 'Dregið til baka',
+      'question_sent': 'Fyrirspurn send',
+      'question_answered': 'Fyrirspurn svarað'
+    };
+    return statusMap[status] || status;
+  };
+
+  // Get color for status chip
+  const getStatusColor = (status) => {
+    const colorMap = {
+      'awaiting_first_reading': 'info',
+      'in_committee': 'warning',
+      'awaiting_second_reading': 'info',
+      'awaiting_third_reading': 'info',
+      'passed': 'success',
+      'rejected': 'error',
+      'withdrawn': 'default',
+      'question_sent': 'info',
+      'question_answered': 'success'
+    };
+    return colorMap[status] || 'default';
+  };
+
+  // Format date helper
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('is-IS', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  };
+
+  // Fetch latest bills
+  useEffect(() => {
+    const fetchLatestBills = async () => {
+      try {
+        setLoadingBills(true);
+        setErrorBills(null);
+        const response = await parliamentService.getBills({
+          page: 1,
+          limit: 5,
+          ordering: '-introduced_date'
+        });
+        // Limit to 5 items as a safety measure
+        const bills = response.data.results || [];
+        setLatestBills(bills.slice(0, 5));
+      } catch (err) {
+        console.error('Error fetching latest bills:', err);
+        setErrorBills('Ekki tókst að sækja nýjustu frumvörpin');
+      } finally {
+        setLoadingBills(false);
+      }
+    };
+
+    fetchLatestBills();
+  }, []);
+
+  // Fetch latest voting records
+  useEffect(() => {
+    const fetchLatestVotingRecords = async () => {
+      try {
+        setLoadingVotes(true);
+        setErrorVotes(null);
+        const response = await parliamentService.getBills({
+          page: 1,
+          limit: 5,
+          has_votes: true,
+          ordering: '-vote_date'
+        });
+        // Limit to 5 items as a safety measure
+        const bills = (response.data.results || []).slice(0, 5);
+        
+        // For each bill, fetch vote counts (only for the 5 bills)
+        const billsWithVotes = await Promise.all(
+          bills.map(async (bill) => {
+            try {
+              // Fetch votes with pagination to get all votes efficiently
+              const votesResponse = await parliamentService.getBillVotes(bill.id);
+              const votes = votesResponse.data.results || [];
+              
+              // If paginated, we might need to fetch more pages, but for now just use first page
+              // This should be enough for most bills
+              const voteCounts = { for: 0, against: 0, abstentions: 0, absent: 0 };
+              votes.forEach(vote => {
+                if (vote.vote === 'yes') voteCounts.for++;
+                else if (vote.vote === 'no') voteCounts.against++;
+                else if (vote.vote === 'abstain') voteCounts.abstentions++;
+                else if (vote.vote === 'absent') voteCounts.absent++;
+              });
+              
+              return {
+                ...bill,
+                voteCounts
+              };
+            } catch (err) {
+              console.error(`Error fetching votes for bill ${bill.id}:`, err);
+              return {
+                ...bill,
+                voteCounts: { for: 0, against: 0, abstentions: 0, absent: 0 }
+              };
+            }
+          })
+        );
+        
+        setLatestVotingRecords(billsWithVotes);
+      } catch (err) {
+        console.error('Error fetching latest voting records:', err);
+        setErrorVotes('Ekki tókst að sækja nýjustu atkvæðagreiðslurnar');
+      } finally {
+        setLoadingVotes(false);
+      }
+    };
+
+    fetchLatestVotingRecords();
+  }, []);
   return (
     <>
       {/* Hero Section */}
@@ -172,31 +309,212 @@ const HomePage = () => {
         </Typography>
         <Divider sx={{ mb: 4, width: '100px', mx: 'auto', borderBottomWidth: 3 }} />
         
-        <Paper sx={{ p: 3, mb: 3, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-          <Box sx={{ flex: '1 1 70%' }}>
-            <Typography variant="h6" gutterBottom>
-              Nýleg Frumvörp
-            </Typography>
-            <Typography variant="body2" paragraph>
-              Hér birtast nýjustu frumvörpin sem lögð hafa verið fram á Alþingi þegar tenging við gagnagrunn er virk.
-            </Typography>
-            <Button variant="outlined" component={RouterLink} to="/parliament/bills">
-              Öll Frumvörp
-            </Button>
-          </Box>
-          <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
-          <Box sx={{ flex: '1 1 30%' }}>
-            <Typography variant="h6" gutterBottom>
-              Væntanlegar Atkvæðagreiðslur
-            </Typography>
-            <Typography variant="body2" paragraph>
-              Upplýsingar um væntanlegar atkvæðagreiðslur á Alþingi birtast hér þegar tenging við gagnagrunn er virk.
-            </Typography>
-            <Button variant="outlined" component={RouterLink} to="/parliament/voting-records">
-              Skoða Atkvæðadagatal
-            </Button>
-          </Box>
-        </Paper>
+        <Grid container spacing={3}>
+          {/* Latest Bills Column */}
+          <Grid item xs={12} md={6}>
+            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="h6">
+                Nýleg Frumvörp
+              </Typography>
+              <Button variant="outlined" size="small" component={RouterLink} to="/parliament/bills">
+                Öll Frumvörp
+              </Button>
+            </Box>
+            
+            {loadingBills && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            )}
+            
+            {errorBills && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {errorBills}
+              </Alert>
+            )}
+            
+            {!loadingBills && !errorBills && latestBills.length === 0 && (
+              <Alert severity="info">
+                Engin frumvörp fundust.
+              </Alert>
+            )}
+            
+            {!loadingBills && !errorBills && latestBills.length > 0 && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {latestBills.map((bill) => (
+                  <Card
+                    key={bill.id}
+                    component={RouterLink}
+                    to={`/parliament/bills/${bill.id}`}
+                    sx={{
+                      textDecoration: 'none',
+                      display: 'block',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: 4
+                      }
+                    }}
+                  >
+                    <CardContent>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1, pr: 1 }}>
+                          {bill.title}
+                        </Typography>
+                        {bill.status && (
+                          <Chip 
+                            label={formatStatus(bill.status)}
+                            color={getStatusColor(bill.status)}
+                            size="small"
+                            sx={{ flexShrink: 0 }}
+                          />
+                        )}
+                      </Box>
+                      
+                      {bill.description && (
+                        <Typography 
+                          variant="body2" 
+                          color="text.secondary" 
+                          sx={{ 
+                            mb: 1,
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          {bill.description}
+                        </Typography>
+                      )}
+                      
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', mt: 1 }}>
+                        {bill.introduced_date && (
+                          <Typography variant="caption" color="text.secondary">
+                            {formatDate(bill.introduced_date)}
+                          </Typography>
+                        )}
+                        {bill.topics && bill.topics.length > 0 && (
+                          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                            {bill.topics.slice(0, 2).map((topic) => (
+                              <Chip
+                                key={topic.id}
+                                label={topic.name}
+                                size="small"
+                                variant="outlined"
+                                sx={{ fontSize: '0.7rem', height: '20px' }}
+                              />
+                            ))}
+                          </Box>
+                        )}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Box>
+            )}
+          </Grid>
+          
+          {/* Latest Voting Records Column */}
+          <Grid item xs={12} md={6}>
+            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="h6">
+                Nýlegar Atkvæðagreiðslur
+              </Typography>
+              <Button variant="outlined" size="small" component={RouterLink} to="/parliament/voting-records">
+                Skoða allar loka atkvæðagreiðslur
+              </Button>
+            </Box>
+            
+            {loadingVotes && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            )}
+            
+            {errorVotes && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {errorVotes}
+              </Alert>
+            )}
+            
+            {!loadingVotes && !errorVotes && latestVotingRecords.length === 0 && (
+              <Alert severity="info">
+                Engar atkvæðagreiðslur fundust.
+              </Alert>
+            )}
+            
+            {!loadingVotes && !errorVotes && latestVotingRecords.length > 0 && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {latestVotingRecords.map((record) => (
+                  <Card
+                    key={record.id}
+                    component={RouterLink}
+                    to={`/parliament/bills/${record.id}`}
+                    sx={{
+                      textDecoration: 'none',
+                      display: 'block',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: 4
+                      }
+                    }}
+                  >
+                    <CardContent>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+                        {record.title}
+                      </Typography>
+                      
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
+                        {record.vote_date && (
+                          <Typography variant="body2" color="text.secondary">
+                            Dagsetning: {formatDate(record.vote_date)}
+                          </Typography>
+                        )}
+                        
+                        {record.status && (
+                          <Chip 
+                            label={formatStatus(record.status)}
+                            color={getStatusColor(record.status)}
+                            size="small"
+                            sx={{ width: 'fit-content' }}
+                          />
+                        )}
+                        
+                        {record.voteCounts && (
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 0.5 }}>
+                            <Chip 
+                              label={`Já: ${record.voteCounts.for}`}
+                              color="success"
+                              size="small"
+                              variant="outlined"
+                            />
+                            <Chip 
+                              label={`Nei: ${record.voteCounts.against}`}
+                              color="error"
+                              size="small"
+                              variant="outlined"
+                            />
+                            {record.voteCounts.abstentions > 0 && (
+                              <Chip 
+                                label={`Sátu hjá: ${record.voteCounts.abstentions}`}
+                                color="warning"
+                                size="small"
+                                variant="outlined"
+                              />
+                            )}
+                          </Box>
+                        )}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Box>
+            )}
+          </Grid>
+        </Grid>
       </Box>
     </>
   );

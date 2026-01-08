@@ -21,6 +21,58 @@ function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
 
+// Format date in Icelandic
+const formatDateIcelandic = (dateString) => {
+  if (!dateString) return 'N/A';
+  
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return 'N/A';
+  
+  const months = [
+    'janúar', 'febrúar', 'mars', 'apríl', 'maí', 'júní',
+    'júlí', 'ágúst', 'september', 'október', 'nóvember', 'desember'
+  ];
+  
+  const day = date.getDate();
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  
+  return `${day}. ${month} ${year}`;
+};
+
+// Format status in Icelandic
+const formatStatus = (status) => {
+  if (!status) return 'Óþekkt';
+  
+  const statusMap = {
+    'awaiting_first_reading': 'Bíða 1. umræðu',
+    'in_committee': 'Í nefnd',
+    'awaiting_second_reading': 'Bíða 2. umræðu',
+    'awaiting_third_reading': 'Bíða 3. umræðu',
+    'passed': 'Samþykkt',
+    'rejected': 'Fellt',
+    'withdrawn': 'Dregið til baka',
+    'question_sent': 'Fyrirspurn send',
+    'question_answered': 'Fyrirspurn svarað',
+    // Handle capitalized versions
+    'Awaiting_first_reading': 'Bíða 1. umræðu',
+    'In_committee': 'Í nefnd',
+    'Awaiting_second_reading': 'Bíða 2. umræðu',
+    'Awaiting_third_reading': 'Bíða 3. umræðu',
+    'Passed': 'Samþykkt',
+    'Rejected': 'Fellt',
+    'Withdrawn': 'Dregið til baka',
+    'Question_sent': 'Fyrirspurn send',
+    'Question_answered': 'Fyrirspurn svarað',
+    // Legacy formats
+    'Introduced': 'Lagt fram',
+    'Failed': 'Hafnað',
+    'In Progress': 'Í vinnslu'
+  };
+  
+  return statusMap[status] || status;
+};
+
 const VotingRecordsPage = () => {
   const query = useQuery();
   const billId = query.get('bill');
@@ -106,32 +158,54 @@ const VotingRecordsPage = () => {
                 else if (vote.vote === 'absent') voteCounts.absent++;
               });
               
+              // Extract session number from slug if available (format: "session-bill")
+              let sessionNumber = null;
+              if (bill.session?.session_number) {
+                sessionNumber = bill.session.session_number;
+              } else if (bill.slug) {
+                const slugParts = bill.slug.split('-');
+                if (slugParts.length >= 2) {
+                  sessionNumber = slugParts[0];
+                }
+              }
+              
               return {
                 id: bill.id,
                 billNumber: bill.althingi_id || bill.id,
-                sessionNumber: bill.session?.session_number || 'N/A',
+                sessionNumber: sessionNumber,
                 billTitle: bill.title || 'Untitled Bill',
                 date: bill.vote_date || bill.introduced_date,
-                stage: "Final Vote",
-                result: bill.status ? 
-                       bill.status.charAt(0).toUpperCase() + bill.status.slice(1) : 
-                       'In Progress',
+                stage: "Loka atkvæðagreiðsla",
+                result: bill.status || null,
                 totalVotes: voteCounts,
                 memberVotes: []
               };
             } catch (err) {
               console.error(`Error fetching votes for bill ${bill.id}:`, err);
               // Return bill without vote counts if fetch fails
+              // Extract session number from slug if available (format: "session-bill")
+              let sessionNumber = null;
+              if (bill.session?.session_number) {
+                sessionNumber = bill.session.session_number;
+              } else if (bill.slug) {
+                const slugParts = bill.slug.split('-');
+                if (slugParts.length >= 2) {
+                  // Only use if it's a valid number
+                  const potentialSession = slugParts[0];
+                  if (!isNaN(potentialSession) && potentialSession.trim() !== '') {
+                    sessionNumber = potentialSession;
+                  }
+                }
+              }
+              
               return {
                 id: bill.id,
                 billNumber: bill.althingi_id || bill.id,
-                sessionNumber: bill.session?.session_number || 'N/A',
+                sessionNumber: sessionNumber,
                 billTitle: bill.title || 'Untitled Bill',
                 date: bill.vote_date || bill.introduced_date,
-                stage: "Final Vote",
-                result: bill.status ? 
-                       bill.status.charAt(0).toUpperCase() + bill.status.slice(1) : 
-                       'In Progress',
+                stage: "Loka atkvæðagreiðsla",
+                result: bill.status || null,
                 totalVotes: { for: 0, against: 0, abstentions: 0, absent: 0 },
                 memberVotes: []
               };
@@ -227,16 +301,26 @@ const VotingRecordsPage = () => {
     }
   };
 
-  // This would get the result color
-  const getResultColor = (result) => {
-    switch(result.toLowerCase()) {
-      case 'passed':
-        return 'success';
-      case 'failed':
-        return 'error';
-      default:
-        return 'default';
-    }
+  // Get color for status chip
+  const getStatusColor = (status) => {
+    if (!status) return 'default';
+    
+    const statusLower = status.toLowerCase();
+    const colorMap = {
+      'awaiting_first_reading': 'info',
+      'in_committee': 'warning',
+      'awaiting_second_reading': 'info',
+      'awaiting_third_reading': 'info',
+      'passed': 'success',
+      'rejected': 'error',
+      'withdrawn': 'default',
+      'question_sent': 'info',
+      'question_answered': 'success',
+      'failed': 'error',
+      'introduced': 'info',
+      'in progress': 'default'
+    };
+    return colorMap[statusLower] || 'default';
   };
 
   return (
@@ -246,8 +330,9 @@ const VotingRecordsPage = () => {
       </Typography>
       
       <Typography variant="body1" color="text.secondary" paragraph>
-        Skoðaðu niðurstöður atkvæðagreiðslna í Alþingi. 
-        Finndu ítarlegar upplýsingar um hvernig þingmenn greiddu atkvæði í einstökum þingmálum.
+        Skoðaðu niðurstöður síðustu atkvæðagreiðslna í Alþingi. 
+        Vert er að taka fram að hér er bara sýnt síðasta atkvæðagreiðslan fyrir hvert þingmál.
+        Sjáðu hvernig þingmenn kjósa
       </Typography>
       
       {billId && votingRecords[0] && (
@@ -410,11 +495,26 @@ const VotingRecordsPage = () => {
                     <TableRow key={`${record.id}-${record.date}`}>
                       <TableCell>
                         <Box>
-                          <Typography variant="subtitle2">
+                          <Typography 
+                            variant="subtitle2"
+                            component={RouterLink}
+                            to={`/parliament/bills/${record.id}`}
+                            sx={{
+                              textDecoration: 'none',
+                              color: 'inherit',
+                              '&:hover': {
+                                textDecoration: 'underline',
+                                color: 'primary.main'
+                              },
+                              cursor: 'pointer',
+                              display: 'block',
+                              mb: 0.5
+                            }}
+                          >
                             {record.billTitle}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            Þingmál #{record.billNumber}/{record.sessionNumber} • {record.stage}
+                            Þingmál #{record.billNumber}
                           </Typography>
                           <Link 
                             href={record.althingi_voting_id ? 
@@ -436,21 +536,12 @@ const VotingRecordsPage = () => {
                         </Box>
                       </TableCell>
                       <TableCell>
-                        {new Date(record.date).toLocaleDateString('is-IS', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric'
-                        })}
+                        {formatDateIcelandic(record.date)}
                       </TableCell>
                       <TableCell>
                         <Chip 
-                          label={record.result === 'Passed' ? 'Samþykkt' :
-                                 record.result === 'In_committee' ? 'Í nefnd' :
-                                 record.result === 'Introduced' ? 'Lagt fram' :
-                                 record.result === 'Failed' ? 'Hafnað' :
-                                 record.result === 'Withdrawn' ? 'Dregið til baka' :
-                                 record.result}
-                          color={getResultColor(record.result)}
+                          label={formatStatus(record.result)}
+                          color={getStatusColor(record.result)}
                           size="small"
                         />
                       </TableCell>
