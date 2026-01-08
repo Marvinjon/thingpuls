@@ -55,11 +55,13 @@ cd "$SCRIPT_DIR/.." || exit 1
 echo "Working directory: $(pwd)"
 echo ""
 
-# Check if virtual environment is activated (skip in Docker)
-if [[ "$VIRTUAL_ENV" == "" ]] && [[ ! -f "/.dockerenv" ]]; then
-    echo -e "${RED}Warning: Virtual environment not activated!${NC}"
-    echo "Please activate your virtual environment first:"
-    echo "  source ../venv/bin/activate"
+# Check if running in Docker (required)
+if [[ ! -f "/.dockerenv" ]]; then
+    echo -e "${RED}Error: This script must be run inside a Docker container!${NC}"
+    echo ""
+    echo "Please run it using one of these methods:"
+    echo "  1. From project root: ./start.sh scrapers $SESSION"
+    echo "  2. From project root: docker compose exec backend bash -c 'cd /app && ./scrapers/run_all.sh $SESSION'"
     echo ""
     exit 1
 fi

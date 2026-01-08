@@ -4,28 +4,35 @@ All data scraping scripts are in this **one folder** - `backend/scrapers/`. Simp
 
 ## Requirements
 
-- Python 3.x with virtual environment activated
-- Django project properly configured
-- Required packages: `requests`, `django`
+- Docker and Docker Compose installed
+- Backend service running in Docker
+- All dependencies are automatically installed in the Docker container
 
-## ⚠️ Important: Activate Virtual Environment First!
+## ⚠️ Important: Use Docker!
 
-**Before running any scripts, activate your virtual environment:**
+**This project uses Docker for all operations. Make sure your Docker services are running:**
 
 ```bash
 # From the project root
-cd politico_web
-source venv/bin/activate  # On Linux/Mac
+./start.sh dev -d  # Start development environment in detached mode
 # or
-venv\Scripts\activate  # On Windows
+docker compose up -d  # Start all services
 ```
 
 ## Quick Start
 
+**Recommended: Use the main startup script:**
+
 ```bash
-# Make sure venv is activated, then:
-cd backend
-./scrapers/run_all.sh 157
+# From the project root
+./start.sh scrapers 157
+```
+
+**Or run directly in Docker:**
+
+```bash
+# From the project root
+docker compose exec backend bash -c "cd /app && ./scrapers/run_all.sh 157"
 ```
 
 This runs all scrapers in the correct order for session 157 (2025-2026).
@@ -46,21 +53,28 @@ All in `backend/scrapers/`:
 
 ### Basic Usage
 
-```bash
-# From the backend directory (with venv activated)
-cd backend
+**Run scrapers inside Docker container:**
 
-# Fetch parties for session 157 (current session)
-python scrapers/fetch_parties.py 157
+```bash
+# From the project root
+docker compose exec backend python scrapers/fetch_parties.py 157
 
 # Or for a different session
-python scrapers/fetch_parties.py 156
+docker compose exec backend python scrapers/fetch_parties.py 156
+```
+
+**Or use the startup script:**
+
+```bash
+./start.sh django shell
+# Then inside the shell:
+python scrapers/fetch_parties.py 157
 ```
 
 ### 1. Fetch Political Parties
 
 ```bash
-python scrapers/fetch_parties.py [session_number]
+docker compose exec backend python scrapers/fetch_parties.py [session_number]
 ```
 
 **Default session:** 156
@@ -68,7 +82,7 @@ python scrapers/fetch_parties.py [session_number]
 ### 2. Fetch MPs (Members of Parliament)
 
 ```bash
-python scrapers/fetch_mps.py [session_number]
+docker compose exec backend python scrapers/fetch_mps.py [session_number]
 ```
 
 **Note:** Run `fetch_parties.py` first, as MPs are linked to parties.
@@ -76,7 +90,7 @@ python scrapers/fetch_mps.py [session_number]
 ### 3. Fetch Bills
 
 ```bash
-python scrapers/fetch_bills.py [session_number]
+docker compose exec backend python scrapers/fetch_bills.py [session_number]
 ```
 
 **Note:** This fetches all bills for the session. May take several minutes.
@@ -85,10 +99,10 @@ python scrapers/fetch_bills.py [session_number]
 
 ```bash
 # Fetch voting records for all bills
-python scrapers/fetch_voting_records.py [session_number]
+docker compose exec backend python scrapers/fetch_voting_records.py [session_number]
 
 # Fetch for a specific bill
-python scrapers/fetch_voting_records.py [session_number] [bill_number]
+docker compose exec backend python scrapers/fetch_voting_records.py [session_number] [bill_number]
 ```
 
 **Note:** Run `fetch_bills.py` and `fetch_mps.py` first.
@@ -97,10 +111,10 @@ python scrapers/fetch_voting_records.py [session_number] [bill_number]
 
 ```bash
 # Fetch speeches for all active MPs
-python scrapers/fetch_speeches.py [session_number]
+docker compose exec backend python scrapers/fetch_speeches.py [session_number]
 
 # Fetch for a specific MP
-python scrapers/fetch_speeches.py [session_number] [mp_id]
+docker compose exec backend python scrapers/fetch_speeches.py [session_number] [mp_id]
 ```
 
 **Note:** Run `fetch_mps.py` first.
@@ -109,10 +123,10 @@ python scrapers/fetch_speeches.py [session_number] [mp_id]
 
 ```bash
 # Fetch interests for all active MPs
-python scrapers/fetch_interests.py
+docker compose exec backend python scrapers/fetch_interests.py
 
 # Fetch for a specific MP
-python scrapers/fetch_interests.py [mp_id]
+docker compose exec backend python scrapers/fetch_interests.py [mp_id]
 ```
 
 **Note:** Run `fetch_mps.py` first.
@@ -121,10 +135,10 @@ python scrapers/fetch_interests.py [mp_id]
 
 ```bash
 # Assign topics
-python scrapers/assign_topics.py
+docker compose exec backend python scrapers/assign_topics.py
 
 # Clear existing and reassign
-python scrapers/assign_topics.py --clear
+docker compose exec backend python scrapers/assign_topics.py --clear
 ```
 
 **Note:** Run `fetch_bills.py` first.
@@ -133,37 +147,43 @@ python scrapers/assign_topics.py --clear
 
 For a fresh database, run in this order:
 
+**Using the startup script (recommended):**
+
 ```bash
-# Make sure venv is activated and you're in backend directory
-cd backend
-
-# 1. Fetch parties (required for MPs)
-python scrapers/fetch_parties.py 157
-
-# 2. Fetch MPs (required for bills, speeches, votes, interests)
-python scrapers/fetch_mps.py 157
-
-# 3. Fetch bills (required for votes and speeches)
-python scrapers/fetch_bills.py 157
-
-# 4. Assign topics to bills
-python scrapers/assign_topics.py
-
-# 5. Fetch voting records
-python scrapers/fetch_voting_records.py 157
-
-# 6. Fetch speeches
-python scrapers/fetch_speeches.py 157
-
-# 7. Fetch MP interests
-python scrapers/fetch_interests.py
+# From the project root
+./start.sh scrapers 157
 ```
 
-**Or use the automated script:**
+**Or run manually in Docker:**
 
 ```bash
-cd backend
-./scrapers/run_all.sh 157
+# From the project root
+docker compose exec backend bash -c "cd /app && ./scrapers/run_all.sh 157"
+```
+
+**Or run each step individually:**
+
+```bash
+# 1. Fetch parties (required for MPs)
+docker compose exec backend python scrapers/fetch_parties.py 157
+
+# 2. Fetch MPs (required for bills, speeches, votes, interests)
+docker compose exec backend python scrapers/fetch_mps.py 157
+
+# 3. Fetch bills (required for votes and speeches)
+docker compose exec backend python scrapers/fetch_bills.py 157
+
+# 4. Assign topics to bills
+docker compose exec backend python scrapers/assign_topics.py
+
+# 5. Fetch voting records
+docker compose exec backend python scrapers/fetch_voting_records.py 157
+
+# 6. Fetch speeches
+docker compose exec backend python scrapers/fetch_speeches.py 157
+
+# 7. Fetch MP interests
+docker compose exec backend python scrapers/fetch_interests.py
 ```
 
 ## Data Source
@@ -195,15 +215,20 @@ Each script provides:
    - If the Alþingi API is slow, the script will wait and retry
 
 4. **"No module named 'parliament'"**
-   - Make sure you're running from the backend directory
+   - Make sure you're running inside the Docker container
    - Make sure Django is properly configured
+   - Verify the backend service is running: `docker compose ps`
+
+5. **"Cannot connect to Docker daemon"**
+   - Make sure Docker is running
+   - Start services: `./start.sh dev -d` or `docker compose up -d`
 
 ### Logging
 
 All errors are printed to stdout. You can redirect to a file:
 
 ```bash
-python scrapers/fetch_bills.py 157 > fetch_bills.log 2>&1
+docker compose exec backend python scrapers/fetch_bills.py 157 > fetch_bills.log 2>&1
 ```
 
 ## Notes
