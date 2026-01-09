@@ -1,4 +1,4 @@
-# Politico Web Application
+# Thingpuls Web Application
 
 A comprehensive web application for parliamentary data analysis and citizen engagement in Iceland.
 
