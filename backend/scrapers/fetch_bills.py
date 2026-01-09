@@ -19,6 +19,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'politico.settings')
 django.setup()
 
 from parliament.models import Bill, MP, ParliamentSession
+from parliament.utils import get_or_create_session
 
 
 def map_bill_status(status_text):
@@ -197,16 +198,8 @@ def fetch_bills(session_number):
     """Fetch bills from Alþingi XML API"""
     print(f'Fetching bills for session {session_number}...')
     
-    # Get or create the session
-    try:
-        session = ParliamentSession.objects.get(session_number=session_number)
-    except ParliamentSession.DoesNotExist:
-        print(f'Creating session {session_number}...')
-        session = ParliamentSession.objects.create(
-            session_number=session_number,
-            start_date=datetime.now().date(),
-            is_active=True
-        )
+    # Get or create session (will update active status automatically)
+    session = get_or_create_session(session_number, update_active_status=True)
     
     bills_created = 0
     bills_updated = 0

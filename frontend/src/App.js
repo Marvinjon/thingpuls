@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/layout/Layout';
+import { SessionProvider } from './context/SessionContext';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
@@ -26,8 +27,9 @@ import NotFoundPage from './pages/NotFoundPage';
 
 function App() {
   return (
-    <Layout>
-      <Routes>
+    <SessionProvider>
+      <Layout>
+        <Routes>
         {/* Public routes */}
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -104,8 +106,9 @@ function App() {
         
         {/* 404 page */}
         <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </Layout>
+        </Routes>
+      </Layout>
+    </SessionProvider>
   );
 }
 

@@ -20,6 +20,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'politico.settings')
 django.setup()
 
 from parliament.models import MP, PoliticalParty, ParliamentSession, Speech
+from parliament.utils import get_or_create_session
 
 
 def parse_date(date_string):
@@ -43,16 +44,8 @@ def fetch_mps(session_number):
     """Fetch MPs from Alþingi XML API"""
     print(f'Fetching MPs for session {session_number}...')
     
-    # Ensure session exists
-    try:
-        session = ParliamentSession.objects.get(session_number=session_number)
-    except ParliamentSession.DoesNotExist:
-        print(f'Creating session {session_number}...')
-        session = ParliamentSession.objects.create(
-            session_number=session_number,
-            start_date=datetime.now().date(),
-            is_active=True
-        )
+    # Get or create session (will update active status automatically)
+    session = get_or_create_session(session_number, update_active_status=True)
     
     url = f'https://www.althingi.is/altext/xml/thingmenn/?lthing={session_number}'
     
@@ -64,13 +57,22 @@ def fetch_mps(session_number):
         
         root = ET.fromstring(response.content)
         
+        # Get all MPs currently linked to this session
+        current_session_mps = set(session.members.values_list('althingi_id', flat=True))
+        
+        # Track which MPs are in the API response for this session
+        mps_in_api_response = set()
+        
         mps_created = 0
         mps_updated = 0
         
         for mp_element in root.findall(".//þingmaður"):
             try:
-                althingi_id = mp_element.get("id")
+                althingi_id = int(mp_element.get("id"))
                 name = mp_element.find("nafn").text.strip()
+                
+                # Track that this MP is in the API response
+                mps_in_api_response.add(althingi_id)
                 
                 # Generate image URL
                 image_url = f'https://www.althingi.is/myndir/mynd/thingmenn/{althingi_id}/org/mynd.jpg'
@@ -188,7 +190,7 @@ def fetch_mps(session_number):
                 base_slug = slugify(f"{first_name}-{last_name}")
                 slug = base_slug
                 counter = 1
-                while MP.objects.filter(slug=slug).exclude(althingi_id=int(althingi_id)).exists():
+                while MP.objects.filter(slug=slug).exclude(althingi_id=althingi_id).exists():
                     slug = f"{base_slug}-{counter}"
                     counter += 1
                 
@@ -198,7 +200,7 @@ def fetch_mps(session_number):
                 # Create or update the MP
                 with transaction.atomic():
                     mp, created = MP.objects.update_or_create(
-                        althingi_id=int(althingi_id),
+                        althingi_id=althingi_id,
                         defaults={
                             'first_name': first_name,
                             'last_name': last_name,
@@ -221,21 +223,40 @@ def fetch_mps(session_number):
                         }
                     )
                     
+                    # Add this MP to the session
+                    if session not in mp.sessions.all():
+                        mp.sessions.add(session)
+                    
                     if created:
                         mps_created += 1
-                        print(f'✓ Created MP: {name}')
+                        print(f'✓ Created MP: {name} (added to session {session_number})')
                     else:
                         mps_updated += 1
-                        print(f'✓ Updated MP: {name}')
+                        print(f'✓ Updated MP: {name} (added to session {session_number})')
             
             except Exception as e:
                 print(f'✗ Error processing MP {althingi_id}: {str(e)}')
                 continue
         
+        # Remove MPs from this session if they're no longer in the API response
+        mps_to_remove = current_session_mps - mps_in_api_response
+        if mps_to_remove:
+            removed_count = 0
+            for mp_id in mps_to_remove:
+                try:
+                    mp = MP.objects.get(althingi_id=mp_id)
+                    mp.sessions.remove(session)
+                    removed_count += 1
+                    print(f'✓ Removed MP {mp.full_name} (ID: {mp_id}) from session {session_number} (not in API response)')
+                except MP.DoesNotExist:
+                    pass
+            print(f'Removed {removed_count} MP(s) from session {session_number} (no longer in session)')
+        
         print(f'\n=== Summary ===')
         print(f'MPs created: {mps_created}')
         print(f'MPs updated: {mps_updated}')
-        print(f'Total: {mps_created + mps_updated}')
+        print(f'MPs in session: {len(mps_in_api_response)}')
+        print(f'Total processed: {mps_created + mps_updated}')
     
     except Exception as e:
         print(f'Error fetching MPs: {str(e)}')

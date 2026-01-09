@@ -46,8 +46,8 @@ export const parliamentService = {
   getMembers: (params) => api.get('/parliament/mps/', { params }),
   getMemberById: (id) => api.get(`/parliament/mps/${id}/`),
   getMemberSpeeches: (id, params) => api.get(`/parliament/mps/${id}/speeches/`, { params }),
-  getMemberBills: (id) => api.get(`/parliament/mps/${id}/bills/`),
-  getMemberVotingRecord: (id) => api.get(`/parliament/mps/${id}/voting_record/`),
+  getMemberBills: (id, params) => api.get(`/parliament/mps/${id}/bills/`, { params }),
+  getMemberVotingRecord: (id, params) => api.get(`/parliament/mps/${id}/voting_record/`, { params }),
   getMemberInterests: (id) => api.get(`/parliament/mps/${id}/interests/`),
   
   // Bills
@@ -110,7 +110,7 @@ export const engagementService = {
 // Analytics API services
 export const analyticsService = {
   // Dashboard
-  getDashboardConfig: () => api.get('/analytics/dashboard/'),
+  getDashboardConfig: (params) => api.get('/analytics/dashboard/', { params }),
   updateDashboardConfig: (data) => api.patch('/analytics/dashboard/', data),
   
   // Saved searches

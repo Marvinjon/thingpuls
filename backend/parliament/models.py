@@ -74,6 +74,7 @@ class MP(models.Model):
     slug = models.SlugField(max_length=200, unique=True)
     althingi_id = models.IntegerField(unique=True, help_text="MP ID from the Alþingi database")
     party = models.ForeignKey(PoliticalParty, on_delete=models.SET_NULL, null=True, related_name='mps')
+    sessions = models.ManyToManyField(ParliamentSession, related_name='members', blank=True, help_text="Parliamentary sessions this MP was active in")
     constituency = models.CharField(max_length=100, blank=True)
     email = models.EmailField(blank=True, null=True)
     website = models.URLField(blank=True)
@@ -84,7 +85,7 @@ class MP(models.Model):
     birthdate = models.DateField(null=True, blank=True)
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True)
     social_media_links = models.JSONField(null=True, blank=True)
-    active = models.BooleanField(default=True)
+    active = models.BooleanField(default=True)  # Deprecated: Use sessions instead
     
     # Service periods
     first_elected = models.DateField(null=True, blank=True)

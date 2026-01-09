@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
+import { useSession } from '../../context/SessionContext';
 import {
   Container,
   Typography,
@@ -57,6 +58,7 @@ import { parliamentService } from '../../services/api';
 
 const MemberDetailPage = () => {
   const { id } = useParams(); // MP slug from URL
+  const { selectedSession } = useSession();
   const [mp, setMp] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -114,7 +116,12 @@ const MemberDetailPage = () => {
     try {
       // Fetch a larger set to get accurate date counts, then limit display to PAGE_SIZE
       // This ensures badge counts are correct even if a date has many speeches
-      const response = await parliamentService.getMemberSpeeches(id, { page: 1, page_size: 100 });
+      const params = {
+        page: 1,
+        page_size: 100,
+        session: selectedSession?.id || undefined,
+      };
+      const response = await parliamentService.getMemberSpeeches(id, params);
       let allFetchedSpeeches = response.data.results || [];
       
       // Set total count for display
@@ -158,11 +165,22 @@ const MemberDetailPage = () => {
       setSpeechesLoading(false);
     }
   };
+
+  // Refetch speeches when session changes
+  useEffect(() => {
+    if (activeTab === 1 && speeches.display.length > 0) {
+      fetchSpeeches();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSession]);
   
   const fetchBills = async () => {
     setBillsLoading(true);
     try {
-      const response = await parliamentService.getMemberBills(id);
+      const params = {
+        session: selectedSession?.id || undefined,
+      };
+      const response = await parliamentService.getMemberBills(id, params);
       setBills(response.data.results || []);
     } catch (err) {
       console.error('Error fetching bills:', err);
@@ -197,11 +215,22 @@ const MemberDetailPage = () => {
       setBillsLoading(false);
     }
   };
+
+  // Refetch bills when session changes
+  useEffect(() => {
+    if (activeTab === 2 && bills.length > 0) {
+      fetchBills();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSession]);
   
   const fetchVotingRecord = async () => {
     setVotingLoading(true);
     try {
-      const response = await parliamentService.getMemberVotingRecord(id);
+      const params = {
+        session: selectedSession?.id || undefined,
+      };
+      const response = await parliamentService.getMemberVotingRecord(id, params);
       setVotingRecord(response.data.results || []);
     } catch (err) {
       console.error('Error fetching voting record:', err);
@@ -230,6 +259,14 @@ const MemberDetailPage = () => {
       setVotingLoading(false);
     }
   };
+
+  // Refetch voting record when session changes
+  useEffect(() => {
+    if (activeTab === 3 && votingRecord.length > 0) {
+      fetchVotingRecord();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSession]);
   
   const fetchInterests = async () => {
     setInterestsLoading(true);

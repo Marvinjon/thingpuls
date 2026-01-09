@@ -19,6 +19,7 @@ import EqualizerIcon from '@mui/icons-material/Equalizer';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useSession } from '../../context/SessionContext';
 import { analyticsService, parliamentService } from '../../services/api';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -29,6 +30,7 @@ import {
 
 const DashboardPage = () => {
   const { currentUser } = useAuth();
+  const { selectedSession } = useSession();
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -57,8 +59,11 @@ const DashboardPage = () => {
       try {
         setLoading(true);
         
+        // Build params with session filter
+        const params = selectedSession?.id ? { session: selectedSession.id } : {};
+        
         // Fetch dashboard data
-        const response = await analyticsService.getDashboardConfig();
+        const response = await analyticsService.getDashboardConfig(params);
         const data = response.data;
         
         // Set all the data from the response
@@ -72,8 +77,12 @@ const DashboardPage = () => {
         setEfficiencyTimeline(data.efficiencyTimeline);
         setTopicTrends(data.topicTrends);
         
-        // Fetch top speakers
-        const speakersResponse = await analyticsService.getTopSpeakers({ limit: 10 });
+        // Fetch top speakers with session filter
+        const speakersParams = {
+          limit: 10,
+          ...(selectedSession?.id && { session: selectedSession.id })
+        };
+        const speakersResponse = await analyticsService.getTopSpeakers(speakersParams);
         setTopSpeakers(speakersResponse.data);
         
         // Fetch topics to create name-to-ID mapping
@@ -95,7 +104,7 @@ const DashboardPage = () => {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [selectedSession]);
 
   if (loading) {
     return (
@@ -121,7 +130,9 @@ const DashboardPage = () => {
           Tölfræði þingsins
         </Typography>
         <Typography variant="h6" color="text.secondary">
-          Gögn frá 157. þingi Alþingis
+          {selectedSession 
+            ? `Gögn frá ${selectedSession.session_number}. þingi Alþingis`
+            : 'Gögn frá öllum þingum'}
         </Typography>
       </Box>
 

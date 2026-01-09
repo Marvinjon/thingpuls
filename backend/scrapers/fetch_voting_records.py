@@ -185,16 +185,8 @@ def fetch_all_voting_records(session_number, force=False):
     """Fetch voting records for all bills in a session"""
     print(f'Fetching voting records for session {session_number}...')
     
-    # Get or create session
-    try:
-        session = ParliamentSession.objects.get(session_number=session_number)
-    except ParliamentSession.DoesNotExist:
-        print(f'Creating session {session_number}...')
-        session = ParliamentSession.objects.create(
-            session_number=session_number,
-            start_date=datetime.now().date(),
-            is_active=True
-        )
+    # Get or create session (will update active status automatically)
+    session = get_or_create_session(session_number, update_active_status=True)
     
     # Get the list of bills for this session
     url = f'https://www.althingi.is/altext/xml/thingmalalisti/?lthing={session_number}'
@@ -267,10 +259,7 @@ if __name__ == '__main__':
     # Check if a specific bill number is provided
     if len(sys.argv) > 2:
         bill_number = int(sys.argv[2])
-        session_obj = ParliamentSession.objects.get_or_create(
-            session_number=session,
-            defaults={'start_date': datetime.now().date(), 'is_active': True}
-        )[0]
+        session_obj = get_or_create_session(session, update_active_status=True)
         fetch_bill_voting_records(session_obj, bill_number, force=True)
     else:
         fetch_all_voting_records(session, force=False)
