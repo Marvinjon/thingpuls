@@ -95,10 +95,21 @@ class MPViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = MP.objects.all()
     permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['party', 'active', 'constituency']
+    filterset_fields = ['party', 'active', 'constituency', 'sessions']
     search_fields = ['first_name', 'last_name', 'bio']
     ordering_fields = ['last_name', 'first_name', 'bills_sponsored', 'speech_count']
     lookup_field = 'slug'
+    
+    def get_queryset(self):
+        """Filter queryset based on request parameters."""
+        queryset = super().get_queryset()
+        
+        # Filter by session if provided
+        session_id = self.request.query_params.get('session', None)
+        if session_id:
+            queryset = queryset.filter(sessions__id=session_id).distinct()
+        
+        return queryset
     
     def get_serializer_class(self):
         """Return appropriate serializer class."""
@@ -111,6 +122,12 @@ class MPViewSet(viewsets.ReadOnlyModelViewSet):
         """Return speeches made by this MP."""
         mp = self.get_object()
         speeches = mp.speeches.all()
+        
+        # Filter by session if provided
+        session_id = request.query_params.get('session', None)
+        if session_id:
+            speeches = speeches.filter(session_id=session_id)
+        
         page = self.paginate_queryset(speeches)
         if page is not None:
             serializer = SpeechSerializer(page, many=True)
@@ -123,6 +140,12 @@ class MPViewSet(viewsets.ReadOnlyModelViewSet):
         """Return bills sponsored by this MP."""
         mp = self.get_object()
         bills = mp.sponsored_bills.all()
+        
+        # Filter by session if provided
+        session_id = request.query_params.get('session', None)
+        if session_id:
+            bills = bills.filter(session_id=session_id)
+        
         page = self.paginate_queryset(bills)
         if page is not None:
             serializer = BillListSerializer(page, many=True)
@@ -135,6 +158,12 @@ class MPViewSet(viewsets.ReadOnlyModelViewSet):
         """Return voting record for this MP."""
         mp = self.get_object()
         votes = mp.voting_record.all()
+        
+        # Filter by session if provided
+        session_id = request.query_params.get('session', None)
+        if session_id:
+            votes = votes.filter(session_id=session_id)
+        
         page = self.paginate_queryset(votes)
         if page is not None:
             serializer = VoteSerializer(page, many=True)

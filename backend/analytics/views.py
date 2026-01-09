@@ -7,7 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
-from django.db.models import Count, Avg, Q
+from django.db.models import Count, Avg, Q, Sum
 from .models import (
     DashboardConfiguration,
     SavedSearch,
@@ -44,18 +44,40 @@ class DashboardConfigurationViewSet(viewsets.ModelViewSet):
     def list(self, request):
         """Return dashboard data including parliamentary activity and analytics."""
         try:
+            # Get session filter from query parameters
+            session_id = request.query_params.get('session', None)
+            
+            # Base querysets
+            bills_queryset = Bill.objects.all()
+            votes_queryset = Vote.objects.all()
+            speeches_queryset = Speech.objects.all()
+            
+            # Apply session filter if provided
+            if session_id:
+                bills_queryset = bills_queryset.filter(session_id=session_id)
+                votes_queryset = votes_queryset.filter(session_id=session_id)
+                speeches_queryset = speeches_queryset.filter(session_id=session_id)
+            
             # Get parliamentary activity data
-            total_bills = Bill.objects.count()
-            passed_bills = Bill.objects.filter(status='passed').count()
-            active_members = MP.objects.filter(active=True).count()
+            total_bills = bills_queryset.count()
+            passed_bills = bills_queryset.filter(status='passed').count()
+            
+            # Count active members - if session is filtered, count MPs in that session
+            if session_id:
+                # Count MPs who are in this session
+                active_members = MP.objects.filter(sessions__id=session_id).distinct().count()
+            else:
+                # If no session filter, count all active MPs
+                active_members = MP.objects.filter(active=True).count()
+            
             total_parties = PoliticalParty.objects.count()
-            total_votes = Vote.objects.count()
+            total_votes = votes_queryset.count()
             
             # Calculate average bill processing time
             from django.db.models import F, ExpressionWrapper, fields
             from datetime import timedelta
             
-            resolved_bills = Bill.objects.filter(
+            resolved_bills = bills_queryset.filter(
                 vote_date__isnull=False,
                 introduced_date__isnull=False
             ).exclude(status='introduced')
@@ -73,8 +95,8 @@ class DashboardConfigurationViewSet(viewsets.ModelViewSet):
                 avg_processing_days = 0
 
             # Get recent activity
-            recent_bills = Bill.objects.order_by('-introduced_date')[:5]
-            recent_votes = Vote.objects.order_by('-vote_date')[:5]
+            recent_bills = bills_queryset.order_by('-introduced_date')[:5]
+            recent_votes = votes_queryset.order_by('-vote_date')[:5]
 
             # Combine and sort recent activity
             recent_activity = []
@@ -100,7 +122,7 @@ class DashboardConfigurationViewSet(viewsets.ModelViewSet):
             recent_activity = recent_activity[:5]  # Keep only 5 most recent
 
             # Get voting patterns
-            party_votes = Vote.objects.values(
+            party_votes = votes_queryset.values(
                 'mp__party__name', 
                 'vote'
             ).filter(
@@ -120,7 +142,7 @@ class DashboardConfigurationViewSet(viewsets.ModelViewSet):
                         voting_patterns[party][vote_type] = vote['count']
 
             # Get Bill Progress Pipeline - distribution of bills by status
-            bill_statuses = Bill.objects.values('status').annotate(
+            bill_statuses = bills_queryset.values('status').annotate(
                 count=Count('id')
             ).order_by('status')
             
@@ -134,7 +156,7 @@ class DashboardConfigurationViewSet(viewsets.ModelViewSet):
             
             for party in parties:
                 # Get all votes by this party's MPs
-                party_votes = Vote.objects.filter(mp__party=party)
+                party_votes = votes_queryset.filter(mp__party=party)
                 
                 if party_votes.count() > 0:
                     # Group votes by bill to calculate cohesion
@@ -171,7 +193,7 @@ class DashboardConfigurationViewSet(viewsets.ModelViewSet):
             
             # Get bills passed in the last 12 months, grouped by month
             twelve_months_ago = timezone.now() - timedelta(days=365)
-            efficiency_timeline = Bill.objects.filter(
+            efficiency_timeline = bills_queryset.filter(
                 status='passed',
                 introduced_date__gte=twelve_months_ago
             ).annotate(
@@ -185,10 +207,17 @@ class DashboardConfigurationViewSet(viewsets.ModelViewSet):
                 'counts': [item['count'] for item in efficiency_timeline]
             }
 
-            # Get topic trends
-            top_topics = Topic.objects.annotate(
-                bill_count=Count('bills')
-            ).order_by('-bill_count')[:10]
+            # Get topic trends (filtered by session if provided)
+            if session_id:
+                top_topics = Topic.objects.filter(
+                    bills__session_id=session_id
+                ).annotate(
+                    bill_count=Count('bills', filter=Q(bills__session_id=session_id))
+                ).order_by('-bill_count')[:10]
+            else:
+                top_topics = Topic.objects.annotate(
+                    bill_count=Count('bills')
+                ).order_by('-bill_count')[:10]
 
             topic_trends = {
                 'labels': [topic.name for topic in top_topics],
@@ -353,30 +382,42 @@ class AnalyticsReportViewSet(viewsets.ModelViewSet):
     def top_speakers(self, request):
         """Generate top speakers report - MPs who speak the most."""
         limit = int(request.query_params.get('limit', 10))
+        session_id = request.query_params.get('session', None)
         
-        # Get top MPs by total speaking time
-        top_mps = MP.objects.filter(
-            active=True,
+        # Base queryset for speeches
+        speeches_queryset = Speech.objects.all()
+        if session_id:
+            speeches_queryset = speeches_queryset.filter(session_id=session_id)
+        
+        # Get top MPs by speaking time in the selected session
+        top_mps_data = speeches_queryset.values(
+            'mp_id', 'mp__first_name', 'mp__last_name', 'mp__slug',
+            'mp__party__name', 'mp__party__abbreviation', 'mp__party__color',
+            'mp__image_url'
+        ).annotate(
+            total_speaking_time=Sum('duration'),
+            speech_count=Count('id')
+        ).filter(
             total_speaking_time__gt=0
-        ).select_related('party').order_by('-total_speaking_time')[:limit]
+        ).order_by('-total_speaking_time')[:limit]
         
         # Format data for visualization
         result = []
-        for mp in top_mps:
-            # Convert seconds to minutes for display
-            speaking_time_minutes = round(mp.total_speaking_time / 60, 1)
+        for mp_data in top_mps_data:
+            total_time = mp_data['total_speaking_time'] or 0
+            speaking_time_minutes = round(total_time / 60, 1)
             result.append({
-                'id': mp.id,
-                'name': mp.full_name,
-                'slug': mp.slug,
-                'party': mp.party.name if mp.party else 'Óháður',
-                'party_abbreviation': mp.party.abbreviation if mp.party else 'Óh.',
-                'party_color': mp.party.color if mp.party else '#808080',
-                'total_speaking_time': mp.total_speaking_time,
+                'id': mp_data['mp_id'],
+                'name': f"{mp_data['mp__first_name']} {mp_data['mp__last_name']}",
+                'slug': mp_data['mp__slug'],
+                'party': mp_data['mp__party__name'] or 'Óháður',
+                'party_abbreviation': mp_data['mp__party__abbreviation'] or 'Óh.',
+                'party_color': mp_data['mp__party__color'] or '#808080',
+                'total_speaking_time': total_time,
                 'speaking_time_minutes': speaking_time_minutes,
-                'speaking_time_hours': round(mp.total_speaking_time / 3600, 1),
-                'image_url': mp.image_url,
-                'speech_count': mp.speech_count
+                'speaking_time_hours': round(total_time / 3600, 1),
+                'image_url': mp_data['mp__image_url'],
+                'speech_count': mp_data['speech_count']
             })
         
         return Response(result)

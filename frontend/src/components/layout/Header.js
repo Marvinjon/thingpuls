@@ -20,6 +20,10 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  FormControl,
+  Select,
+  InputLabel,
+  CircularProgress,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
@@ -34,6 +38,7 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
 import { useAuth } from '../../context/AuthContext';
+import { useSession } from '../../context/SessionContext';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import PersonIcon from '@mui/icons-material/Person';
 import logo from '../../assets/images/logo.svg';
@@ -41,6 +46,7 @@ import logo from '../../assets/images/logo.svg';
 const Header = () => {
   const navigate = useNavigate();
   const { currentUser, logout } = useAuth();
+  const { selectedSession, sessions, loading: sessionLoading, updateSession } = useSession();
   
   const [anchorElUser, setAnchorElUser] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -61,6 +67,18 @@ const Header = () => {
     logout();
     handleCloseUserMenu();
     navigate('/login');
+  };
+
+  const handleSessionChange = (event) => {
+    const sessionId = event.target.value;
+    const session = sessions.find(s => s.id === parseInt(sessionId));
+    if (session) {
+      updateSession(session);
+      // Close drawer on mobile after selection
+      if (drawerOpen) {
+        setDrawerOpen(false);
+      }
+    }
   };
   
   // Navigation items for the sidebar drawer
@@ -92,6 +110,27 @@ const Header = () => {
         <Typography variant="h6">
           Þingpúls
         </Typography>
+      </Box>
+      <Divider />
+      {/* Session Selector in Mobile Drawer */}
+      <Box sx={{ p: 2 }}>
+        <FormControl fullWidth size="small">
+          <InputLabel id="session-select-label-mobile">Þing</InputLabel>
+          <Select
+            labelId="session-select-label-mobile"
+            id="session-select-mobile"
+            value={selectedSession?.id || ''}
+            label="Þing"
+            onChange={handleSessionChange}
+            disabled={sessionLoading}
+          >
+            {sessions.map((session) => (
+              <MenuItem key={session.id} value={session.id}>
+                Þing {session.session_number}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </Box>
       <Divider />
       <List>
@@ -204,7 +243,7 @@ const Header = () => {
             </Box>
             
             {/* Desktop navigation */}
-            <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
+            <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
               <Button
                 component={RouterLink}
                 to="/parliament/members"
@@ -240,6 +279,61 @@ const Header = () => {
               >
                 Umræður
               </Button>
+              
+              {/* Session Selector in Desktop */}
+              <Box sx={{ ml: 2, minWidth: 120 }}>
+                <FormControl size="small" fullWidth>
+                  <InputLabel 
+                    id="session-select-label" 
+                    sx={{ color: 'white', '&.Mui-focused': { color: 'white' } }}
+                  >
+                    Þing
+                  </InputLabel>
+                  <Select
+                    labelId="session-select-label"
+                    id="session-select"
+                    value={selectedSession?.id || ''}
+                    label="Þing"
+                    onChange={handleSessionChange}
+                    disabled={sessionLoading}
+                    sx={{
+                      color: 'white',
+                      '.MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'rgba(255, 255, 255, 0.5)',
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'rgba(255, 255, 255, 0.8)',
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'white',
+                      },
+                      '.MuiSvgIcon-root': {
+                        color: 'white',
+                      },
+                    }}
+                    MenuProps={{
+                      PaperProps: {
+                        sx: {
+                          bgcolor: 'background.paper',
+                        },
+                      },
+                    }}
+                  >
+                    {sessionLoading ? (
+                      <MenuItem disabled>
+                        <CircularProgress size={20} sx={{ mr: 1 }} />
+                        Hleður...
+                      </MenuItem>
+                    ) : (
+                      sessions.map((session) => (
+                        <MenuItem key={session.id} value={session.id}>
+                          Þing {session.session_number}
+                        </MenuItem>
+                      ))
+                    )}
+                  </Select>
+                </FormControl>
+              </Box>
             </Box>
             
             {/* User section */}

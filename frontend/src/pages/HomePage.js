@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
+import { useSession } from '../context/SessionContext';
 import {
   Typography,
   Box,
@@ -22,6 +23,7 @@ import ForumIcon from '@mui/icons-material/Forum';
 import { parliamentService } from '../services/api';
 
 const HomePage = () => {
+  const { selectedSession } = useSession();
   const [latestBills, setLatestBills] = useState([]);
   const [latestVotingRecords, setLatestVotingRecords] = useState([]);
   const [loadingBills, setLoadingBills] = useState(true);
@@ -85,11 +87,13 @@ const HomePage = () => {
       try {
         setLoadingBills(true);
         setErrorBills(null);
-        const response = await parliamentService.getBills({
+        const params = {
           page: 1,
           limit: 6,
-          ordering: '-introduced_date'
-        });
+          ordering: '-introduced_date',
+          session: selectedSession?.id || undefined,
+        };
+        const response = await parliamentService.getBills(params);
         // Limit to 5 items as a safety measure
         const bills = response.data.results || [];
         setLatestBills(bills.slice(0, 6));
@@ -102,7 +106,7 @@ const HomePage = () => {
     };
 
     fetchLatestBills();
-  }, []);
+  }, [selectedSession]);
 
   // Fetch latest voting records
   useEffect(() => {
@@ -110,12 +114,14 @@ const HomePage = () => {
       try {
         setLoadingVotes(true);
         setErrorVotes(null);
-        const response = await parliamentService.getBills({
+        const params = {
           page: 1,
           limit: 5,
           has_votes: true,
-          ordering: '-vote_date'
-        });
+          ordering: '-vote_date',
+          session: selectedSession?.id || undefined,
+        };
+        const response = await parliamentService.getBills(params);
         // Limit to 5 items as a safety measure
         const bills = (response.data.results || []).slice(0, 5);
         
@@ -168,7 +174,7 @@ const HomePage = () => {
     };
 
     fetchLatestVotingRecords();
-  }, []);
+  }, [selectedSession]);
   return (
     <>
       {/* Hero Section */}

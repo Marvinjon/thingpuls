@@ -18,6 +18,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'politico.settings')
 django.setup()
 
 from parliament.models import MP, Bill, Speech, ParliamentSession
+from parliament.utils import get_or_create_session
 
 
 def parse_date(date_string):
@@ -41,16 +42,8 @@ def fetch_mp_speeches(mp_id, session_number):
     """Fetch speeches for a specific MP from Alþingi XML API"""
     print(f'\nFetching speeches for MP ID {mp_id}...')
     
-    # Get the session object
-    try:
-        session = ParliamentSession.objects.get(session_number=session_number)
-    except ParliamentSession.DoesNotExist:
-        print(f'Creating session {session_number}...')
-        session = ParliamentSession.objects.create(
-            session_number=session_number,
-            start_date=datetime.now().date(),
-            is_active=True
-        )
+    # Get or create session (will update active status automatically)
+    session = get_or_create_session(session_number, update_active_status=True)
     
     # Get the MP object
     try:

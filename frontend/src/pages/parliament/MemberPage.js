@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
+import { useSession } from '../../context/SessionContext';
 import {
   Container,
   Typography,
@@ -33,6 +34,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { parliamentService } from '../../services/api';
 
 const MemberPage = () => {
+  const { selectedSession } = useSession();
   const [members, setMembers] = useState([]);
   const [parties, setParties] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -62,6 +64,7 @@ const MemberPage = () => {
           search: searchTerm,
           party: selectedParty,
           constituency: selectedConstituency,
+          session: selectedSession?.id || undefined,
           ordering: 'first_name,last_name'
         };
         
@@ -99,7 +102,7 @@ const MemberPage = () => {
     };
     
     fetchData();
-  }, [page, searchTerm, selectedParty, selectedConstituency]);
+  }, [page, searchTerm, selectedParty, selectedConstituency, selectedSession]);
 
   // Initialize pendingSearchTerm from searchTerm on first render
   useEffect(() => {

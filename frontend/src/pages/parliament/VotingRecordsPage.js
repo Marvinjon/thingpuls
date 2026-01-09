@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link as RouterLink } from 'react-router-dom';
+import { useSession } from '../../context/SessionContext';
 import { 
   Container, Typography, Box, Paper, Table, TableBody, 
   TableCell, TableContainer, TableHead, TableRow, Chip,
@@ -77,6 +78,7 @@ const VotingRecordsPage = () => {
   const query = useQuery();
   const billId = query.get('bill');
   const memberId = query.get('member');
+  const { selectedSession } = useSession();
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -118,6 +120,7 @@ const VotingRecordsPage = () => {
           page: page,
           limit: rowsPerPage,
           has_votes: true,  // Only get bills with voting records
+          session: selectedSession?.id || undefined,
         };
         
         // Search in bill title
@@ -229,7 +232,7 @@ const VotingRecordsPage = () => {
     };
 
     fetchVotingRecords();
-  }, [filters, sortOrder, page, rowsPerPage]);
+  }, [filters, sortOrder, page, rowsPerPage, selectedSession]);
 
   const handleSearchInputChange = (e) => {
     setPendingSearchTerm(e.target.value);

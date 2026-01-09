@@ -29,6 +29,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ClearIcon from '@mui/icons-material/Clear';
 import { parliamentService } from '../../services/api';
+import { useSession } from '../../context/SessionContext';
 
 // Helper function to get URL parameters
 function useQuery() {
@@ -38,6 +39,7 @@ function useQuery() {
 const BillsPage = () => {
   const location = useLocation();
   const query = useQuery();
+  const { selectedSession } = useSession();
   // State for bills data
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -81,6 +83,7 @@ const BillsPage = () => {
         year: year || undefined,
         bill_type: billType || undefined,
         submitter_type: submitterType || undefined,
+        session: selectedSession?.id || undefined,
         ordering: sortBy === 'latest' ? '-introduced_date' : 
                  sortBy === 'oldest' ? 'introduced_date' :
                  sortBy === 'title_asc' ? 'title' : '-title'
@@ -128,7 +131,7 @@ const BillsPage = () => {
     return () => {
       isMounted = false;
     };
-  }, [searchTerm, status, topic, year, billType, submitterType, sortBy]);
+  }, [searchTerm, status, topic, year, billType, submitterType, sortBy, selectedSession]);
   
   // Fetch bills when filters or pagination changes
   useEffect(() => {
@@ -176,13 +179,14 @@ const BillsPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
   
-  // Fetch statistics on component mount
+  // Fetch statistics on component mount and when session changes
   useEffect(() => {
     let isMounted = true;
     
     const fetchStatistics = async () => {
       try {
-        const response = await parliamentService.getBillStatistics();
+        const params = selectedSession?.id ? { session: selectedSession.id } : {};
+        const response = await parliamentService.getBillStatistics(params);
         if (isMounted) {
           console.log('Statistics response:', response.data);
           setStatistics(response.data);
@@ -200,7 +204,7 @@ const BillsPage = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [selectedSession]);
   
   // Handle pagination change
   const handlePageChange = (event, value) => {
