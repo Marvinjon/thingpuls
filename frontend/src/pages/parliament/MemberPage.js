@@ -379,14 +379,6 @@ const MemberPage = () => {
                           mb: 1
                         }} 
                       />
-                      {mp.active && (
-                        <Chip 
-                          size="small" 
-                          label="Active" 
-                          color="success" 
-                          sx={{ mr: 1, mb: 1 }} 
-                        />
-                      )}
                     </Box>
                     <Typography variant="body2" color="text.secondary">
                       {mp.constituency}
