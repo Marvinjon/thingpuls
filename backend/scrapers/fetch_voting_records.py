@@ -18,6 +18,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'politico.settings')
 django.setup()
 
 from parliament.models import Bill, MP, Vote, ParliamentSession
+from parliament.utils import get_or_create_session
 
 
 def make_request(url, max_retries=3, timeout=10):
