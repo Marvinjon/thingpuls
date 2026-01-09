@@ -45,7 +45,15 @@ class DashboardConfigurationViewSet(viewsets.ModelViewSet):
         """Return dashboard data including parliamentary activity and analytics."""
         try:
             # Get session filter from query parameters
-            session_id = request.query_params.get('session', None)
+            session_id_param = request.query_params.get('session', None)
+            session_id = None
+            
+            # Convert session_id to integer if provided
+            if session_id_param:
+                try:
+                    session_id = int(session_id_param)
+                except (ValueError, TypeError):
+                    session_id = None
             
             # Base querysets
             bills_queryset = Bill.objects.all()
@@ -306,7 +314,15 @@ class AnalyticsReportViewSet(viewsets.ModelViewSet):
         # Get parameters from request
         party_id = request.query_params.get('party_id')
         topic_id = request.query_params.get('topic_id')
-        session_id = request.query_params.get('session_id')
+        session_id_param = request.query_params.get('session_id')
+        
+        # Convert session_id to integer if provided
+        session_id = None
+        if session_id_param:
+            try:
+                session_id = int(session_id_param)
+            except (ValueError, TypeError):
+                session_id = None
         
         # Base query
         votes = Vote.objects.all()
@@ -383,7 +399,15 @@ class AnalyticsReportViewSet(viewsets.ModelViewSet):
     def top_speakers(self, request):
         """Generate top speakers report - MPs who speak the most."""
         limit = int(request.query_params.get('limit', 10))
-        session_id = request.query_params.get('session', None)
+        session_id_param = request.query_params.get('session', None)
+        
+        # Convert session_id to integer if provided
+        session_id = None
+        if session_id_param:
+            try:
+                session_id = int(session_id_param)
+            except (ValueError, TypeError):
+                session_id = None
         
         # Base queryset for speeches
         speeches_queryset = Speech.objects.all()
