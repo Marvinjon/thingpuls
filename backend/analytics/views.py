@@ -45,7 +45,13 @@ class DashboardConfigurationViewSet(viewsets.ModelViewSet):
         """Return dashboard data including parliamentary activity and analytics."""
         try:
             # Get session filter from query parameters
-            session_id_param = request.query_params.get('session', None)
+            # Try both query_params (DRF) and GET (Django) for compatibility
+            session_id_param = None
+            if hasattr(request, 'query_params'):
+                session_id_param = request.query_params.get('session', None)
+            if not session_id_param and hasattr(request, 'GET'):
+                session_id_param = request.GET.get('session', None)
+            
             session_id = None
             
             # Convert session_id to integer if provided
@@ -65,6 +71,11 @@ class DashboardConfigurationViewSet(viewsets.ModelViewSet):
                 bills_queryset = bills_queryset.filter(session_id=session_id)
                 votes_queryset = votes_queryset.filter(session_id=session_id)
                 speeches_queryset = speeches_queryset.filter(session_id=session_id)
+            else:
+                # Debug: Log when no session filter is applied
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Dashboard API called without session filter. session_id_param: {session_id_param}, session_id: {session_id}")
             
             # Get parliamentary activity data
             total_bills = bills_queryset.count()
