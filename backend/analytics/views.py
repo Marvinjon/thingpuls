@@ -142,9 +142,10 @@ class DashboardConfigurationViewSet(viewsets.ModelViewSet):
                         voting_patterns[party][vote_type] = vote['count']
 
             # Get Bill Progress Pipeline - distribution of bills by status
+            # Only include statuses that have at least one bill
             bill_statuses = bills_queryset.values('status').annotate(
                 count=Count('id')
-            ).order_by('status')
+            ).filter(count__gt=0).order_by('status')
             
             bill_pipeline = {}
             for status_item in bill_statuses:
@@ -213,11 +214,11 @@ class DashboardConfigurationViewSet(viewsets.ModelViewSet):
                     bills__session_id=session_id
                 ).annotate(
                     bill_count=Count('bills', filter=Q(bills__session_id=session_id))
-                ).order_by('-bill_count')[:10]
+                ).filter(bill_count__gt=0).order_by('-bill_count')[:10]
             else:
                 top_topics = Topic.objects.annotate(
                     bill_count=Count('bills')
-                ).order_by('-bill_count')[:10]
+                ).filter(bill_count__gt=0).order_by('-bill_count')[:10]
 
             topic_trends = {
                 'labels': [topic.name for topic in top_topics],
