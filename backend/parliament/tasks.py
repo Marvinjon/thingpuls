@@ -1,6 +1,7 @@
 from celery import shared_task
 from django.core.management import call_command
 from parliament.models import ParliamentSession
+from parliament.utils import get_active_session_number
 
 @shared_task
 def fetch_althingi_data(session_number=None):
@@ -8,14 +9,14 @@ def fetch_althingi_data(session_number=None):
     Fetch all data from Althingi API
     
     Args:
-        session_number: Parliament session number. If None, uses the active session.
+        session_number: Parliament session number. If None, fetches the active session from Alþingi API.
     """
-    # Get active session if not specified
+    # Get active session from Alþingi API if not specified
     if session_number is None:
-        active_session = ParliamentSession.objects.filter(is_active=True).first()
-        if not active_session:
-            return "Error: No active session found. Please specify a session number."
-        session_number = active_session.session_number
+        session_number = get_active_session_number()
+        if session_number is None:
+            return "Error: Could not determine active session from Alþingi API. Please specify a session number."
+        print(f"Using active session from Alþingi API: {session_number}")
     
     # Fetch parties first as they are needed for MPs
     call_command('fetch_althingi_data', data_type='parties', session=session_number)
@@ -37,14 +38,14 @@ def fetch_voting_records(session_number=None):
     Fetch voting records for the current session
     
     Args:
-        session_number: Parliament session number. If None, uses the active session.
+        session_number: Parliament session number. If None, fetches the active session from Alþingi API.
     """
-    # Get active session if not specified
+    # Get active session from Alþingi API if not specified
     if session_number is None:
-        active_session = ParliamentSession.objects.filter(is_active=True).first()
-        if not active_session:
-            return "Error: No active session found. Please specify a session number."
-        session_number = active_session.session_number
+        session_number = get_active_session_number()
+        if session_number is None:
+            return "Error: Could not determine active session from Alþingi API. Please specify a session number."
+        print(f"Using active session from Alþingi API: {session_number}")
     
     try:
         session = ParliamentSession.objects.get(session_number=session_number)
