@@ -30,7 +30,7 @@ import {
 
 const DashboardPage = () => {
   const { currentUser } = useAuth();
-  const { selectedSession } = useSession();
+  const { selectedSession, loading: sessionLoading } = useSession();
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -55,6 +55,11 @@ const DashboardPage = () => {
   ];
 
   useEffect(() => {
+    // Don't fetch data until session is loaded
+    if (sessionLoading) {
+      return;
+    }
+
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
@@ -104,7 +109,7 @@ const DashboardPage = () => {
     };
 
     fetchDashboardData();
-  }, [selectedSession]);
+  }, [selectedSession, sessionLoading]);
 
   if (loading) {
     return (
@@ -527,6 +532,15 @@ const DashboardPage = () => {
               {isMobile ? 'Smelltu á málaflokk eða lýsingu til að sjá tengd þingmál' : 'Smelltu á málaflokk til að sjá tengd þingmál'}
             </Typography>
             {topicTrends && (() => {
+              // Check if there's any data
+              if (!topicTrends.labels || topicTrends.labels.length === 0) {
+                return (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 380 }}>
+                    <Typography color="textSecondary">Engin málaflokkar tiltækir fyrir þessa þingsetningu</Typography>
+                  </Box>
+                );
+              }
+              
               // Prepare pie chart data
               const pieData = topicTrends.labels.map((label, index) => ({
                 name: label,

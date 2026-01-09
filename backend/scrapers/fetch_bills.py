@@ -362,6 +362,22 @@ def fetch_bills(session_number):
     print(f'Bills created: {bills_created}')
     print(f'Bills updated: {bills_updated}')
     print(f'Total: {bills_created + bills_updated}')
+    
+    # Automatically assign topics after fetching bills
+    print(f'\n=== Assigning Topics ===')
+    try:
+        # Import assign_topics function from the same directory
+        import importlib.util
+        scrapers_dir = os.path.dirname(os.path.abspath(__file__))
+        assign_topics_path = os.path.join(scrapers_dir, 'assign_topics.py')
+        spec = importlib.util.spec_from_file_location("assign_topics", assign_topics_path)
+        assign_topics_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(assign_topics_module)
+        assign_topics_module.assign_topics(clear_existing=False, session=session_number)
+        print('✓ Topics assigned successfully')
+    except Exception as e:
+        print(f'Warning: Could not assign topics: {str(e)}')
+        print(f'You can manually run: python scrapers/assign_topics.py --session {session_number}')
 
 
 if __name__ == '__main__':
