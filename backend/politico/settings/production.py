@@ -23,7 +23,7 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 # Restrict allowed hosts in production
 # Allow localhost and the domain, plus any from environment variable
-allowed_hosts = os.environ.get('ALLOWED_HOSTS', 'localhost,thingpuls.mhmehf.is').split(',')
+allowed_hosts = os.environ.get('ALLOWED_HOSTS', 'localhost,thingpuls.is,thingpuls.mhmehf.is').split(',')
 ALLOWED_HOSTS = [host.strip() for host in allowed_hosts if host.strip()]
 
 # Static files configuration
@@ -63,6 +63,8 @@ CORS_ALLOW_ALL_ORIGINS = True  # Temporarily allow all origins for testing
 CORS_ALLOWED_ORIGINS = [
     'http://localhost',
     'https://localhost',
+    'http://thingpuls.is',
+    'https://thingpuls.is',
     'http://thingpuls.mhmehf.is',
     'https://thingpuls.mhmehf.is'
 ]
