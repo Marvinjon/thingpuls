@@ -4,7 +4,7 @@ import {
   CardHeader, Tabs, Tab, Divider, Button, CircularProgress, 
   Alert, List, ListItem, ListItemText, Chip, IconButton, 
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  LinearProgress
+  LinearProgress, useMediaQuery, useTheme
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -30,6 +30,9 @@ import {
 const DashboardPage = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
@@ -41,8 +44,13 @@ const DashboardPage = () => {
   const [topSpeakers, setTopSpeakers] = useState(null);
   const [topicsMap, setTopicsMap] = useState({}); // Map topic names to IDs
 
-  // Color scheme for charts
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+  // Color scheme for charts - expanded to ensure unique colors for each pie slice
+  const COLORS = [
+    '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d',
+    '#FF6B9D', '#C44569', '#F8B500', '#6C5CE7', '#00D2D3', '#FF6348',
+    '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8',
+    '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8C471', '#82E0AA', '#F1948A'
+  ];
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -191,12 +199,12 @@ const DashboardPage = () => {
 
         {/* Voting Patterns Chart */}
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
+          <Paper sx={{ p: { xs: 2, sm: 3 }, overflow: 'hidden' }}>
             <Typography variant="h6" gutterBottom>
               Atkvæðamynstur eftir flokkum
             </Typography>
             {votingPatterns && (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={isMobile ? 350 : 300}>
                 <BarChart 
                   data={Object.entries(votingPatterns).map(([party, votes]) => ({
                     party,
@@ -205,20 +213,32 @@ const DashboardPage = () => {
                     abstain: votes.abstain,
                     absent: votes.absent
                   }))}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
+                  margin={{ 
+                    top: 20, 
+                    right: isMobile ? 10 : 30, 
+                    left: isMobile ? 0 : 20, 
+                    bottom: isMobile ? 100 : 70 
+                  }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="party" 
-                    angle={-45} 
-                    textAnchor="end" 
-                    height={80} 
+                    angle={isMobile ? -90 : -45} 
+                    textAnchor={isMobile ? "end" : "end"} 
+                    height={isMobile ? 120 : 80} 
                     interval={0}
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: isMobile ? 10 : 12 }}
+                    width={isMobile ? 60 : undefined}
                   />
-                  <YAxis />
+                  <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 40 : undefined} />
                   <Tooltip />
-                  <Legend />
+                  <Legend 
+                    wrapperStyle={{ 
+                      paddingTop: isMobile ? '10px' : undefined,
+                      fontSize: isMobile ? '12px' : undefined
+                    }}
+                    iconSize={isMobile ? 12 : 14}
+                  />
                   <Bar dataKey="yes" fill="#4caf50" stackId="a" name="Já" />
                   <Bar dataKey="no" fill="#f44336" stackId="a" name="Nei" />
                   <Bar dataKey="abstain" fill="#ff9800" stackId="a" name="Sitja hjá" />
@@ -231,12 +251,12 @@ const DashboardPage = () => {
 
         {/* Bill Progress Pipeline Chart */}
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
+          <Paper sx={{ p: { xs: 2, sm: 3 }, overflow: 'hidden' }}>
             <Typography variant="h6" gutterBottom>
               Staða þingmála
             </Typography>
             {billPipeline && (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={isMobile ? 400 : 300}>
                 <BarChart 
                   data={Object.entries(billPipeline).map(([status, count]) => {
                     const statusTranslations = {
@@ -258,11 +278,21 @@ const DashboardPage = () => {
                     };
                   })}
                   layout="vertical"
-                  margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
+                  margin={{ 
+                    top: 20, 
+                    right: isMobile ? 10 : 30, 
+                    left: isMobile ? 80 : 100, 
+                    bottom: 20 
+                  }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="status" type="category" />
+                  <XAxis type="number" tick={{ fontSize: isMobile ? 10 : 12 }} />
+                  <YAxis 
+                    dataKey="status" 
+                    type="category" 
+                    tick={{ fontSize: isMobile ? 10 : 12 }}
+                    width={isMobile ? 75 : 100}
+                  />
                   <Tooltip />
                   <Bar dataKey="count" fill="#2196f3" name="Fjöldi mála" />
                 </BarChart>
@@ -374,7 +404,7 @@ const DashboardPage = () => {
 
         {/* Party Cohesion Scores Chart */}
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
+          <Paper sx={{ p: { xs: 2, sm: 3 }, overflow: 'hidden' }}>
             <Typography variant="h6" gutterBottom>
               Samheldni flokka
             </Typography>
@@ -382,24 +412,34 @@ const DashboardPage = () => {
               Hlutfall samstöðu innan flokka við atkvæðagreiðslur
             </Typography>
             {partyCohesion && (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={isMobile ? 350 : 300}>
                 <BarChart 
                   data={Object.entries(partyCohesion).map(([party, score]) => ({
                     party,
                     score
                   }))}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
+                  margin={{ 
+                    top: 20, 
+                    right: isMobile ? 10 : 30, 
+                    left: isMobile ? 0 : 20, 
+                    bottom: isMobile ? 100 : 70 
+                  }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="party" 
-                    angle={-45} 
+                    angle={isMobile ? -90 : -45} 
                     textAnchor="end" 
-                    height={80} 
+                    height={isMobile ? 120 : 80} 
                     interval={0}
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: isMobile ? 10 : 12 }}
+                    width={isMobile ? 60 : undefined}
                   />
-                  <YAxis domain={[0, 100]} />
+                  <YAxis 
+                    domain={[0, 100]} 
+                    tick={{ fontSize: isMobile ? 10 : 12 }}
+                    width={isMobile ? 40 : undefined}
+                  />
                   <Tooltip formatter={(value) => `${value}%`} />
                   <Bar dataKey="score" fill="#9c27b0" name="Samheldni %" />
                 </BarChart>
@@ -410,7 +450,7 @@ const DashboardPage = () => {
 
         {/* Legislative Efficiency Timeline Chart */}
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
+          <Paper sx={{ p: { xs: 2, sm: 3 }, overflow: 'hidden' }}>
             <Typography variant="h6" gutterBottom>
               Framleiðni þingsins
             </Typography>
@@ -418,13 +458,18 @@ const DashboardPage = () => {
               Samþykkt mál yfir tíma
             </Typography>
             {efficiencyTimeline && efficiencyTimeline.labels && efficiencyTimeline.labels.length > 0 && (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={isMobile ? 300 : 300}>
                 <AreaChart 
                   data={efficiencyTimeline.labels.map((label, index) => ({
                     month: label,
                     bills: efficiencyTimeline.counts[index]
                   }))}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                  margin={{ 
+                    top: 20, 
+                    right: isMobile ? 10 : 30, 
+                    left: isMobile ? 0 : 20, 
+                    bottom: isMobile ? 40 : 20 
+                  }}
                 >
                   <defs>
                     <linearGradient id="colorBills" x1="0" y1="0" x2="0" y2="1">
@@ -433,8 +478,14 @@ const DashboardPage = () => {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
+                  <XAxis 
+                    dataKey="month" 
+                    tick={{ fontSize: isMobile ? 10 : 12 }}
+                    angle={isMobile ? -45 : 0}
+                    textAnchor={isMobile ? "end" : "middle"}
+                    height={isMobile ? 60 : undefined}
+                  />
+                  <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 40 : undefined} />
                   <Tooltip />
                   <Area 
                     type="monotone" 
@@ -457,54 +508,119 @@ const DashboardPage = () => {
 
         {/* Topic Distribution */}
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
+          <Paper sx={{ p: { xs: 2, sm: 3 }, overflow: 'hidden' }}>
             <Typography variant="h6" gutterBottom>
               Dreifing málaflokka
             </Typography>
             <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 2, fontStyle: 'italic' }}>
-              Smelltu á málaflokk til að sjá tengd þingmál
+              {isMobile ? 'Smelltu á málaflokk eða lýsingu til að sjá tengd þingmál' : 'Smelltu á málaflokk til að sjá tengd þingmál'}
             </Typography>
-            {topicTrends && (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={topicTrends.labels.map((label, index) => ({
-                      name: label,
-                      value: topicTrends.bill_counts[index]
-                    }))}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                    onClick={(data) => {
-                      const topicName = data.name;
-                      const topicId = topicsMap[topicName];
-                      if (topicId) {
-                        navigate(`/parliament/bills?topic=${topicId}`);
-                      }
-                    }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    {topicTrends.labels.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend 
-                    onClick={(data) => {
-                      const topicName = data.value;
-                      const topicId = topicsMap[topicName];
-                      if (topicId) {
-                        navigate(`/parliament/bills?topic=${topicId}`);
-                      }
-                    }}
-                    wrapperStyle={{ cursor: 'pointer' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
+            {topicTrends && (() => {
+              // Prepare pie chart data
+              const pieData = topicTrends.labels.map((label, index) => ({
+                name: label,
+                value: topicTrends.bill_counts[index]
+              }));
+              
+              // Calculate total for percentage calculation
+              const total = pieData.reduce((sum, item) => sum + item.value, 0);
+              
+              // Custom formatter for legend to show percentage
+              const renderLegend = (props) => {
+                const { payload } = props;
+                return (
+                  <ul style={{ 
+                    listStyle: 'none', 
+                    padding: 0, 
+                    margin: 0,
+                    marginTop: isMobile ? '10px' : '10px',
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+                    gap: isMobile ? '6px' : '8px',
+                    fontSize: isMobile ? '11px' : '12px',
+                    maxWidth: '100%'
+                  }}>
+                    {payload.map((entry, index) => {
+                      const dataItem = pieData.find(item => item.name === entry.value);
+                      const percentage = dataItem ? ((dataItem.value / total) * 100).toFixed(1) : '0';
+                      return (
+                        <li 
+                          key={`legend-${index}`}
+                          style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            cursor: 'pointer',
+                            gap: '6px',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}
+                          onClick={() => {
+                            const topicName = entry.value;
+                            const topicId = topicsMap[topicName];
+                            if (topicId) {
+                              navigate(`/parliament/bills?topic=${topicId}`);
+                            }
+                          }}
+                        >
+                          <svg width={isMobile ? '12' : '10'} height={isMobile ? '12' : '10'} style={{ flexShrink: 0 }}>
+                            <rect width={isMobile ? '12' : '10'} height={isMobile ? '12' : '10'} fill={entry.color} />
+                          </svg>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {entry.value} ({percentage}%)
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                );
+              };
+              
+              return (
+                <Box sx={{ position: 'relative', width: '100%' }}>
+                  <ResponsiveContainer width="100%" height={isMobile ? 480 : 380}>
+                    <PieChart
+                      margin={{
+                        top: isMobile ? 10 : 10,
+                        right: 10,
+                        bottom: isMobile ? 10 : 10,
+                        left: 10
+                      }}
+                    >
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy={isMobile ? "42%" : "42%"}
+                        label={false}
+                        labelLine={false}
+                        outerRadius={isMobile ? 70 : 90}
+                        fill="#8884d8"
+                        dataKey="value"
+                        onClick={(data) => {
+                          const topicName = data.name;
+                          const topicId = topicsMap[topicName];
+                          if (topicId) {
+                            navigate(`/parliament/bills?topic=${topicId}`);
+                          }
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {topicTrends.labels.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        formatter={(value, name) => [`${value} mál (${((value / total) * 100).toFixed(1)}%)`, name]}
+                        contentStyle={{ fontSize: isMobile ? '12px' : '14px' }}
+                      />
+                      <Legend 
+                        content={renderLegend}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </Box>
+              );
+            })()}
           </Paper>
         </Grid>
 

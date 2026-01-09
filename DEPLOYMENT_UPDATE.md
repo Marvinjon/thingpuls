@@ -96,3 +96,22 @@ sudo docker compose -f docker-compose.prod.yml build --no-cache frontend
 sudo docker compose -f docker-compose.prod.yml up -d frontend nginx
 ```
 
+
+
+## for updating the frontend
+
+# Stop containers
+sudo docker compose -f docker-compose.prod.yml down frontend nginx
+
+# Remove the old build volume
+sudo docker volume rm thingpuls_frontend_build
+
+# Rebuild frontend completely from scratch (no cache)
+sudo docker compose -f docker-compose.prod.yml build --no-cache frontend
+
+# Start everything back up
+sudo docker compose -f docker-compose.prod.yml up -d frontend nginx
+
+# Verify the new build has the correct title
+sudo docker compose -f docker-compose.prod.yml exec frontend cat /build/index.html | grep -i title
+
