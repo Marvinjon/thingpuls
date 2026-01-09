@@ -190,15 +190,38 @@ const HomePage = () => {
           <Typography variant="h5" sx={{ mb: 4 }}>
             Fylgstu með þingstörfum, stjórnmálastarfi og taktu þátt í lýðræðislegri umræðu
           </Typography>
-          <Button
-            variant="contained"
-            color="secondary"
-            size="large"
-            component={RouterLink}
-            to="/parliament/members"
-          >
-            Skoða Þingmenn
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="contained"
+              color="secondary"
+              size="large"
+              component={RouterLink}
+              to="/parliament/members"
+              sx={{
+                fontSize: { xs: '1rem', sm: '1rem' },
+                whiteSpace: 'nowrap',
+                px: { xs: 1, sm: 2 },
+                minWidth: { xs: 'auto', sm: 'auto' }
+              }}
+            >
+              Skoða Þingmenn
+            </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              size="large"
+              component={RouterLink}
+              to="/analytics/dashboard"
+              sx={{
+                fontSize: { xs: '0.875rem', sm: '1rem' },
+                whiteSpace: 'nowrap',
+                px: { xs: 1, sm: 2 },
+                minWidth: { xs: 'auto', sm: 'auto' }
+              }}
+            >
+              Tölfræði
+            </Button>
+          </Box>
         </Container>
       </Paper>
 
