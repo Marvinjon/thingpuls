@@ -1,7 +1,13 @@
 from celery import shared_task
-from django.core.management import call_command
 from parliament.models import ParliamentSession
 from parliament.utils import get_active_session_number
+
+# Import scraper functions
+from scrapers.fetch_parties import fetch_parties
+from scrapers.fetch_mps import fetch_mps
+from scrapers.fetch_bills import fetch_bills
+from scrapers.fetch_speeches import fetch_all_mp_speeches
+from scrapers.fetch_voting_records import fetch_all_voting_records
 
 @shared_task
 def fetch_althingi_data(session_number=None):
@@ -18,19 +24,28 @@ def fetch_althingi_data(session_number=None):
             return "Error: Could not determine active session from Alþingi API. Please specify a session number."
         print(f"Using active session from Alþingi API: {session_number}")
     
-    # Fetch parties first as they are needed for MPs
-    call_command('fetch_althingi_data', data_type='parties', session=session_number)
-    
-    # Fetch MPs
-    call_command('fetch_althingi_data', data_type='mps', session=session_number)
-    
-    # Fetch bills
-    call_command('fetch_althingi_data', data_type='bills', session=session_number)
-    
-    # Fetch speeches
-    call_command('fetch_althingi_data', data_type='speeches', session=session_number)
-    
-    return f"Data fetch completed successfully for session {session_number}"
+    try:
+        # Fetch parties first as they are needed for MPs
+        print("Fetching parties...")
+        fetch_parties(session_number)
+        
+        # Fetch MPs
+        print("Fetching MPs...")
+        fetch_mps(session_number)
+        
+        # Fetch bills
+        print("Fetching bills...")
+        fetch_bills(session_number)
+        
+        # Fetch speeches
+        print("Fetching speeches...")
+        fetch_all_mp_speeches(session_number)
+        
+        return f"Data fetch completed successfully for session {session_number}"
+    except Exception as e:
+        error_msg = f"Error fetching data for session {session_number}: {str(e)}"
+        print(error_msg)
+        return error_msg
 
 @shared_task
 def fetch_voting_records(session_number=None):
@@ -49,7 +64,11 @@ def fetch_voting_records(session_number=None):
     
     try:
         session = ParliamentSession.objects.get(session_number=session_number)
-        call_command('fetch_voting_records', session=session_number, force=False)
+        fetch_all_voting_records(session_number, force=False)
         return f"Voting records fetch completed for session {session_number}"
     except ParliamentSession.DoesNotExist:
-        return f"Session {session_number} not found" 
+        return f"Session {session_number} not found"
+    except Exception as e:
+        error_msg = f"Error fetching voting records for session {session_number}: {str(e)}"
+        print(error_msg)
+        return error_msg 
