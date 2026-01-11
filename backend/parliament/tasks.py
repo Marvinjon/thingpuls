@@ -2,13 +2,6 @@ from celery import shared_task
 from parliament.models import ParliamentSession
 from parliament.utils import get_active_session_number
 
-# Import scraper functions
-from scrapers.fetch_parties import fetch_parties
-from scrapers.fetch_mps import fetch_mps
-from scrapers.fetch_bills import fetch_bills
-from scrapers.fetch_speeches import fetch_all_mp_speeches
-from scrapers.fetch_voting_records import fetch_all_voting_records
-
 @shared_task
 def fetch_althingi_data(session_number=None):
     """
@@ -17,6 +10,12 @@ def fetch_althingi_data(session_number=None):
     Args:
         session_number: Parliament session number. If None, fetches the active session from Alþingi API.
     """
+    # Import scraper functions inside the task to avoid import-time Django setup conflicts
+    from scrapers.fetch_parties import fetch_parties
+    from scrapers.fetch_mps import fetch_mps
+    from scrapers.fetch_bills import fetch_bills
+    from scrapers.fetch_speeches import fetch_all_mp_speeches
+    
     # Get active session from Alþingi API if not specified
     if session_number is None:
         session_number = get_active_session_number()
@@ -45,6 +44,8 @@ def fetch_althingi_data(session_number=None):
     except Exception as e:
         error_msg = f"Error fetching data for session {session_number}: {str(e)}"
         print(error_msg)
+        import traceback
+        traceback.print_exc()
         return error_msg
 
 @shared_task
@@ -55,6 +56,9 @@ def fetch_voting_records(session_number=None):
     Args:
         session_number: Parliament session number. If None, fetches the active session from Alþingi API.
     """
+    # Import scraper function inside the task to avoid import-time Django setup conflicts
+    from scrapers.fetch_voting_records import fetch_all_voting_records
+    
     # Get active session from Alþingi API if not specified
     if session_number is None:
         session_number = get_active_session_number()
@@ -71,4 +75,6 @@ def fetch_voting_records(session_number=None):
     except Exception as e:
         error_msg = f"Error fetching voting records for session {session_number}: {str(e)}"
         print(error_msg)
+        import traceback
+        traceback.print_exc()
         return error_msg 
