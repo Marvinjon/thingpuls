@@ -1,6 +1,24 @@
 from celery import shared_task
+import os
+import sys
+import importlib.util
 from parliament.models import ParliamentSession
 from parliament.utils import get_active_session_number
+
+def _import_scraper_module(module_name):
+    """Import a scraper module dynamically, handling the path correctly"""
+    # Get the backend directory (parent of parliament)
+    backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    scraper_path = os.path.join(backend_dir, 'scrapers', f'{module_name}.py')
+    
+    if not os.path.exists(scraper_path):
+        raise ImportError(f"Scraper module not found: {scraper_path}")
+    
+    spec = importlib.util.spec_from_file_location(module_name, scraper_path)
+    module = importlib.util.module_from_spec(spec)
+    # Execute the module (this will run django.setup() but it's idempotent)
+    spec.loader.exec_module(module)
+    return module
 
 @shared_task
 def fetch_althingi_data(session_number=None):
@@ -10,11 +28,16 @@ def fetch_althingi_data(session_number=None):
     Args:
         session_number: Parliament session number. If None, fetches the active session from Alþingi API.
     """
-    # Import scraper functions inside the task to avoid import-time Django setup conflicts
-    from scrapers.fetch_parties import fetch_parties
-    from scrapers.fetch_mps import fetch_mps
-    from scrapers.fetch_bills import fetch_bills
-    from scrapers.fetch_speeches import fetch_all_mp_speeches
+    # Import scraper modules dynamically to avoid import-time Django setup conflicts
+    fetch_parties_module = _import_scraper_module('fetch_parties')
+    fetch_mps_module = _import_scraper_module('fetch_mps')
+    fetch_bills_module = _import_scraper_module('fetch_bills')
+    fetch_speeches_module = _import_scraper_module('fetch_speeches')
+    
+    fetch_parties = fetch_parties_module.fetch_parties
+    fetch_mps = fetch_mps_module.fetch_mps
+    fetch_bills = fetch_bills_module.fetch_bills
+    fetch_all_mp_speeches = fetch_speeches_module.fetch_all_mp_speeches
     
     # Get active session from Alþingi API if not specified
     if session_number is None:
@@ -56,8 +79,9 @@ def fetch_voting_records(session_number=None):
     Args:
         session_number: Parliament session number. If None, fetches the active session from Alþingi API.
     """
-    # Import scraper function inside the task to avoid import-time Django setup conflicts
-    from scrapers.fetch_voting_records import fetch_all_voting_records
+    # Import scraper module dynamically to avoid import-time Django setup conflicts
+    fetch_voting_records_module = _import_scraper_module('fetch_voting_records')
+    fetch_all_voting_records = fetch_voting_records_module.fetch_all_voting_records
     
     # Get active session from Alþingi API if not specified
     if session_number is None:
