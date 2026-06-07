@@ -1,5 +1,5 @@
 # Multi-stage build for both development and production
-FROM node:18-alpine as base
+FROM node:20-alpine as base
 
 WORKDIR /app
 
