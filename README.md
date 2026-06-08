@@ -12,7 +12,7 @@ A comprehensive web application for parliamentary data analysis and citizen enga
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Marvinjon/thingpuls.git
    cd thingpuls
    ```
 
